@@ -1,0 +1,12 @@
+# Excluye directorios locales que no se necesitan en el contexto de la compilación
+node_modules
+dist
+.git
+.gitignore
+.dockerignore
+cloudbuild.yaml
+docker-compose-frontend.yml
+dockerLocal.ts
+eslint.config.js
+tsconfig.*
+vite.config.*
