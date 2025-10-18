@@ -1,0 +1,31 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '--no-cache',
+      '-t',
+      'gcr.io/${PROJECT_ID}/mimamaganadera-frontend:latest',
+      '.'
+    ]
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'push',
+      'gcr.io/${PROJECT_ID}/mimamaganadera-frontend:latest'
+    ]
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: [
+      'run',
+      'deploy',
+      'mimamaganadera-frontend',
+      '--image',
+      'gcr.io/${PROJECT_ID}/mimamaganadera-frontend:latest',
+      '--region',
+      'us-central1',
+      '--platform',
+      'managed',
+      '--allow-unauthenticated',
+      '--port',
+      '8080'
+    ]
+options:
+    logging: CLOUD_LOGGING_ONLY
