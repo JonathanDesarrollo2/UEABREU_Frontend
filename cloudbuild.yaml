@@ -1,22 +1,23 @@
 steps:
-  # ... Paso 1: Docker build
+  # 0. PASO 0: Construir y Etiquetar (usa la etiqueta AR nativa)
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
       '--no-cache',
       '-t',
-      'us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest', # ¡Ruta AR nativa!
+      'us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest',
       '.'
     ]
   
-  # ... Paso 2: Docker push
+  # 1. PASO 1: Subir la Imagen (FORZANDO PUSH CON BASH)
+  # Este paso reemplaza al anterior 'push' y fuerza la ruta de Artifact Registry (AR)
   - name: 'gcr.io/cloud-builders/docker'
-    args: [
-      'push',
-      'us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest' # ¡Ruta AR nativa!
-    ]
+    entrypoint: bash
+    args:
+      - '-c'
+      - 'docker push us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest'
   
-  # ... Paso 3: Cloud Run deploy
+  # 2. PASO 2: Despliegue en Cloud Run (usa la misma etiqueta AR)
   - name: 'gcr.io/google.com/cloudsdk/cloud-sdk'
     args:
       - gcloud
@@ -24,7 +25,7 @@ steps:
       - deploy
       - ueabreu-frontend
       - --image
-      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest' # ¡Ruta AR nativa!
+      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest'
       - --region
       - us-central1
       - --platform
@@ -32,5 +33,6 @@ steps:
       - --allow-unauthenticated
       - --port
       - '8080' 
+
 options:
   logging: CLOUD_LOGGING_ONLY
