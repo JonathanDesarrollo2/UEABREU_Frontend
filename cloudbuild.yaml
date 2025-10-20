@@ -4,21 +4,21 @@ steps:
       'build',
       '--no-cache',
       '-t',
-      'gcr.io/${PROJECT_ID}/mimamaganadera-frontend:latest',
+      'gcr.io/${PROJECT_ID}/ueabreu-frontend:latest',
       '.'
     ]
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'push',
-      'gcr.io/${PROJECT_ID}/mimamaganadera-frontend:latest'
+      'gcr.io/${PROJECT_ID}/ueabreu-frontend:latest'
     ]
   - name: 'gcr.io/cloud-builders/gcloud'
     args: [
       'run',
       'deploy',
-      'mimamaganadera-frontend',
+      'ueabreu-frontend',
       '--image',
-      'gcr.io/${PROJECT_ID}/mimamaganadera-frontend:latest',
+      'gcr.io/${PROJECT_ID}/ueabreu-frontend:latest',
       '--region',
       'us-central1',
       '--platform',
