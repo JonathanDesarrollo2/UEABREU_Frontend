@@ -1,0 +1,81 @@
+steps:
+  # 0. PASO 0: Construir y Etiquetar (usa la etiqueta AR nativa)
+  - name: 'gcr.io/cloudrun/placeholder'
+    args: [
+      'build',
+      '--no-cache',
+      '-t',
+      'us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest',
+      '.'
+    ]
+  
+  # 1. PASO 1: Subir la Imagen (FORZANDO PUSH CON BASH)
+  # Este paso reemplaza al anterior 'push' y fuerza la ruta de Artifact Registry (AR)
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: bash
+    args:
+      - '-c'
+      - 'docker push us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest'
+  
+  # 2. PASO 2: Despliegue en Cloud Run (usa la misma etiqueta AR)
+  - name: 'gcr.io/google.com/cloudsdk/cloud-sdk'
+    args:
+      - gcloud
+      - run
+      - deploy
+      - ueabreu-frontend
+      - --image
+      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest'
+      - --region
+      - us-central1
+      - --platform
+      - managed
+      - --allow-unauthenticated
+      - --port
+      - '8080' 
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+
+
+  Aqui el Dockerfile:
+  # ------------------------------------
+# FASE 1: Construcción (usa node:20)
+# ------------------------------------
+FROM node:20 AS build
+
+# Establece el directorio de trabajo
+WORKDIR /app
+
+# Copia solo los archivos de configuración (package.json y su lock)
+# Esto permite que Docker cachee este paso si las dependencias no cambian.
+COPY package.json package-lock.json ./
+
+# Instala las dependencias usando NPM
+RUN npm install
+
+# ------------------------------------------------------------------
+# CAMBIO CLAVE: Copiamos todos los archivos del proyecto (incluido tsconfig.json)
+# justo antes de ejecutar la construcción.
+# ------------------------------------------------------------------
+COPY . .
+
+# Ejecuta el comando de construcción (por defecto, VITE usa 'npm run build' que crea una carpeta 'dist')
+RUN npm run build
+
+# ------------------------------------
+# FASE 2: Producción (usa nginx:alpine)
+# ------------------------------------
+FROM nginx:alpine
+
+# Copia los archivos de producción de la fase 'build'.
+# Asumimos que el comando 'npm run build' anterior crea la carpeta 'dist'.
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Cloud Run escucha en el puerto 8080 por defecto, pero Nginx escucha en el 80.
+# Exponemos el puerto 80 del contenedor, Cloud Run se encarga de mapearlo al 8080.
+EXPOSE 80 
+
+# Comando para iniciar Nginx en primer plano
+CMD ["nginx", "-g", "daemon off;"]

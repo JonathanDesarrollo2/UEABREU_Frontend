@@ -6,20 +6,16 @@ FROM node:20 AS build
 # Establece el directorio de trabajo
 WORKDIR /app
 
-# Copia solo los archivos de configuración (package.json y su lock)
-# Esto permite que Docker cachee este paso si las dependencias no cambian.
+# Copia los archivos de configuración (para aprovechar la caché de dependencias)
 COPY package.json package-lock.json ./
 
-# Instala las dependencias usando NPM
+# Instala las dependencias
 RUN npm install
 
-# ------------------------------------------------------------------
-# CAMBIO CLAVE: Copiamos todos los archivos del proyecto (incluido tsconfig.json)
-# justo antes de ejecutar la construcción.
-# ------------------------------------------------------------------
+# Copia el resto del código fuente (incluye tsconfig.json y src/)
 COPY . .
 
-# Ejecuta el comando de construcción (por defecto, VITE usa 'npm run build' que crea una carpeta 'dist')
+# Ejecuta la build de producción (Vite crea /dist)
 RUN npm run build
 
 # ------------------------------------
@@ -27,13 +23,15 @@ RUN npm run build
 # ------------------------------------
 FROM nginx:alpine
 
-# Copia los archivos de producción de la fase 'build'.
-# Asumimos que el comando 'npm run build' anterior crea la carpeta 'dist'.
+# Copia los archivos compilados desde la fase anterior
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Cloud Run escucha en el puerto 8080 por defecto, pero Nginx escucha en el 80.
-# Exponemos el puerto 80 del contenedor, Cloud Run se encarga de mapearlo al 8080.
-EXPOSE 80 
+# 🔧 Ajuste necesario para Cloud Run:
+# Reemplazamos el puerto 80 por el 8080 en la configuración de Nginx
+RUN sed -i 's/80/8080/g' /etc/nginx/conf.d/default.conf
 
-# Comando para iniciar Nginx en primer plano
+# Exponemos el puerto que Cloud Run usará
+EXPOSE 8080
+
+# Comando de arranque
 CMD ["nginx", "-g", "daemon off;"]
