@@ -1,38 +1,29 @@
 steps:
-  # 0. PASO 0: Construir y Etiquetar (usa la etiqueta AR nativa)
+  # 1️⃣ Construir la imagen del contenedor
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
-      '--no-cache',
-      '-t',
-      'us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest',
+      '-t', 'gcr.io/$PROJECT_ID/ueabreu-frontend',
       '.'
     ]
-  
-  # 1. PASO 1: Subir la Imagen (FORZANDO PUSH CON BASH)
-  # Este paso reemplaza al anterior 'push' y fuerza la ruta de Artifact Registry (AR)
-  - name: 'gcr.io/cloud-builders/docker'
-    entrypoint: bash
-    args:
-      - '-c'
-      - 'docker push us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest'
-  
-  # 2. PASO 2: Despliegue en Cloud Run (usa la misma etiqueta AR)
-  - name: 'gcr.io/google.com/cloudsdk/cloud-sdk'
-    args:
-      - gcloud
-      - run
-      - deploy
-      - ueabreu-frontend
-      - --image
-      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source/ueabreu-frontend:latest'
-      - --region
-      - us-central1
-      - --platform
-      - managed
-      - --allow-unauthenticated
-      - --port
-      - '8080' 
 
-options:
-  logging: CLOUD_LOGGING_ONLY
+  # 2️⃣ Enviar (push) la imagen al Container Registry (o Artifact Registry)
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/ueabreu-frontend']
+
+  # 3️⃣ Desplegar a Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      [
+        'run', 'deploy', 'ueabreu-frontend',
+        '--image', 'gcr.io/$PROJECT_ID/ueabreu-frontend',
+        '--region', 'us-central1',
+        '--platform', 'managed',
+        '--allow-unauthenticated',
+        '--port', '8080'
+      ]
+
+# 4️⃣ Definir las imágenes a conservar en el historial de compilaciones
+images:
+  - 'gcr.io/$PROJECT_ID/ueabreu-frontend'
