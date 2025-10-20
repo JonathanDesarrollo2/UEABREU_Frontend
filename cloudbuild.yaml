@@ -27,3 +27,5 @@ steps:
 # 4️⃣ Definir las imágenes a conservar en el historial de compilaciones
 images:
   - 'gcr.io/$PROJECT_ID/ueabreu-frontend'
+options:
+  logging: CLOUD_LOGGING_ONLY
