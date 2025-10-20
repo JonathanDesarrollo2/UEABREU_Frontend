@@ -8,5 +8,4 @@ cloudbuild.yaml
 docker-compose-frontend.yml
 dockerLocal.ts
 eslint.config.js
-tsconfig.*
 vite.config.*
