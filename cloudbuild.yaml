@@ -4,21 +4,21 @@ steps:
       'build',
       '--no-cache',
       '-t',
-      'gcr.io/${PROJECT_ID}/ueabreu-frontend:latest',
+      'gcr.io/${PROJECT_ID}/UEABREU-Frontend:latest',
       '.'
     ]
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'push',
-      'gcr.io/${PROJECT_ID}/ueabreu-frontend:latest'
+      'gcr.io/${PROJECT_ID}/UEABREU-Frontend:latest'
     ]
   - name: 'gcr.io/cloud-builders/gcloud'
     args: [
       'run',
       'deploy',
-      'ueabreu-frontend',
+      'UEABREU-Frontend',
       '--image',
-      'gcr.io/${PROJECT_ID}/ueabreu-frontend:latest',
+      'gcr.io/${PROJECT_ID}/UEABREU-Frontend:latest',
       '--region',
       'us-central1',
       '--platform',
