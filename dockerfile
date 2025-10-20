@@ -13,7 +13,10 @@ COPY package.json package-lock.json ./
 # Instala las dependencias usando NPM
 RUN npm install
 
-# Copia el resto del código fuente del proyecto
+# ------------------------------------------------------------------
+# CAMBIO CLAVE: Copiamos todos los archivos del proyecto (incluido tsconfig.json)
+# justo antes de ejecutar la construcción.
+# ------------------------------------------------------------------
 COPY . .
 
 # Ejecuta el comando de construcción (por defecto, VITE usa 'npm run build' que crea una carpeta 'dist')
