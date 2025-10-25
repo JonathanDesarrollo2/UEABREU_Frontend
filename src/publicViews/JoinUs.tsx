@@ -13,7 +13,7 @@ export const JoinUsView: React.FC = () => {
     {
       icon: <FiMail className="w-6 h-6" />,
       title: "Correo Electrónico",
-      details: ["contacto@colegiojoseantonioabreu.edu.ve", "admisiones@colegiojoseantonioabreu.edu.ve"],
+      details: ["uejantonioabre@gmail.com"],
       description: "Respondemos dentro de las 24 horas hábiles"
     },
     {
