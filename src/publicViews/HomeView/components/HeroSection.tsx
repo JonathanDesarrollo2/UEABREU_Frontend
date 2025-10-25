@@ -16,17 +16,17 @@ export const HeroSection: React.FC = () => {
 
   const slides: Slide[] = [
     { 
-      image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1770&q=80", 
+      image: "../../../../wp1.png", 
       title: "Excelencia Educativa", 
       subtitle: "Formando líderes del mañana"
     },
     { 
-      image: "https://images.unsplash.com/photo-1584697964358-3e14ca57658b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1770&q=80", 
+      image: "../../../../wp2.png", 
       title: "Inscripciones Abiertas", 
       subtitle: "Únete a nuestra familia educativa"
     },
     { 
-      image: "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1770&q=80", 
+      image: "../../../../wp3.png", 
       title: "Instalaciones de Vanguardia", 
       subtitle: "Ambientes optimizados para el aprendizaje"
     }
@@ -61,7 +61,7 @@ export const HeroSection: React.FC = () => {
 
   return (
     <div 
-      className="relative w-full h-[60vh] min-h-[500px] -mt-28"
+      className="relative w-full h-[80vh] min-h-[600px] -mt-28 border-t-4 border-gray-200"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -78,21 +78,30 @@ export const HeroSection: React.FC = () => {
           {slides.map((slide, idx) => (
             <div
               key={idx}
-              className="w-full h-full bg-cover bg-center bg-no-repeat"
+              className="w-full h-full"
               style={{
-                backgroundImage: `url('${slide.image}')`,
                 flex: `0 0 ${100 / slides.length}%`
               }}
-            />
+            >
+              <img 
+                src={slide.image} 
+                alt={slide.title}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://via.placeholder.com/1200x600/1e3a8a/ffffff?text=Imagen+No+Disponible';
+                }}
+              />
+            </div>
           ))}
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/70 to-indigo-800/50"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-gray-900/60 to-gray-800/40"></div>
       </div>
 
       <div className="relative z-10 flex h-full flex-col justify-center px-4 sm:px-6 lg:px-8 pt-32">
         <motion.div
           key={currentSlide}
-          className="max-w-3xl mx-auto text-center space-y-4 sm:space-y-6"
+          className="max-w-4xl mx-auto text-center space-y-6 sm:space-y-8"
           initial={{ y: 0 }}
           animate={{ y: [0, -20, 0] }}
           transition={{
@@ -100,10 +109,10 @@ export const HeroSection: React.FC = () => {
             times: [0, 0.5, 1],
           }}
         >
-          <h1 className="inline-block px-4 py-2 bg-black/50 rounded-md text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white drop-shadow-2xl leading-tight">
+          <h1 className="inline-block px-6 py-4 bg-black/40 rounded-lg text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold text-white drop-shadow-2xl leading-tight backdrop-blur-sm">
             {slides[currentSlide].title}
             {slides[currentSlide].subtitle && (
-              <span className="block text-xl sm:text-2xl md:text-3xl lg:text-4xl text-blue-200 mt-2 sm:mt-4 drop-shadow-lg">
+              <span className="block text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-emerald-200 mt-4 sm:mt-6 drop-shadow-lg">
                 {slides[currentSlide].subtitle}
               </span>
             )}
@@ -115,25 +124,25 @@ export const HeroSection: React.FC = () => {
         <>
           <button
             onClick={prevSlide}
-            className="absolute left-2 sm:left-4 top-1/2 z-20 -translate-y-1/2 p-2 rounded-full bg-white/30 backdrop-blur-sm hover:bg-white/40 shadow-md h-8 w-8 sm:h-12 sm:w-12 flex items-center justify-center transition-all"
+            className="absolute left-4 sm:left-6 top-1/2 z-20 -translate-y-1/2 p-3 rounded-full bg-white/40 backdrop-blur-sm hover:bg-white/60 shadow-lg h-10 w-10 sm:h-14 sm:w-14 flex items-center justify-center transition-all border border-white/30"
             aria-label="Slide anterior"
           >
-            <FiArrowLeft className="w-4 h-4 sm:w-6 sm:h-6 text-gray-900/80" />
+            <FiArrowLeft className="w-5 h-5 sm:w-7 sm:h-7 text-gray-900" />
           </button>
           <button
             onClick={nextSlide}
-            className="absolute right-2 sm:right-4 top-1/2 z-20 -translate-y-1/2 p-2 rounded-full bg-white/30 backdrop-blur-sm hover:bg-white/40 shadow-md h-8 w-8 sm:h-12 sm:w-12 flex items-center justify-center transition-all"
+            className="absolute right-4 sm:right-6 top-1/2 z-20 -translate-y-1/2 p-3 rounded-full bg-white/40 backdrop-blur-sm hover:bg-white/60 shadow-lg h-10 w-10 sm:h-14 sm:w-14 flex items-center justify-center transition-all border border-white/30"
             aria-label="Slide siguiente"
           >
-            <FiArrowRight className="w-4 h-4 sm:w-6 sm:h-6 text-gray-900/80" />
+            <FiArrowRight className="w-5 h-5 sm:w-7 sm:h-7 text-gray-900" />
           </button>
-          <div className="absolute bottom-8 sm:bottom-16 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+          <div className="absolute bottom-8 sm:bottom-12 left-1/2 z-20 flex -translate-x-1/2 gap-3">
             {slides.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentSlide(idx)}
-                className={`h-2 sm:h-3 transition-all duration-300 rounded-full ${
-                  idx === currentSlide ? "bg-blue-400 w-4 sm:w-6" : "bg-white w-2 sm:w-3"
+                className={`h-3 sm:h-4 transition-all duration-300 rounded-full ${
+                  idx === currentSlide ? "bg-emerald-400 w-8 sm:w-10 shadow-lg" : "bg-white/80 w-3 sm:w-4 hover:bg-white"
                 }`}
                 aria-label={`Ir al slide ${idx + 1}`}
               />
