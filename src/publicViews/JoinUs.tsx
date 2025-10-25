@@ -7,7 +7,7 @@ export const JoinUsView: React.FC = () => {
     {
       icon: <FiPhone className="w-6 h-6" />,
       title: "Teléfonos de Contacto",
-      details: ["+58 412-1234567", "+58 414-9876543"],
+      details: ["+58 412-208.84.51"],
       description: "Líneas directas para información sobre admisiones"
     },
     {
