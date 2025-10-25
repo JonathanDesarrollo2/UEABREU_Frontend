@@ -1,7 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FiMenu, FiX, FiUser, FiLogIn, FiMail, FiPhone, FiMapPin, FiInstagram, FiFacebook, FiTwitter, FiArrowRight, FiInfo } from 'react-icons/fi';
+import { FiMenu, FiX, FiUser, FiLogIn, FiMail, FiPhone, FiMapPin, FiInstagram, FiArrowRight, FiInfo } from 'react-icons/fi';
 import ScrollToTop from './Components/ScrollToTop';
 
 const LayoutPublic = () => {
@@ -48,17 +48,27 @@ const LayoutPublic = () => {
     });
   };
 
+  // Redes sociales con sus enlaces específicos
+  const socialLinks = [
+    { 
+      icon: <FiInstagram size={20} />, 
+      color: 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600', 
+      url: 'https://www.instagram.com/u.e.joseantonioabreu/',
+      label: 'Instagram'
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen flex flex-col bg-white">
       {/* Componente para scroll automático al cambiar rutas */}
       <ScrollToTop />
       
-      {/* Navbar grande y moderna */}
+      {/* Navbar elegante y moderna */}
       <nav
         className={`fixed top-0 w-full z-50 transition-all duration-500 ${
           scrolled
-            ? 'bg-white/95 shadow-xl py-3 backdrop-blur-md'
-            : 'bg-gradient-to-r from-blue-900/95 to-indigo-800/95 py-6 backdrop-blur-sm'
+            ? 'bg-white/95 shadow-lg py-3 backdrop-blur-md border-b border-gray-100'
+            : 'bg-white/80 py-6 backdrop-blur-sm'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -66,47 +76,53 @@ const LayoutPublic = () => {
             {/* Logo */}
             <Link
               to="/"
-              className="flex items-center space-x-3 group"
+              className="flex items-center space-x-4 group"
               onClick={() => handleLinkClick('/')}
             >
-              <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-105 ${
-                scrolled ? 'bg-blue-700' : 'bg-white/20 backdrop-blur-md'
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-md transition-all duration-300 group-hover:scale-105 overflow-hidden ${
+                scrolled ? 'border border-gray-200' : 'border border-gray-200'
               }`}>
-                <span className={`font-bold text-xl ${scrolled ? 'text-white' : 'text-white'}`}>
-                  JAA
-                </span>
+                <img 
+                  src="/logo.png" 
+                  alt="U.E. José Antonio Abreu" 
+                  className="w-full h-full object-contain p-2"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
               </div>
               <div className="hidden sm:block">
-                <h1 className={`font-bold text-lg leading-tight transition-colors ${scrolled ? 'text-gray-800' : 'text-white'}`}>
+                <h1 className={`font-bold text-xl leading-tight transition-colors ${scrolled ? 'text-gray-800' : 'text-gray-800'}`}>
                   U.E. José Antonio Abreu
                 </h1>
-                <p className={`text-xs transition-colors ${scrolled ? 'text-gray-500' : 'text-blue-100'}`}>
+                <p className={`text-sm transition-colors ${scrolled ? 'text-gray-600' : 'text-gray-600'}`}>
                   Formando líderes del mañana
                 </p>
               </div>
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-1">
+            <div className="hidden md:flex items-center space-x-2">
               {navItems.map((item) => (
                 <Link
                   key={item.name}
                   to={item.path}
                   onClick={() => handleLinkClick(item.path)}
-                  className={`relative px-5 py-3 rounded-xl font-medium transition-all duration-300 ${
+                  className={`relative px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
                     location.pathname === item.path
                       ? scrolled 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'bg-white/20 text-white'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                       : scrolled 
-                        ? 'text-gray-700 hover:text-blue-600 hover:bg-gray-100/80' 
-                        : 'text-blue-100 hover:text-white hover:bg-white/10'
+                        ? 'text-gray-700 hover:text-emerald-600 hover:bg-gray-50/80' 
+                        : 'text-gray-700 hover:text-emerald-600 hover:bg-gray-50/80'
                   }`}
                 >
                   {item.name === 'Sobre Nosotros' && <FiInfo className="inline mr-2" />}
                   {item.name}
                   {location.pathname === item.path && (
-                    <span className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full"></span>
+                    <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-0.5 bg-emerald-500 rounded-full"></span>
                   )}
                 </Link>
               ))}
@@ -117,10 +133,10 @@ const LayoutPublic = () => {
               <Link
                 to="/login"
                 onClick={() => handleLinkClick('/login')}
-                className={`flex items-center px-5 py-3 rounded-xl font-medium transition-all duration-300 ${
+                className={`flex items-center px-6 py-3 rounded-xl font-medium transition-all duration-300 border ${
                   scrolled 
-                    ? 'text-blue-700 hover:bg-blue-50' 
-                    : 'text-white hover:bg-white/20'
+                    ? 'text-gray-700 border-gray-300 hover:border-emerald-400 hover:text-emerald-600' 
+                    : 'text-gray-700 border-gray-300 hover:border-emerald-400 hover:text-emerald-600'
                 }`}
               >
                 <FiLogIn className="mr-2" />
@@ -129,11 +145,7 @@ const LayoutPublic = () => {
               <Link
                 to="/join-us"
                 onClick={() => handleLinkClick('/join-us')}
-                className={`flex items-center px-5 py-3 rounded-xl font-medium transition-all duration-300 shadow-lg ${
-                  scrolled 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                    : 'bg-white text-blue-800 hover:bg-blue-50'
-                }`}
+                className={`flex items-center px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 transform hover:-translate-y-0.5`}
               >
                 <FiUser className="mr-2" />
                 Unirse
@@ -145,10 +157,10 @@ const LayoutPublic = () => {
             <div className="md:hidden">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className={`p-3 rounded-xl focus:outline-none transition-all ${
+                className={`p-3 rounded-xl focus:outline-none transition-all border ${
                   scrolled 
-                    ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' 
-                    : 'text-white bg-white/20 hover:bg-white/30'
+                    ? 'text-gray-700 border-gray-300 bg-white hover:bg-gray-50' 
+                    : 'text-gray-700 border-gray-300 bg-white hover:bg-gray-50'
                 }`}
               >
                 {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
@@ -168,14 +180,14 @@ const LayoutPublic = () => {
                   key={item.name}
                   to={item.path}
                   onClick={() => handleLinkClick(item.path)}
-                  className={`px-4 py-3 rounded-xl font-medium transition-colors duration-200 ${
+                  className={`px-4 py-3 rounded-xl font-medium transition-colors duration-200 border ${
                     location.pathname === item.path
                       ? scrolled 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'bg-white/20 text-white'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : scrolled 
-                        ? 'text-gray-700 hover:bg-gray-100' 
-                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                        ? 'text-gray-700 border-gray-200 hover:bg-gray-50' 
+                        : 'text-gray-700 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
                   {item.name === 'Sobre Nosotros' && <FiInfo className="inline mr-2" />}
@@ -187,11 +199,7 @@ const LayoutPublic = () => {
                 <Link
                   to="/login"
                   onClick={() => handleLinkClick('/login')}
-                  className={`flex items-center w-full px-4 py-3 rounded-xl font-medium ${
-                    scrolled 
-                      ? 'text-blue-700 hover:bg-blue-50' 
-                      : 'text-white hover:bg-white/20'
-                  }`}
+                  className={`flex items-center w-full px-4 py-3 rounded-xl font-medium border border-gray-300 text-gray-700 hover:border-emerald-400 hover:text-emerald-600`}
                 >
                   <FiLogIn className="mr-2" />
                   Acceder
@@ -199,11 +207,7 @@ const LayoutPublic = () => {
                 <Link
                   to="/join-us"
                   onClick={() => handleLinkClick('/join-us')}
-                  className={`flex items-center w-full px-4 py-3 rounded-xl font-medium ${
-                    scrolled 
-                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                      : 'bg-white text-blue-800 hover:bg-blue-50'
-                  }`}
+                  className={`flex items-center w-full px-4 py-3 rounded-xl font-medium bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700`}
                 >
                   <FiUser className="mr-2" />
                   Unirse
@@ -215,45 +219,55 @@ const LayoutPublic = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-grow pt-28">
+      <main className="flex-grow pt-32">
         <Outlet />
       </main>
 
-      {/* Footer moderno */}
-      <footer className="bg-gradient-to-br from-gray-800 to-gray-900 text-white">
-        <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+      {/* Footer elegante */}
+      <footer className="bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+        <div className="max-w-7xl mx-auto py-20 px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {/* Columna izquierda: Contacto */}
             <div className="space-y-6">
-              <h3 className="text-xl font-bold mb-4 relative pb-2 after:absolute after:left-0 after:bottom-0 after:w-12 after:h-1 after:bg-blue-500">
-                Contacto
-              </h3>
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden border border-white/20">
+                  <img 
+                    src="/logo.png" 
+                    alt="U.E. José Antonio Abreu" 
+                    className="w-10 h-10 object-contain"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">U.E. José Antonio Abreu</h3>
+                  <p className="text-gray-300 text-sm">Formando líderes del mañana</p>
+                </div>
+              </div>
               <div className="space-y-4">
                 <div className="flex items-start">
-                  <div className="mt-1 p-2 bg-blue-600/20 rounded-lg">
-                    <FiMail className="text-blue-400" />
+                  <div className="mt-1 p-2 bg-emerald-500/20 rounded-lg border border-emerald-500/30">
+                    <FiMail className="text-emerald-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="font-medium">Correo electrónico</p>
-                    <p className="text-gray-300">info@uejaa.edu</p>
+                    <p className="font-medium text-gray-200">Correo electrónico</p>
+                    <p className="text-gray-300">uejantonioabre@gmail.com</p>
                   </div>
                 </div>
                 <div className="flex items-start">
-                  <div className="mt-1 p-2 bg-blue-600/20 rounded-lg">
-                    <FiPhone className="text-blue-400" />
+                  <div className="mt-1 p-2 bg-emerald-500/20 rounded-lg border border-emerald-500/30">
+                    <FiPhone className="text-emerald-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="font-medium">Teléfono</p>
-                    <p className="text-gray-300">+58 123-4567890</p>
+                    <p className="font-medium text-gray-200">Teléfono</p>
+                    <p className="text-gray-300">+58 412-208.84.51</p>
                   </div>
                 </div>
                 <div className="flex items-start">
-                  <div className="mt-1 p-2 bg-blue-600/20 rounded-lg">
-                    <FiMapPin className="text-blue-400" />
+                  <div className="mt-1 p-2 bg-emerald-500/20 rounded-lg border border-emerald-500/30">
+                    <FiMapPin className="text-emerald-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="font-medium">Dirección</p>
-                    <p className="text-gray-300">Av. Principal, Ciudad</p>
+                    <p className="font-medium text-gray-200">Dirección</p>
+                    <p className="text-gray-300">Av. Universidad, Naguanagua</p>
                   </div>
                 </div>
               </div>
@@ -261,15 +275,15 @@ const LayoutPublic = () => {
 
             {/* Columna central: Enlaces rápidos */}
             <div className="md:text-center">
-              <h3 className="text-xl font-bold mb-4 relative pb-2 after:absolute after:left-1/2 after:bottom-0 after:-translate-x-1/2 after:w-12 after:h-1 after:bg-blue-500">
+              <h3 className="text-xl font-bold mb-6 relative pb-3 after:absolute after:left-1/2 after:bottom-0 after:-translate-x-1/2 after:w-16 after:h-0.5 after:bg-emerald-500">
                 Enlaces Rápidos
               </h3>
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 <li>
                   <Link 
                     to="/SobreNosotros" 
                     onClick={() => handleLinkClick('/SobreNosotros')}
-                    className="text-gray-300 hover:text-white transition-colors inline-block py-1"
+                    className="text-gray-300 hover:text-white transition-colors inline-block py-2 hover:translate-x-2 duration-300"
                   >
                     Sobre Nosotros
                   </Link>
@@ -278,7 +292,7 @@ const LayoutPublic = () => {
                   <Link 
                     to="/PrivacyPolicy" 
                     onClick={() => handleLinkClick('/PrivacyPolicy')}
-                    className="text-gray-300 hover:text-white transition-colors inline-block py-1"
+                    className="text-gray-300 hover:text-white transition-colors inline-block py-2 hover:translate-x-2 duration-300"
                   >
                     Políticas de Privacidad
                   </Link>
@@ -287,7 +301,7 @@ const LayoutPublic = () => {
                   <Link 
                     to="/TermsAndConditions" 
                     onClick={() => handleLinkClick('/TermsAndConditions')}
-                    className="text-gray-300 hover:text-white transition-colors inline-block py-1"
+                    className="text-gray-300 hover:text-white transition-colors inline-block py-2 hover:translate-x-2 duration-300"
                   >
                     Términos y Condiciones
                   </Link>
@@ -296,7 +310,7 @@ const LayoutPublic = () => {
                   <Link 
                     to="/preguntas-frecuentes" 
                     onClick={() => handleLinkClick('/preguntas-frecuentes')}
-                    className="text-gray-300 hover:text-white transition-colors inline-block py-1"
+                    className="text-gray-300 hover:text-white transition-colors inline-block py-2 hover:translate-x-2 duration-300"
                   >
                     Preguntas Frecuentes
                   </Link>
@@ -306,22 +320,21 @@ const LayoutPublic = () => {
 
             {/* Columna derecha: Redes Sociales */}
             <div className="md:text-right">
-              <h3 className="text-xl font-bold mb-4 relative pb-2 after:absolute after:right-0 after:bottom-0 after:w-12 after:h-1 after:bg-blue-500">
+              <h3 className="text-xl font-bold mb-6 relative pb-3 after:absolute after:right-0 after:bottom-0 after:w-16 after:h-0.5 after:bg-emerald-500">
                 Síguenos
               </h3>
-              <p className="text-gray-300 mb-6">
-                Mantente conectado con nosotros a través de nuestras redes sociales.
+              <p className="text-gray-300 mb-8 leading-relaxed">
+                Mantente conectado con nosotros a través de nuestras redes sociales y descubre todo lo que tenemos para ofrecerte.
               </p>
-              <div className="flex md:justify-end space-x-3">
-                {[
-                  { icon: <FiInstagram size={20} />, color: 'bg-pink-600 hover:bg-pink-700' },
-                  { icon: <FiFacebook size={20} />, color: 'bg-blue-600 hover:bg-blue-700' },
-                  { icon: <FiTwitter size={20} />, color: 'bg-sky-500 hover:bg-sky-600' },
-                ].map((social, index) => (
+              <div className="flex md:justify-end space-x-4">
+                {socialLinks.map((social, index) => (
                   <a
                     key={index}
-                    href="#"
-                    className={`p-3 rounded-xl text-white transition-all duration-300 transform hover:-translate-y-1 ${social.color}`}
+                    href={social.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`p-4 rounded-xl text-white transition-all duration-300 transform hover:-translate-y-1 shadow-lg ${social.color}`}
+                    aria-label={social.label}
                   >
                     {social.icon}
                   </a>
@@ -332,13 +345,30 @@ const LayoutPublic = () => {
 
           <div className="mt-16 pt-8 border-t border-gray-700/50">
             <div className="flex flex-col md:flex-row justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <div className="w-10 h-10 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold">
-                  JAA
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden border border-white/20">
+                  <img 
+                    src="/logo.png" 
+                    alt="U.E. José Antonio Abreu" 
+                    className="w-10 h-10 object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML = '<span class="text-white font-bold text-sm">JAA</span>';
+                      }
+                    }}
+                  />
                 </div>
-                <p className="text-gray-300">
-                  © {new Date().getFullYear()} U.E. José Antonio Abreu. Todos los derechos reservados.
-                </p>
+                <div>
+                  <p className="text-gray-300">
+                    © {new Date().getFullYear()} U.E. José Antonio Abreu
+                  </p>
+                  <p className="text-gray-400 text-sm">
+                    Todos los derechos reservados
+                  </p>
+                </div>
               </div>
               <div className="mt-4 md:mt-0">
                 <p className="text-gray-400 text-sm">

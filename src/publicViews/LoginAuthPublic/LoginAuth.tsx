@@ -26,13 +26,12 @@ export default function LoginAuthPublic() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-100 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-emerald-50 flex items-center justify-center p-4 relative overflow-hidden">
       
-      {/* Elementos decorativos de fondo */}
+      {/* Elementos decorativos de fondo más sutiles */}
       <div className="absolute inset-0">
-        {/* Formas geométricas animadas */}
         <motion.div 
-          className="absolute top-10 left-10 w-32 h-32 bg-blue-200/20 rounded-full"
+          className="absolute top-10 left-10 w-32 h-32 bg-emerald-200/10 rounded-full"
           animate={{
             y: [0, -20, 0],
             scale: [1, 1.1, 1]
@@ -44,7 +43,7 @@ export default function LoginAuthPublic() {
           }}
         />
         <motion.div 
-          className="absolute bottom-20 right-20 w-24 h-24 bg-purple-200/20 rounded-lg"
+          className="absolute bottom-20 right-20 w-24 h-24 bg-teal-200/10 rounded-lg"
           animate={{
             y: [0, 15, 0],
             rotate: [0, 5, 0]
@@ -56,27 +55,6 @@ export default function LoginAuthPublic() {
             delay: 1
           }}
         />
-        <motion.div 
-          className="absolute top-1/3 right-1/4 w-16 h-16 bg-indigo-200/20 rounded-full"
-          animate={{
-            y: [0, -15, 0],
-            x: [0, 10, 0]
-          }}
-          transition={{
-            duration: 5,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2
-          }}
-        />
-      </div>
-
-      {/* Patrón de fondo sutil */}
-      <div className="absolute inset-0 opacity-[0.03]">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, #3b82f6 1px, transparent 0)`,
-          backgroundSize: '40px 40px'
-        }}></div>
       </div>
 
       <motion.div
@@ -86,10 +64,10 @@ export default function LoginAuthPublic() {
         className="w-full max-w-md relative z-10"
       >
         {/* Tarjeta principal */}
-        <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-white/60 relative overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200 relative overflow-hidden">
           
           {/* Efecto de acento decorativo */}
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-600"></div>
           
           {/* Encabezado con animación */}
           <motion.div 
@@ -99,11 +77,11 @@ export default function LoginAuthPublic() {
             transition={{ delay: 0.2 }}
           >
             <motion.div 
-              className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg"
-              whileHover={{ scale: 1.05, rotate: 2 }}
+              className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl flex items-center justify-center shadow-md"
+              whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              <FaGraduationCap className="text-3xl text-white" />
+              <FaGraduationCap className="text-2xl text-white" />
             </motion.div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">U.E. José Antonio Abreu</h1>
             <p className="text-gray-600">Plataforma Educativa</p>
@@ -116,8 +94,8 @@ export default function LoginAuthPublic() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <label className=" text-gray-700 font-medium mb-2 flex items-center">
-                <FaUser className="mr-2 text-blue-500" />
+              <label className="text-gray-700 font-medium mb-2 flex items-center">
+                <FaUser className="mr-2 text-emerald-600" />
                 Correo electrónico
               </label>
               <div className="relative">
@@ -126,7 +104,7 @@ export default function LoginAuthPublic() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                  className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                   placeholder="tu@email.com"
                 />
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -140,8 +118,8 @@ export default function LoginAuthPublic() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <label className=" text-gray-700 font-medium mb-2 flex items-center">
-                <FaLock className="mr-2 text-blue-500" />
+              <label className="text-gray-700 font-medium mb-2 flex items-center">
+                <FaLock className="mr-2 text-emerald-600" />
                 Contraseña
               </label>
               <div className="relative">
@@ -150,7 +128,7 @@ export default function LoginAuthPublic() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 pr-12"
+                  className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300 pr-12"
                   placeholder="••••••••"
                 />
                 <FaLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -174,7 +152,7 @@ export default function LoginAuthPublic() {
                 type="submit"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-blue-200/50"
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-3.5 rounded-xl font-medium hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 shadow-md"
               >
                 Ingresar
               </motion.button>
@@ -196,11 +174,11 @@ export default function LoginAuthPublic() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
           >
-            <p className="text-gray-600 mb-3">¿Interesado en unirte a nuestra academia?</p>
+            <p className="text-gray-600 mb-3">¿Interesado en unirte a nuestra institución?</p>
             <motion.div whileHover={{ scale: 1.05 }}>
               <Link 
-                to="/Join-Us" 
-                className="inline-flex items-center text-blue-600 font-semibold hover:text-blue-800 transition-colors group"
+                to="/join-us" 
+                className="inline-flex items-center text-emerald-600 font-semibold hover:text-emerald-800 transition-colors group"
               >
                 Únete a Nosotros
                 <svg 
@@ -224,7 +202,7 @@ export default function LoginAuthPublic() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.9 }}
         >
-          Educación de calidad para el futuro
+          Formando líderes del mañana
         </motion.p>
       </motion.div>
     </div>

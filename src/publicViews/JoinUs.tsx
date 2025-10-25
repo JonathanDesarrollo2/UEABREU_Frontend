@@ -7,19 +7,19 @@ export const JoinUsView: React.FC = () => {
     {
       icon: <FiPhone className="w-6 h-6" />,
       title: "Teléfonos de Contacto",
-      details: ["+58 123-456-7890", "+58 987-654-3210"],
+      details: ["+58 412-1234567", "+58 414-9876543"],
       description: "Líneas directas para información sobre admisiones"
     },
     {
       icon: <FiMail className="w-6 h-6" />,
       title: "Correo Electrónico",
-      details: ["admisiones@uejaa.edu.ve", "info@uejaa.edu.ve"],
+      details: ["contacto@colegiojoseantonioabreu.edu.ve", "admisiones@colegiojoseantonioabreu.edu.ve"],
       description: "Respondemos dentro de las 24 horas hábiles"
     },
     {
       icon: <FiMapPin className="w-6 h-6" />,
       title: "Ubicación",
-      details: ["Av. Principal, Urbanización Los Samanes", "Ciudad Bolívar, Estado Bolívar"],
+      details: ["Av. Principal de la Urb. Los Samanes", "Ciudad Bolívar, Estado Bolívar"],
       description: "Visita nuestras instalaciones previa cita"
     },
     {
@@ -35,16 +35,17 @@ export const JoinUsView: React.FC = () => {
     "Instalaciones modernas y seguras",
     "Profesores altamente calificados",
     "Programas extracurriculares diversos",
-    "Comunidad educativa inclusiva"
+    "Comunidad educativa inclusiva",
+    "Formación en valores y excelencia académica"
   ];
 
   return (
-    <section className="w-screen left-1/2 -translate-x-1/2 relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-24">
+    <section className="w-screen left-1/2 -translate-x-1/2 relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-green-50 py-24">
       {/* Elementos decorativos de fondo */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-0 left-0 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-0 w-72 h-72 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl animate-pulse animation-delay-2000"></div>
-        <div className="absolute top-1/3 right-1/4 w-48 h-48 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl animate-pulse animation-delay-4000"></div>
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-0 left-0 w-72 h-72 bg-emerald-200 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 right-0 w-72 h-72 bg-green-200 rounded-full mix-blend-multiply filter blur-3xl animate-pulse animation-delay-2000"></div>
+        <div className="absolute top-1/3 right-1/4 w-48 h-48 bg-lime-200 rounded-full mix-blend-multiply filter blur-3xl animate-pulse animation-delay-4000"></div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
@@ -56,17 +57,17 @@ export const JoinUsView: React.FC = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+          <div className="inline-flex items-center bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
             <FiShield className="mr-2" />
-            Admisión por Invitación
+            Admisión Personalizada
           </div>
           
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Únete a Nuestra Comunidad Educativa
+            Únete a Nuestra Familia Educativa
           </h1>
           
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Forma parte de la familia <span className="font-semibold text-blue-600">U.E. José Antonio Abreu</span>. 
+            Forma parte de la comunidad <span className="font-semibold text-emerald-600">U.E. José Antonio Abreu</span>. 
             Contamos con un proceso de admisión personalizado para garantizar 
             la mejor experiencia educativa para tu hijo.
           </p>
@@ -80,16 +81,16 @@ export const JoinUsView: React.FC = () => {
             whileInView={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-8"
+            className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-8 border border-emerald-100"
           >
             <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-              <FiUsers className="mr-3 text-blue-600" />
+              <FiUsers className="mr-3 text-emerald-600" />
               Proceso de Admisión
             </h2>
             
             <div className="space-y-6">
               <div className="flex items-start space-x-4">
-                <div className="bg-blue-100 text-blue-600 rounded-lg p-3 mt-1">
+                <div className="bg-emerald-100 text-emerald-600 rounded-lg p-3 mt-1">
                   <span className="font-bold">1</span>
                 </div>
                 <div>
@@ -101,7 +102,7 @@ export const JoinUsView: React.FC = () => {
               </div>
 
               <div className="flex items-start space-x-4">
-                <div className="bg-blue-100 text-blue-600 rounded-lg p-3 mt-1">
+                <div className="bg-emerald-100 text-emerald-600 rounded-lg p-3 mt-1">
                   <span className="font-bold">2</span>
                 </div>
                 <div>
@@ -113,7 +114,7 @@ export const JoinUsView: React.FC = () => {
               </div>
 
               <div className="flex items-start space-x-4">
-                <div className="bg-blue-100 text-blue-600 rounded-lg p-3 mt-1">
+                <div className="bg-emerald-100 text-emerald-600 rounded-lg p-3 mt-1">
                   <span className="font-bold">3</span>
                 </div>
                 <div>
@@ -132,7 +133,7 @@ export const JoinUsView: React.FC = () => {
             whileInView={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             viewport={{ once: true }}
-            className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-lg p-8 text-white"
+            className="bg-gradient-to-br from-emerald-600 to-green-700 rounded-2xl shadow-lg p-8 text-white"
           >
             <h2 className="text-2xl font-bold mb-6 flex items-center">
               <FiStar className="mr-3 text-yellow-300" />
@@ -142,14 +143,14 @@ export const JoinUsView: React.FC = () => {
             <ul className="space-y-4">
               {benefits.map((benefit, index) => (
                 <li key={index} className="flex items-center">
-                  <FiArrowRight className="mr-3 text-green-300 flex-shrink-0" />
-                  <span className="text-blue-100">{benefit}</span>
+                  <FiArrowRight className="mr-3 text-emerald-300 flex-shrink-0" />
+                  <span className="text-emerald-100">{benefit}</span>
                 </li>
               ))}
             </ul>
 
             <div className="mt-8 p-4 bg-white/10 rounded-xl">
-              <p className="text-sm text-blue-100">
+              <p className="text-sm text-emerald-100">
                 <strong>Nota:</strong> El proceso de admisión está sujeto a disponibilidad de cupos 
                 y cumplimiento de los requisitos académicos establecidos.
               </p>
@@ -182,10 +183,10 @@ export const JoinUsView: React.FC = () => {
               whileInView={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 text-center hover:shadow-xl transition-shadow"
+              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 text-center hover:shadow-xl transition-shadow border border-emerald-100"
             >
-              <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <div className="text-blue-600">
+              <div className="bg-emerald-100 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <div className="text-emerald-600">
                   {item.icon}
                 </div>
               </div>
@@ -209,7 +210,7 @@ export const JoinUsView: React.FC = () => {
           whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.4 }}
           viewport={{ once: true }}
-          className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-8 text-center"
+          className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-8 text-center border border-emerald-100"
         >
           <h3 className="text-2xl font-bold text-gray-900 mb-4">
             ¿Listo para Comenzar?
@@ -220,20 +221,20 @@ export const JoinUsView: React.FC = () => {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <motion.a
-              href="tel:+581234567890"
+              href="tel:+584121234567"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center"
+              className="bg-emerald-600 text-white px-8 py-3 rounded-lg hover:bg-emerald-700 transition-colors font-semibold flex items-center justify-center"
             >
               <FiPhone className="mr-2" />
               Llamar Ahora
             </motion.a>
             
             <motion.a
-              href="mailto:admisiones@uejaa.edu.ve"
+              href="mailto:admisiones@colegiojoseantonioabreu.edu.ve"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="border-2 border-blue-600 text-blue-600 px-8 py-3 rounded-lg hover:bg-blue-50 transition-colors font-semibold flex items-center justify-center"
+              className="border-2 border-emerald-600 text-emerald-600 px-8 py-3 rounded-lg hover:bg-emerald-50 transition-colors font-semibold flex items-center justify-center"
             >
               <FiMail className="mr-2" />
               Enviar Email
