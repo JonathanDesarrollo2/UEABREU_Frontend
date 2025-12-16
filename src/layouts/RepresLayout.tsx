@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { 
   FaHome, 
   FaMoneyCheck, 
-  FaChartLine,
   FaClock,
   FaUserGraduate,
   FaSignOutAlt,
