@@ -40,7 +40,7 @@ export const ServicesSection: React.FC = () => {
             Nuestra Oferta Educativa
           </h2>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Formación académica de calidad con valores cristianos y atención personalizada
+            Formación académica de calidad con valores y atención personalizada
           </p>
         </motion.div>
 

@@ -25,7 +25,9 @@ steps:
       'managed',
       '--allow-unauthenticated',
       '--port',
-      '8080'
+      '8080',
+      '--set-env-vars',
+      "VITE_API_BASE_LOCAL=https://appservices.ueabreu.com/api"
     ]
 options:
     logging: CLOUD_LOGGING_ONLY
