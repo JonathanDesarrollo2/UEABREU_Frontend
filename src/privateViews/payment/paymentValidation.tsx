@@ -13,11 +13,8 @@ import {
   FaExclamationTriangle, 
   FaTimesCircle, 
   FaMoneyBillWave, 
-  FaPhone, 
-  FaIdCard,
   FaDollarSign,
   FaExchangeAlt,
-  FaCalendarAlt,
   FaInfoCircle,
   FaCreditCard,
   FaCalendarDay,
@@ -40,7 +37,6 @@ export default function PaymentValidation() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string>('');
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
-  const [rateError, setRateError] = useState<string>('');
   const [usdAmount, setUsdAmount] = useState<number>(0);
 
   // Obtener tasa BCV al cargar el componente
@@ -54,7 +50,6 @@ export default function PaymentValidation() {
           console.log('✅ Tasa BCV cargada:', response.content);
         }
       } catch (err: any) {
-        setRateError('No se pudo cargar la tasa BCV. Mostrando tasa de respaldo.');
         // Tasa de respaldo en caso de error
         setBcvRate({
           PriceRateBCV: 36.6642,
