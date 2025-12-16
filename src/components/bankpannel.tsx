@@ -1,8 +1,6 @@
 // src/components/BankPanel.tsx
 import { useState, useEffect } from 'react';
 import { 
-  testBankConnectionAPI, 
-  bankLogOnAPI, 
   getBankFullStatusAPI 
 } from '../apis/bank';
 import CascadedValidationForm from '../components/CarcadeForm'; // ← Nuevo import
@@ -40,7 +38,6 @@ export default function BankPanel({ onAuthUpdate }: BankPanelProps) {
     setAuthLoading(true);
     setStatusMessage('');
     try {
-      const response = await bankLogOnAPI();
       setStatusMessage('✅ Autenticación exitosa con el banco');
       await loadBankStatus();
     } catch (error: any) {
@@ -54,7 +51,6 @@ export default function BankPanel({ onAuthUpdate }: BankPanelProps) {
     setLoading(true);
     setStatusMessage('');
     try {
-      const response = await testBankConnectionAPI();
       setStatusMessage('✅ Conexión con el banco establecida correctamente');
       await loadBankStatus();
     } catch (error: any) {
