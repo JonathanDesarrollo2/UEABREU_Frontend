@@ -10,6 +10,9 @@ WORKDIR /app
 ARG VITE_API_BASE_LOCAL
 ENV VITE_API_BASE_LOCAL=$VITE_API_BASE_LOCAL
 
+# 🔍 VERIFICACIÓN: Imprime el valor de la variable (aparecerá en logs de Cloud Build)
+RUN echo "✅ [DOCKER BUILD] Valor de VITE_API_BASE_LOCAL recibido: $VITE_API_BASE_LOCAL"
+
 # Copia los archivos de configuración
 COPY package.json package-lock.json ./
 
