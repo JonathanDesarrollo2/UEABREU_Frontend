@@ -5,6 +5,7 @@ steps:
       '--no-cache',
       '-t',
       'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:latest',
+      '--build-arg', 'VITE_API_BASE_LOCAL=https://appservices.ueabreu.com/api', # 👈 LÍNEA AÑADIDA
       '.'
     ]
   - name: 'gcr.io/cloud-builders/docker'
@@ -25,9 +26,9 @@ steps:
       'managed',
       '--allow-unauthenticated',
       '--port',
-      '8080',
-      '--set-env-vars',
-      "VITE_API_BASE_LOCAL=https://appservices.ueabreu.com/api"
+      '8080'
+      # ❌ ELIMINADO: '--set-env-vars', "VITE_API_BASE_LOCAL=..." 
+      # Ya no es necesario aquí porque el valor ya está en la imagen.
     ]
 options:
     logging: CLOUD_LOGGING_ONLY
