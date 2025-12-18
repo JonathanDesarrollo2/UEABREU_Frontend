@@ -19,8 +19,6 @@ const queryClient = new QueryClient({
     },
   },
 })
-// En main.tsx o App.tsx, agrega esta línea:
-console.log('🚀 [DEBUG] API Base:', import.meta.env.VITE_API_BASE_LOCAL);
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
