@@ -3,24 +3,18 @@
 # ------------------------------------
 FROM node:20 AS build
 
-# Establece el directorio de trabajo
 WORKDIR /app
 
-# 🔧 CLAVE: Recibe y establece la variable para Vite desde cloudbuild.yaml
+# 🔧 Recibe la variable de entorno
 ARG VITE_API_BASE_LOCAL
 ENV VITE_API_BASE_LOCAL=$VITE_API_BASE_LOCAL
 
-# 🔍 VERIFICACIÓN: Imprime el valor de la variable (aparecerá en logs de Cloud Build)
-RUN echo "✅ [DOCKER BUILD] Valor de VITE_API_BASE_LOCAL recibido: $VITE_API_BASE_LOCAL"
+# Verificación
+RUN echo "✅ [DOCKER BUILD] VITE_API_BASE_LOCAL: $VITE_API_BASE_LOCAL"
 
-# Copia los archivos de configuración de dependencias
 COPY package.json package-lock.json ./
-# Instala las dependencias
 RUN npm install
-
-# Copia el resto del código fuente (incluye tu src/, public/, etc.)
 COPY . .
-# Ejecuta la build de producción. Vite usará la variable de entorno.
 RUN npm run build
 
 # ------------------------------------
@@ -28,15 +22,14 @@ RUN npm run build
 # ------------------------------------
 FROM nginx:alpine
 
-# Copia los archivos compilados desde la fase anterior
+# Copia los archivos compilados
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# 🔧 Copia tu configuración personalizada de Nginx (REEMPLAZA la configuración principal)
-# Asegúrate de que tu archivo 'nginx.conf' existe en la raíz de tu proyecto.
+# 🔧 Copia la configuración CORREGIDA de Nginx
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Expone el puerto 8080 (requerido por Cloud Run)
-EXPOSE 8080
+# 🔍 Verifica que la configuración sea válida (opcional pero útil)
+RUN nginx -t
 
-# Comando de arranque para Nginx
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
