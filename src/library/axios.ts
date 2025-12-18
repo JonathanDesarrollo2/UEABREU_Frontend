@@ -1,9 +1,18 @@
 // library/axios.ts
 import axios from 'axios';
+console.log('🔍 [DEBUG CRÍTICO] ============================');
+console.log('🔍 import.meta.env:', import.meta.env);
+console.log('🔍 VITE_API_BASE_LOCAL:', import.meta.env.VITE_API_BASE_LOCAL);
+console.log('🔍 VITE_NODE_ENV:', import.meta.env.VITE_NODE_ENV);
+console.log('🔍 window.env:', window.env);
+console.log('🔍 window.location.origin:', window.location.origin);
 
 let BaseURL: string = import.meta.env.VITE_NODE_ENV !== 'development' 
   ? window.env?.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL 
   : import.meta.env.VITE_API_BASE_LOCAL;
+
+console.log('🔍 BaseURL calculada:', BaseURL);
+console.log('🔍 ===========================================');
 
 const api = axios.create({
   baseURL: BaseURL,
