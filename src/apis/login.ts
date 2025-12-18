@@ -21,7 +21,7 @@ export async function userActiveAPI(): Promise<TypeApiResponseLoginActive> {
 
 export async function AuthUser(formdata: typeLogin_in): Promise<TypeApiResponseToken> {
     try {
-        const { data } = await api.post<TypeApiResponseToken>('/public/login/privateauth', formdata);
+        const { data } = await api.post<TypeApiResponseToken>('api//public/login/privateauth', formdata);
         return data;
     } catch (error) {
         let mensaje = 'Error Desconocido';
