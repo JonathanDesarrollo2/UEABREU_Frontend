@@ -36,10 +36,10 @@ export const ServicesSection: React.FC = () => {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">
             Nuestra Oferta Educativa
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+          <p className="text-lg text-slate-600 max-w-3xl mx-auto">
             Formación académica de calidad con valores y atención personalizada
           </p>
         </motion.div>
@@ -55,13 +55,13 @@ export const ServicesSection: React.FC = () => {
               whileHover={{ 
                 y: -5,
               }}
-              className="bg-white p-6 rounded-xl border border-gray-200 text-center hover:shadow-md transition-all duration-300"
+              className="bg-white p-6 rounded-xl border border-slate-200 text-center hover:shadow-md transition-all duration-300"
             >
-              <div className="text-emerald-600 mb-4 flex justify-center">
+              <div className="text-blue-700 mb-4 flex justify-center">
                 {service.icon}
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">{service.title}</h3>
-              <p className="text-gray-600 leading-relaxed">{service.description}</p>
+              <h3 className="text-xl font-semibold text-slate-800 mb-3">{service.title}</h3>
+              <p className="text-slate-600 leading-relaxed">{service.description}</p>
             </motion.div>
           ))}
         </div>

@@ -4,11 +4,7 @@ import { useState } from 'react';
 import { 
   FaGraduationCap, 
   FaHome, 
-  FaMoneyCheck, 
-  FaChartLine,
-  FaCalendarAlt,
-  FaBell,
-  FaUserGraduate,
+  FaMoneyCheck,
   FaSignOutAlt,
   FaBars,
   FaTimes
@@ -35,13 +31,10 @@ export default function StudentLayout() {
     navigate('/login');
   };
 
+  // Solo estas opciones administrativas esenciales
   const menuItems = [
     { name: 'Dashboard', icon: FaHome, path: '/admin' },
     { name: 'Pagos', icon: FaMoneyCheck, path: '/admin/Balance' },
-    { name: 'Calificaciones', icon: FaChartLine, path: '/student/grades' },
-    { name: 'Asistencia', icon: FaCalendarAlt, path: '/student/attendance' },
-    { name: 'Notificaciones', icon: FaBell, path: '/student/notifications' },
-    { name: 'Perfil', icon: FaUserGraduate, path: '/student/profile' },
   ];
 
   return (
@@ -71,21 +64,18 @@ export default function StudentLayout() {
               </div>
             </div>
             
-            {/* Información del estudiante */}
-            {sessionContext.studentInfo?.name && (
+            {/* Información del administrador */}
+            {sessionContext.sesionUser && (
               <div className="px-5 py-4 bg-gray-700 mx-3 mt-4 rounded-lg">
                 <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Administrativo</p>
-                <p className="text-white font-bold text-lg mt-1">{sessionContext.studentInfo.name}</p>
+                <p className="text-white font-bold text-lg mt-1">{sessionContext.sesionUser}</p>
                 <p className="text-sm mt-3">
-                  {sessionContext.studentInfo.status ? 
-                    <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">● AL DÍA</span> : 
-                    <span className="bg-blue-400 text-white px-3 py-1 rounded-full text-xs font-bold">● PENDIENTE</span>
-                  }
+                  <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">● ACTIVO</span>
                 </p>
               </div>
             )}
             
-            {/* Menú */}
+            {/* Menú simplificado */}
             <nav className="mt-6 px-3 space-y-2">
               {menuItems.map((item) => (
                 <a
@@ -118,21 +108,18 @@ export default function StudentLayout() {
               </div>
             </div>
             
-            {/* Información del estudiante */}
-            {sessionContext.studentInfo?.name && (
+            {/* Información del administrador */}
+            {sessionContext.sesionUser && (
               <div className="px-5 py-5 bg-gray-700 mx-4 mt-4 rounded-xl">
                 <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Administrativo</p>
-                <p className="text-white font-bold text-lg mt-2">{sessionContext.studentInfo.name}</p>
+                <p className="text-white font-bold text-lg mt-2">{sessionContext.sesionUser}</p>
                 <p className="text-sm mt-3">
-                  {sessionContext.studentInfo.status ? 
-                    <span className="bg-green-500 text-white px-4 py-2 rounded-full text-sm font-bold">● AL DÍA</span> : 
-                    <span className="bg-blue-400 text-white px-4 py-2 rounded-full text-sm font-bold">● PENDIENTE</span>
-                  }
+                  <span className="bg-green-500 text-white px-4 py-2 rounded-full text-sm font-bold">● ACTIVO</span>
                 </p>
               </div>
             )}
             
-            {/* Menú */}
+            {/* Menú simplificado */}
             <nav className="mt-6 flex-1 px-4 space-y-3">
               {menuItems.map((item) => (
                 <a
@@ -174,11 +161,11 @@ export default function StudentLayout() {
           <div className="flex justify-between items-center px-7 py-5">
             <div className="hidden lg:block">
               <h1 className="text-2xl font-bold text-white">Panel Administrativo</h1>
-              <p className="text-gray-400 text-base mt-2 font-medium">Seguimiento educativo integral</p>
+              <p className="text-gray-400 text-base mt-2 font-medium">Gestión administrativa</p>
             </div>
             
             <div className="flex items-center space-x-5">
-              {/* Información del usuario - Sin correo */}
+              {/* Información del usuario */}
               <div className="text-right hidden sm:block bg-gray-700 px-4 py-3 rounded-lg">
                 <p className="text-base font-bold text-white">{sessionContext.sesionUser}</p>
                 <p className="text-sm text-gray-400 font-medium">Administrativo</p>

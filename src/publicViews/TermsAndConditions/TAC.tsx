@@ -46,11 +46,11 @@ export const TermsAndConditions: React.FC = () => {
   ];
 
   return (
-    <section className="w-screen left-1/2 -translate-x-1/2 relative overflow-hidden bg-gradient-to-br from-blue-50 to-gray-50 py-24">
+    <section className="w-screen left-1/2 -translate-x-1/2 relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50 py-24">
       {/* Elementos decorativos */}
       <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-0 right-0 w-72 h-72 bg-green-300 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl animate-pulse animation-delay-2000"></div>
+        <div className="absolute top-0 right-0 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-slate-300 rounded-full mix-blend-multiply filter blur-3xl animate-pulse animation-delay-2000"></div>
       </div>
 
       <div ref={topRef} className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative">
@@ -61,10 +61,10 @@ export const TermsAndConditions: React.FC = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-800 mb-4">
             Términos y Condiciones
           </h1>
-          <p className="text-xl text-gray-600">
+          <p className="text-xl text-slate-600">
             Vigentes a partir de: {new Date().toLocaleDateString('es-VE')}
           </p>
         </motion.div>
@@ -76,12 +76,12 @@ export const TermsAndConditions: React.FC = () => {
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Bienvenido a Nuestra Institución</h2>
-            <p className="text-gray-700 leading-relaxed mb-4">
+            <h2 className="text-2xl font-bold text-slate-800 mb-6">Bienvenido a Nuestra Institución</h2>
+            <p className="text-slate-700 leading-relaxed mb-4">
               Al formar parte de nuestra comunidad educativa, usted acepta cumplir con los siguientes 
               términos y condiciones que rigen nuestra relación académica y administrativa.
             </p>
-            <p className="text-gray-700 leading-relaxed">
+            <p className="text-slate-700 leading-relaxed">
               Estos términos están diseñados para garantizar un ambiente educativo óptimo para todos 
               nuestros estudiantes y familias.
             </p>
@@ -96,19 +96,19 @@ export const TermsAndConditions: React.FC = () => {
               whileInView={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-gray-100"
+              className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-slate-200"
             >
               <div className="flex items-start space-x-4">
-                <div className="bg-green-100 p-3 rounded-xl flex-shrink-0">
-                  <div className="text-green-600">
+                <div className="bg-blue-50 p-3 rounded-xl flex-shrink-0 border border-blue-200">
+                  <div className="text-blue-700">
                     {section.icon}
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  <h3 className="text-xl font-semibold text-slate-800 mb-2">
                     {section.title}
                   </h3>
-                  <p className="text-gray-700 leading-relaxed">
+                  <p className="text-slate-700 leading-relaxed">
                     {section.content}
                   </p>
                 </div>
@@ -122,12 +122,12 @@ export const TermsAndConditions: React.FC = () => {
           whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true }}
-          className="bg-green-50/50 rounded-2xl p-8 text-center"
+          className="bg-blue-50/50 rounded-2xl p-8 text-center border border-blue-200"
         >
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">
+          <h3 className="text-2xl font-bold text-slate-800 mb-4">
             Aceptación de Términos
           </h3>
-          <p className="text-gray-700 mb-6">
+          <p className="text-slate-700 mb-6">
             Al completar el proceso de matrícula, usted acepta automáticamente estos términos y condiciones. 
             Recomendamos leer detenidamente toda la información antes de proceder.
           </p>
@@ -136,14 +136,14 @@ export const TermsAndConditions: React.FC = () => {
             <motion.button 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
+              className="bg-blue-800 text-white px-6 py-3 rounded-lg hover:bg-blue-900 transition-colors font-semibold"
             >
               Descargar PDF Completo
             </motion.button>
             <motion.button 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="border-2 border-green-600 text-green-600 px-6 py-3 rounded-lg hover:bg-green-50 transition-colors font-semibold"
+              className="border-2 border-blue-800 text-blue-800 px-6 py-3 rounded-lg hover:bg-blue-50 transition-colors font-semibold"
             >
               Solicitar Clarificación
             </motion.button>
@@ -151,7 +151,7 @@ export const TermsAndConditions: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={scrollToTop}
-              className="flex items-center bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-semibold"
+              className="flex items-center bg-slate-600 text-white px-6 py-3 rounded-lg hover:bg-slate-700 transition-colors font-semibold"
             >
               <FiArrowUp className="mr-2" />
               Volver al Inicio

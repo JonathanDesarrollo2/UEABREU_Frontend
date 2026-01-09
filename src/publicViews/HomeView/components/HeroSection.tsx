@@ -61,7 +61,7 @@ export const HeroSection: React.FC = () => {
 
   return (
     <div 
-      className="relative w-full h-[80vh] min-h-[600px] -mt-28 border-t-4 border-gray-200"
+      className="relative w-full h-[80vh] min-h-[600px] -mt-28 border-t-4 border-slate-200"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -95,7 +95,7 @@ export const HeroSection: React.FC = () => {
             </div>
           ))}
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-900/60 to-gray-800/40"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/60 to-slate-800/40"></div>
       </div>
 
       <div className="relative z-10 flex h-full flex-col justify-center px-4 sm:px-6 lg:px-8 pt-32">
@@ -112,7 +112,7 @@ export const HeroSection: React.FC = () => {
           <h1 className="inline-block px-6 py-4 bg-black/40 rounded-lg text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold text-white drop-shadow-2xl leading-tight backdrop-blur-sm">
             {slides[currentSlide].title}
             {slides[currentSlide].subtitle && (
-              <span className="block text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-emerald-200 mt-4 sm:mt-6 drop-shadow-lg">
+              <span className="block text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-blue-200 mt-4 sm:mt-6 drop-shadow-lg">
                 {slides[currentSlide].subtitle}
               </span>
             )}
@@ -127,14 +127,14 @@ export const HeroSection: React.FC = () => {
             className="absolute left-4 sm:left-6 top-1/2 z-20 -translate-y-1/2 p-3 rounded-full bg-white/40 backdrop-blur-sm hover:bg-white/60 shadow-lg h-10 w-10 sm:h-14 sm:w-14 flex items-center justify-center transition-all border border-white/30"
             aria-label="Slide anterior"
           >
-            <FiArrowLeft className="w-5 h-5 sm:w-7 sm:h-7 text-gray-900" />
+            <FiArrowLeft className="w-5 h-5 sm:w-7 sm:h-7 text-slate-900" />
           </button>
           <button
             onClick={nextSlide}
             className="absolute right-4 sm:right-6 top-1/2 z-20 -translate-y-1/2 p-3 rounded-full bg-white/40 backdrop-blur-sm hover:bg-white/60 shadow-lg h-10 w-10 sm:h-14 sm:w-14 flex items-center justify-center transition-all border border-white/30"
             aria-label="Slide siguiente"
           >
-            <FiArrowRight className="w-5 h-5 sm:w-7 sm:h-7 text-gray-900" />
+            <FiArrowRight className="w-5 h-5 sm:w-7 sm:h-7 text-slate-900" />
           </button>
           <div className="absolute bottom-8 sm:bottom-12 left-1/2 z-20 flex -translate-x-1/2 gap-3">
             {slides.map((_, idx) => (
@@ -142,7 +142,7 @@ export const HeroSection: React.FC = () => {
                 key={idx}
                 onClick={() => setCurrentSlide(idx)}
                 className={`h-3 sm:h-4 transition-all duration-300 rounded-full ${
-                  idx === currentSlide ? "bg-emerald-400 w-8 sm:w-10 shadow-lg" : "bg-white/80 w-3 sm:w-4 hover:bg-white"
+                  idx === currentSlide ? "bg-blue-500 w-8 sm:w-10 shadow-lg" : "bg-white/80 w-3 sm:w-4 hover:bg-white"
                 }`}
                 aria-label={`Ir al slide ${idx + 1}`}
               />

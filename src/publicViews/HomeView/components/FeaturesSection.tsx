@@ -95,10 +95,10 @@ export const FeaturesSection: React.FC = () => {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">
             Nuestro Equipo Docente
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+          <p className="text-lg text-slate-600 max-w-3xl mx-auto">
             Profesionales comprometidos con la excelencia educativa y formación integral
           </p>
         </motion.div>
@@ -115,23 +115,23 @@ export const FeaturesSection: React.FC = () => {
                 transition={{ duration: 0.4 }}
                 className="flex justify-center"
               >
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full max-w-md">
-                  <div className="h-80 overflow-hidden bg-gray-50 flex items-center justify-center">
+                <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden w-full max-w-md">
+                  <div className="h-80 overflow-hidden bg-slate-50 flex items-center justify-center">
                     <img
                       src={teachers[currentIndex].image}
                       alt={teachers[currentIndex].name}
                       className="h-full w-auto object-contain"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        target.src = 'https://via.placeholder.com/300x400/4ade80/ffffff?text=Docente';
+                        target.src = 'https://via.placeholder.com/300x400/1e40af/ffffff?text=Docente';
                       }}
                     />
                   </div>
                   <div className="p-6 text-center">
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">
                       {teachers[currentIndex].name}
                     </h3>
-                    <p className="text-emerald-600 font-semibold">
+                    <p className="text-blue-700 font-semibold">
                       {teachers[currentIndex].position}
                     </p>
                   </div>
@@ -145,17 +145,17 @@ export const FeaturesSection: React.FC = () => {
             <>
               <button
                 onClick={prevSlide}
-                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full p-3 shadow-lg hover:bg-white hover:shadow-xl transition-all duration-300 z-10"
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-full p-3 shadow-lg hover:bg-white hover:shadow-xl transition-all duration-300 z-10"
                 aria-label="Docente anterior"
               >
-                <FiArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
+                <FiArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700" />
               </button>
               <button
                 onClick={nextSlide}
-                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full p-3 shadow-lg hover:bg-white hover:shadow-xl transition-all duration-300 z-10"
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-full p-3 shadow-lg hover:bg-white hover:shadow-xl transition-all duration-300 z-10"
                 aria-label="Docente siguiente"
               >
-                <FiArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
+                <FiArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700" />
               </button>
             </>
           )}
@@ -169,8 +169,8 @@ export const FeaturesSection: React.FC = () => {
               onClick={() => goToSlide(index)}
               className={`h-2 rounded-full transition-all duration-300 ${
                 index === currentIndex 
-                  ? "bg-emerald-500 w-6" 
-                  : "bg-gray-300 w-2 hover:bg-gray-400"
+                  ? "bg-blue-600 w-6" 
+                  : "bg-slate-300 w-2 hover:bg-slate-400"
               }`}
               aria-label={`Ir al docente ${index + 1}`}
             />
@@ -179,7 +179,7 @@ export const FeaturesSection: React.FC = () => {
 
         {/* Miniaturas de todos los docentes */}
         <div className="mt-12">
-          <h3 className="text-lg font-semibold text-gray-800 text-center mb-6">
+          <h3 className="text-lg font-semibold text-slate-800 text-center mb-6">
             Conoce a Todo Nuestro Equipo
           </h3>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
@@ -191,25 +191,25 @@ export const FeaturesSection: React.FC = () => {
                 whileTap={{ scale: 0.95 }}
                 className={`text-center p-3 rounded-lg transition-all duration-300 border ${
                   index === currentIndex 
-                    ? "bg-emerald-50 border-emerald-500 shadow-md" 
-                    : "bg-gray-50 border-gray-200 hover:bg-white hover:border-emerald-300"
+                    ? "bg-blue-50 border-blue-600 shadow-md" 
+                    : "bg-slate-50 border-slate-200 hover:bg-white hover:border-blue-400"
                 }`}
               >
-                <div className="w-16 h-16 mx-auto mb-2 rounded-full overflow-hidden bg-gray-200 border-2 border-white">
+                <div className="w-16 h-16 mx-auto mb-2 rounded-full overflow-hidden bg-slate-200 border-2 border-white">
                   <img
                     src={teacher.image}
                     alt={teacher.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.src = 'https://via.placeholder.com/64x64/4ade80/ffffff?text=D';
+                      target.src = 'https://via.placeholder.com/64x64/1e40af/ffffff?text=D';
                     }}
                   />
                 </div>
-                <span className="text-xs font-medium text-gray-800 block truncate">
+                <span className="text-xs font-medium text-slate-800 block truncate">
                   {teacher.name.split(' ')[0]}
                 </span>
-                <span className="text-xs text-gray-600 block truncate mt-1">
+                <span className="text-xs text-slate-600 block truncate mt-1">
                   {teacher.position}
                 </span>
               </motion.button>
@@ -223,10 +223,10 @@ export const FeaturesSection: React.FC = () => {
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
           viewport={{ once: true }}
-          className="text-center mt-10 p-5 bg-emerald-50 rounded-xl border border-emerald-100"
+          className="text-center mt-10 p-5 bg-blue-50 rounded-xl border border-blue-100"
         >
-          <p className="text-gray-700">
-            <span className="font-semibold text-emerald-600">{teachers.length} profesionales</span> dedicados a la formación de nuestros estudiantes
+          <p className="text-slate-700">
+            <span className="font-semibold text-blue-700">{teachers.length} profesionales</span> dedicados a la formación de nuestros estudiantes
           </p>
         </motion.div>
       </div>

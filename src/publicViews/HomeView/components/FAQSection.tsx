@@ -29,7 +29,7 @@ export const FAQSection: React.FC = () => {
   };
 
   return (
-    <section className="w-screen relative left-1/2 right-1/2 -mx-[50vw] bg-gradient-to-br from-gray-50 to-emerald-50 py-20">
+    <section className="w-screen relative left-1/2 right-1/2 -mx-[50vw] bg-gradient-to-br from-slate-50 to-blue-50 py-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ y: 30, opacity: 0 }}
@@ -38,10 +38,10 @@ export const FAQSection: React.FC = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">
             Preguntas Frecuentes
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+          <p className="text-lg text-slate-600 max-w-3xl mx-auto">
             Información básica sobre nuestra institución
           </p>
         </motion.div>
@@ -55,22 +55,22 @@ export const FAQSection: React.FC = () => {
               whileInView={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 overflow-hidden"
+              className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-slate-200 overflow-hidden"
             >
               <motion.button
                 onClick={() => toggleItem(item.id)}
-                className="w-full p-6 text-left flex justify-between items-center hover:bg-gray-50 transition-colors duration-200"
+                className="w-full p-6 text-left flex justify-between items-center hover:bg-slate-50 transition-colors duration-200"
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
               >
-                <span className="font-semibold text-gray-800 text-lg pr-4">
+                <span className="font-semibold text-slate-800 text-lg pr-4">
                   {item.question}
                 </span>
                 <motion.div
                   animate={{ rotate: activeItem === item.id ? 180 : 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <FiChevronDown className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                  <FiChevronDown className="h-5 w-5 text-blue-700 flex-shrink-0" />
                 </motion.div>
               </motion.button>
 
@@ -83,12 +83,12 @@ export const FAQSection: React.FC = () => {
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
-                    <div className="px-6 pb-6 border-t border-gray-100 pt-4">
+                    <div className="px-6 pb-6 border-t border-slate-100 pt-4">
                       <motion.p 
                         initial={{ y: -10, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.2, duration: 0.3 }}
-                        className="text-gray-700 leading-relaxed"
+                        className="text-slate-700 leading-relaxed"
                       >
                         {item.answer}
                       </motion.p>
@@ -106,28 +106,28 @@ export const FAQSection: React.FC = () => {
           whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true }}
-          className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 max-w-2xl mx-auto"
+          className="bg-white rounded-2xl p-8 shadow-lg border border-slate-200 max-w-2xl mx-auto"
         >
           <div className="text-center mb-6">
-            <div className="bg-emerald-100 p-3 rounded-full inline-flex mb-4">
-              <FiMessageCircle className="h-8 w-8 text-emerald-600" />
+            <div className="bg-blue-50 p-3 rounded-full inline-flex mb-4 border border-blue-200">
+              <FiMessageCircle className="h-8 w-8 text-blue-700" />
             </div>
             
-            <h3 className="text-2xl font-bold text-gray-800 mb-3">
+            <h3 className="text-2xl font-bold text-slate-800 mb-3">
               ¿Necesitas más información?
             </h3>
-            <p className="text-gray-600">
+            <p className="text-slate-600">
               Contáctanos directamente para resolver todas tus dudas
             </p>
           </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
-            <div className="flex items-center text-gray-700">
-              <FiPhone className="h-5 w-5 text-emerald-600 mr-2" />
+            <div className="flex items-center text-slate-700">
+              <FiPhone className="h-5 w-5 text-blue-700 mr-2" />
               <span>+58 412-208.84.51</span>
             </div>
-            <div className="flex items-center text-gray-700">
-              <FiMail className="h-5 w-5 text-emerald-600 mr-2" />
+            <div className="flex items-center text-slate-700">
+              <FiMail className="h-5 w-5 text-blue-700 mr-2" />
               <span>uejantonioabre@gmail.com</span>
             </div>
           </div>
@@ -136,7 +136,7 @@ export const FAQSection: React.FC = () => {
             <motion.button 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-emerald-600 text-white px-8 py-3 rounded-lg hover:bg-emerald-700 transition-colors font-semibold shadow-md"
+              className="bg-blue-800 text-white px-8 py-3 rounded-lg hover:bg-blue-900 transition-colors font-semibold shadow-md"
             >
               Contactar Ahora
             </motion.button>

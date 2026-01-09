@@ -20,6 +20,7 @@ import UserDashboard from './layouts/UserLayout'
 import PaymentValidation from './privateViews/payment/paymentValidation'  // ✅ Nueva vista agregada
 import ClassSchedule from './privateViews/Schedule/ClassSchedule'
 import ManualBalance from './privateViews/balance/ManualBalance'
+import InsertTeacher from './privateViews/teacher/Teacher'
 
 function ListRoutes() {
   return (
@@ -52,6 +53,7 @@ function ListRoutes() {
             <Route index element={<UserDashboard />} />
             <Route path="insert" element={<InsertUser />} />
             <Route path="list" element={<UserList />} />
+            <Route path="teacher" element={<InsertTeacher />} />
           </Route>
           <Route path="Balance" element={<ManualBalance />} />
         </Route>
