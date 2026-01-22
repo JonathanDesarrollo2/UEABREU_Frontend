@@ -44,8 +44,6 @@ type ExtendedUserInsert = TypeLogin_insert & {
     emergencyPhone: string;
   }>;
 };
-
-// Hook para el formulario extendido
 const useInsertUserForm = () => {
   return useForm<ExtendedUserInsert>({
     resolver: zodResolver(loginInsertSchema),
@@ -62,63 +60,102 @@ const useInsertUserForm = () => {
   });
 };
 
-// Componente para datos del representante
 const RepresentativeForm = ({ register, errors }: any) => {
   return (
     <CollapsibleSection title="Datos del Representante">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-2">
-        <FormField 
-          id="representativeData.fullName" 
-          label="Nombre Completo" 
-          required={true} 
-          register={register} 
-          error={errors?.representativeData?.fullName} 
-        />
-        <FormField 
-          id="representativeData.identityCard" 
-          label="Cédula de Identidad" 
-          required={true} 
-          register={register} 
-          error={errors?.representativeData?.identityCard} 
-        />
-        <FormField 
-          id="representativeData.address" 
-          label="Dirección" 
-          required={true} 
-          register={register} 
-          error={errors?.representativeData?.address} 
-        />
-        <FormField 
-          id="representativeData.phone" 
-          label="Teléfono" 
-          required={true} 
-          register={register} 
-          error={errors?.representativeData?.phone} 
-        />
-        <FormField 
-          id="representativeData.relationship" 
-          label="Relación con el Estudiante" 
-          required={true} 
-          register={register} 
-          error={errors?.representativeData?.relationship} 
-        />
-        <FormField 
-          type="number"
-          id="representativeData.initialBalance" 
-          label="Saldo Inicial" 
-          register={register} 
-          error={errors?.representativeData?.initialBalance} 
-          validation={{
-            valueAsNumber: true,
-            validate: (value) => !isNaN(value) || "Debe ser un número válido"
-          }}
-        />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 max-w-4xl mx-auto">
+        <div className="md:col-span-2">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Información Personal</h3>
+        </div>
+        
+        <div className="flex justify-center">
+          <div className="w-full max-w-md">
+            <FormField 
+              id="representativeData.fullName" 
+              label="Nombre Completo *" 
+              required={true} 
+              register={register} 
+              error={errors?.representativeData?.fullName} 
+            />
+          </div>
+        </div>
+        
+        <div className="flex justify-center">
+          <div className="w-full max-w-md">
+            <FormField 
+              id="representativeData.identityCard" 
+              label="Cédula de Identidad *" 
+              required={true} 
+              register={register} 
+              error={errors?.representativeData?.identityCard} 
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-center">
+          <div className="w-full max-w-md">
+            <FormField 
+              id="representativeData.relationship" 
+              label="Relación con el Estudiante *" 
+              required={true} 
+              register={register} 
+              error={errors?.representativeData?.relationship} 
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-center">
+          <div className="w-full max-w-md">
+            <FormField 
+              id="representativeData.phone" 
+              label="Teléfono *" 
+              required={true} 
+              register={register} 
+              error={errors?.representativeData?.phone} 
+            />
+          </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Dirección</h3>
+        </div>
+
+        <div className="flex justify-center md:col-span-2">
+          <div className="w-full max-w-2xl">
+            <FormField 
+              id="representativeData.address" 
+              label="Dirección Completa *" 
+              required={true} 
+              register={register} 
+              error={errors?.representativeData?.address} 
+            />
+          </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Información Financiera</h3>
+        </div>
+
+        <div className="flex justify-center">
+          <div className="w-full max-w-md">
+            <FormField 
+              type="number"
+              id="representativeData.initialBalance" 
+              label="Saldo Inicial" 
+              register={register} 
+              error={errors?.representativeData?.initialBalance} 
+              validation={{
+                valueAsNumber: true,
+                validate: (value) => !isNaN(value) || "Debe ser un número válido"
+              }}
+            />
+          </div>
+        </div>
       </div>
     </CollapsibleSection>
   );
 };
 
-// Componente para estudiantes
 const StudentsForm = ({ control, register, errors }: any) => {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -147,179 +184,205 @@ const StudentsForm = ({ control, register, errors }: any) => {
 
   return (
     <CollapsibleSection title="Estudiantes">
-      <div className="mb-6">
-        <button
-          type="button"
-          onClick={addStudent}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <span className="mr-2">+</span>
-          Agregar Estudiante
-        </button>
-        <p className="text-sm text-gray-500 mt-2">
-          {fields.length} estudiante(s) agregado(s)
-        </p>
-      </div>
-
-      {fields.map((field, index) => (
-        <div key={field.id} className="mb-8 p-6 border border-gray-200 rounded-lg bg-gray-50">
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="text-lg font-semibold">
-              Estudiante #{index + 1}
-            </h4>
-            <button
-              type="button"
-              onClick={() => remove(index)}
-              className="flex items-center px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-            >
-              <span className="mr-1">🗑</span>
-              Eliminar
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <FormField 
-              id={`studentsData.${index}.fullName`} 
-              label="Nombre Completo" 
-              required={true} 
-              register={register} 
-              error={errors?.studentsData?.[index]?.fullName} 
-            />
-            <FormField 
-              id={`studentsData.${index}.identityCard`} 
-              label="Cédula de Identidad" 
-              required={true} 
-              register={register} 
-              error={errors?.studentsData?.[index]?.identityCard} 
-            />
-            <FormField 
-              type="date"
-              id={`studentsData.${index}.birthDate`} 
-              label="Fecha de Nacimiento" 
-              required={true} 
-              register={register} 
-              error={errors?.studentsData?.[index]?.birthDate} 
-            />
-            <FormField 
-              id={`studentsData.${index}.nationality`} 
-              label="Nacionalidad" 
-              required={true} 
-              register={register} 
-              error={errors?.studentsData?.[index]?.nationality} 
-            />
-            <FormField 
-              id={`studentsData.${index}.birthCountry`} 
-              label="País de Nacimiento" 
-              required={true} 
-              register={register} 
-              error={errors?.studentsData?.[index]?.birthCountry} 
-            />
-            <FormField 
-              id={`studentsData.${index}.state`} 
-              label="Estado" 
-              required={true} 
-              register={register} 
-              error={errors?.studentsData?.[index]?.state} 
-            />
-            <FormField 
-              id={`studentsData.${index}.zone`} 
-              label="Zona" 
-              required={true} 
-              register={register} 
-              error={errors?.studentsData?.[index]?.zone} 
-            />
-            
-            {/* Address Description como textarea manual */}
-            <div className="md:col-span-2">
-              <div className="flex flex-col mb-2">
-                <label className="text-gray-700 font-bold mb-1">
-                  Descripción de la Dirección *
-                </label>
-                <textarea
-                  {...register(`studentsData.${index}.addressDescription`, {
-                    required: "Este campo es requerido"
-                  })}
-                  className={`w-full px-3 py-2 border-2 border-solid ${
-                    errors?.studentsData?.[index]?.addressDescription ? "border-red-500" : "border-gray-300"
-                  } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
-                  rows={3}
-                />
-                {errors?.studentsData?.[index]?.addressDescription && (
-                  <span className="text-red-500 text-sm mt-1">
-                    {errors.studentsData[index]?.addressDescription?.message}
-                  </span>
-                )}
-              </div>
-            </div>
-            
-            <FormField 
-              id={`studentsData.${index}.phone`} 
-              label="Teléfono" 
-              register={register} 
-              error={errors?.studentsData?.[index]?.phone} 
-            />
-            
-            {/* Checkboxes y textareas manuales */}
-            <div className="md:col-span-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <input
-                      type="checkbox"
-                      id={`studentsData.${index}.hasAllergies`}
-                      {...register(`studentsData.${index}.hasAllergies`)}
-                      className="h-5 w-5 mr-2"
-                    />
-                    <label htmlFor={`studentsData.${index}.hasAllergies`}>
-                      ¿Tiene Alergias?
-                    </label>
-                  </div>
-                  <textarea
-                    {...register(`studentsData.${index}.allergiesDescription`)}
-                    placeholder="Descripción de alergias"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    rows={2}
-                  />
-                </div>
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <input
-                      type="checkbox"
-                      id={`studentsData.${index}.hasDiseases`}
-                      {...register(`studentsData.${index}.hasDiseases`)}
-                      className="h-5 w-5 mr-2"
-                    />
-                    <label htmlFor={`studentsData.${index}.hasDiseases`}>
-                      ¿Tiene Enfermedades?
-                    </label>
-                  </div>
-                  <textarea
-                    {...register(`studentsData.${index}.diseasesDescription`)}
-                    placeholder="Descripción de enfermedades"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    rows={2}
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <FormField 
-              id={`studentsData.${index}.emergencyContact`} 
-              label="Contacto de Emergencia" 
-              required={true} 
-              register={register} 
-              error={errors?.studentsData?.[index]?.emergencyContact} 
-            />
-            <FormField 
-              id={`studentsData.${index}.emergencyPhone`} 
-              label="Teléfono de Emergencia" 
-              required={true} 
-              register={register} 
-              error={errors?.studentsData?.[index]?.emergencyPhone} 
-            />
-          </div>
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-6 text-center">
+          <button
+            type="button"
+            onClick={addStudent}
+            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+          >
+            <span className="mr-2">+</span>
+            Agregar Estudiante
+          </button>
+          <p className="text-sm text-gray-500 mt-2">
+            {fields.length} estudiante(s) agregado(s)
+          </p>
         </div>
-      ))}
+
+        {fields.map((field, index) => (
+          <div key={field.id} className="mb-8 p-6 border border-gray-200 rounded-lg bg-white shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
+              <h4 className="text-lg font-semibold text-gray-800 mb-2 sm:mb-0">
+                Estudiante #{index + 1}
+              </h4>
+              <button
+                type="button"
+                onClick={() => remove(index)}
+                className="flex items-center px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+              >
+                <span className="mr-1">🗑</span>
+                Eliminar Estudiante
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Columna 1 */}
+                <div className="space-y-4">
+                  <h5 className="text-md font-semibold text-gray-600 border-b pb-2">Datos Personales</h5>
+                  <FormField 
+                    id={`studentsData.${index}.fullName`} 
+                    label="Nombre Completo *" 
+                    required={true} 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.fullName} 
+                  />
+                  <FormField 
+                    id={`studentsData.${index}.identityCard`} 
+                    label="Cédula de Identidad *" 
+                    required={true} 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.identityCard} 
+                  />
+                  <FormField 
+                    type="date"
+                    id={`studentsData.${index}.birthDate`} 
+                    label="Fecha de Nacimiento *" 
+                    required={true} 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.birthDate} 
+                  />
+                </div>
+
+                {/* Columna 2 */}
+                <div className="space-y-4">
+                  <h5 className="text-md font-semibold text-gray-600 border-b pb-2">Nacionalidad</h5>
+                  <FormField 
+                    id={`studentsData.${index}.nationality`} 
+                    label="Nacionalidad *" 
+                    required={true} 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.nationality} 
+                  />
+                  <FormField 
+                    id={`studentsData.${index}.birthCountry`} 
+                    label="País de Nacimiento *" 
+                    required={true} 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.birthCountry} 
+                  />
+                  <FormField 
+                    id={`studentsData.${index}.phone`} 
+                    label="Teléfono" 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.phone} 
+                  />
+                </div>
+              </div>
+
+              {/* Dirección */}
+              <div className="border-t pt-4">
+                <h5 className="text-md font-semibold text-gray-600 mb-4">Dirección</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField 
+                    id={`studentsData.${index}.state`} 
+                    label="Estado *" 
+                    required={true} 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.state} 
+                  />
+                  <FormField 
+                    id={`studentsData.${index}.zone`} 
+                    label="Zona *" 
+                    required={true} 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.zone} 
+                  />
+                </div>
+                <div className="mt-4">
+                  <div className="flex flex-col">
+                    <label className="text-gray-700 font-bold mb-1">
+                      Descripción de la Dirección *
+                    </label>
+                    <textarea
+                      {...register(`studentsData.${index}.addressDescription`, {
+                        required: "Este campo es requerido"
+                      })}
+                      className={`w-full px-3 py-2 border-2 border-solid ${
+                        errors?.studentsData?.[index]?.addressDescription ? "border-red-500" : "border-gray-300"
+                      } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+                      rows={3}
+                      placeholder="Calle, número, sector, referencia..."
+                    />
+                    {errors?.studentsData?.[index]?.addressDescription && (
+                      <span className="text-red-500 text-sm mt-1">
+                        {errors.studentsData[index]?.addressDescription?.message}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Información de Salud */}
+              <div className="border-t pt-4">
+                <h5 className="text-md font-semibold text-gray-600 mb-4">Información de Salud</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center mb-3">
+                      <input
+                        type="checkbox"
+                        id={`studentsData.${index}.hasAllergies`}
+                        {...register(`studentsData.${index}.hasAllergies`)}
+                        className="h-5 w-5 mr-2"
+                      />
+                      <label htmlFor={`studentsData.${index}.hasAllergies`} className="font-medium">
+                        ¿Tiene Alergias?
+                      </label>
+                    </div>
+                    <textarea
+                      {...register(`studentsData.${index}.allergiesDescription`)}
+                      placeholder="Describa las alergias del estudiante..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                      rows={2}
+                    />
+                  </div>
+                  
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-center mb-3">
+                      <input
+                        type="checkbox"
+                        id={`studentsData.${index}.hasDiseases`}
+                        {...register(`studentsData.${index}.hasDiseases`)}
+                        className="h-5 w-5 mr-2"
+                      />
+                      <label htmlFor={`studentsData.${index}.hasDiseases`} className="font-medium">
+                        ¿Tiene Enfermedades?
+                      </label>
+                    </div>
+                    <textarea
+                      {...register(`studentsData.${index}.diseasesDescription`)}
+                      placeholder="Describa las enfermedades del estudiante..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contacto de Emergencia */}
+              <div className="border-t pt-4">
+                <h5 className="text-md font-semibold text-gray-600 mb-4">Contacto de Emergencia</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField 
+                    id={`studentsData.${index}.emergencyContact`} 
+                    label="Nombre del Contacto *" 
+                    required={true} 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.emergencyContact} 
+                  />
+                  <FormField 
+                    id={`studentsData.${index}.emergencyPhone`} 
+                    label="Teléfono de Emergencia *" 
+                    required={true} 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.emergencyPhone} 
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </CollapsibleSection>
   );
 };
@@ -330,11 +393,9 @@ export default function InsertUser() {
   const { register, handleSubmit, reset, control, setValue, watch, formState: { errors } } = useInsertUserForm();
   const { mutate, reset: resetMutation, isPending } = useAddUser();
 
-  // Observar el valor del campo nivel
   const nivel = watch('nivel');
   const isRepresentative = nivel === 1;
 
-  // Cuando cambie el nivel, limpiar datos de representante si no es nivel 1
   useEffect(() => {
     if (!isRepresentative) {
       setValue('representativeData' as any, undefined);
@@ -344,7 +405,6 @@ export default function InsertUser() {
 
   const onSubmit = useCallback(
     (formdata: ExtendedUserInsert) => {
-      // Validaciones básicas
       if (!formdata.usermail?.trim()) {
         toast.error("El email es requerido");
         return;
@@ -366,7 +426,6 @@ export default function InsertUser() {
         return;
       }
 
-      // Si es representante, validar datos del representante
       if (isRepresentative) {
         if (!formdata.representativeData?.fullName?.trim() || 
             !formdata.representativeData?.identityCard?.trim()) {
@@ -374,13 +433,11 @@ export default function InsertUser() {
           return;
         }
         
-        // Validar que al menos haya un estudiante
         if (!formdata.studentsData || formdata.studentsData.length === 0) {
           toast.error("Debe agregar al menos un estudiante para el representante");
           return;
         }
         
-        // Validar cada estudiante
         for (let i = 0; i < formdata.studentsData.length; i++) {
           const student = formdata.studentsData[i];
           if (!student.fullName?.trim() || !student.identityCard?.trim()) {
@@ -390,7 +447,6 @@ export default function InsertUser() {
         }
       }
 
-      // Preparar datos para enviar (cast a any para evitar errores de tipos)
       const dataToSend: any = {
         usermail: formdata.usermail,
         userlogin: formdata.userlogin,
@@ -400,8 +456,6 @@ export default function InsertUser() {
         nivel: formdata.nivel,
         userstatus: formdata.userstatus,
       };
-
-      // Solo agregar datos de representante si es nivel 1
       if (isRepresentative && formdata.representativeData) {
         dataToSend.representativeData = {
           ...formdata.representativeData,
@@ -438,135 +492,180 @@ export default function InsertUser() {
   return (
     <>
       {isPending && <SpinnerGeneral />}
-      <AnimatedPage>
-        <form 
-          key={formKey}
-          onSubmit={handleSubmit(onSubmit)}
-          className="grid grid-cols-1 gap-4"
-        >
-          {/* Título principal */}
-          <div className="col-span-1">
-            <h2 className="text-2xl text-center font-bold text-gray-800 mb-2">
-              <FaUserPlus className="mr-4 inline-block" />
+      
+      <AnimatedPage className="flex justify-center">
+        <div className="w-full max-w-6xl mx-auto px-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
+              <FaUserPlus className="mr-3" />
               Registrar Usuarios del Sistema
             </h2>
-            <p className="text-center text-gray-600 mb-6">
-              Complete los datos del usuario. Los campos marcados con * son obligatorios.
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Complete los datos del usuario. Los campos marcados con <span className="text-red-500">*</span> son obligatorios.
             </p>
           </div>
 
-          {/* Botones de Acción */}
-          <ActionButtons onCancel={handleCancel} onClear={handleClear} />
+          <ActionButtons 
+            onCancel={handleCancel} 
+            onClear={handleClear} 
+          />
 
-          {/* Sección: Datos Principales */}
-          <CollapsibleSection title="Datos Principales del Usuario">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField 
-                id="usermail" 
-                label="Email del Usuario *" 
-                required={true} 
-                register={register} 
-                error={errors.usermail} 
-                type="email"
-              />
-              <FormField 
-                id="userlogin" 
-                label="ID. del Usuario *" 
-                required={true} 
-                register={register} 
-                error={errors.userlogin} 
-              />
-              <FormField 
-                id="username" 
-                label="Nombre del Usuario" 
-                register={register} 
-                error={errors.username} 
-              />
-              <FormField 
-                type="select"
-                id="nivel" 
-                label="Nivel de Acceso *" 
-                required={true} 
-                register={register} 
-                error={errors.nivel}
-                defaultValue="1"
-                options={[
-                  { value: "1", text: "Representante" },
-                  { value: "2", text: "Administrador" }
-                ]}
-              />
-              <FormField 
-                type="password"
-                id="userpass" 
-                label="Contraseña del Usuario *" 
-                required={true} 
-                register={register} 
-                error={errors.userpass} 
-              />
-              <FormField 
-                type="password"
-                id="userrepass" 
-                label="Confirmar Contraseña *" 
-                required={true} 
-                register={register} 
-                error={errors.userrepass} 
-              />
-              <div className="md:col-span-2">
-                <FormField 
-                  type="checkbox"
-                  id="userstatus" 
-                  label="Usuario Activo" 
-                  register={register} 
-                />
+          <form 
+            key={formKey}
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-8"
+          >
+            {/* Sección: Datos Principales */}
+            <div className="bg-white rounded-xl shadow-md p-6 max-w-4xl mx-auto">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 text-center border-b pb-3">
+                Datos Principales del Usuario
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      id="usermail" 
+                      label="Email del Usuario *" 
+                      required={true} 
+                      register={register} 
+                      error={errors.usermail} 
+                      type="email"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      id="userlogin" 
+                      label="ID del Usuario *" 
+                      required={true} 
+                      register={register} 
+                      error={errors.userlogin} 
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      id="username" 
+                      label="Nombre del Usuario" 
+                      register={register} 
+                      error={errors.username} 
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      type="select"
+                      id="nivel" 
+                      label="Nivel de Acceso *" 
+                      required={true} 
+                      register={register} 
+                      error={errors.nivel}
+                      defaultValue="1"
+                      options={[
+                        { value: "1", text: "Representante" },
+                        { value: "2", text: "Administrador" }
+                      ]}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      type="password"
+                      id="userpass" 
+                      label="Contraseña *" 
+                      required={true} 
+                      register={register} 
+                      error={errors.userpass} 
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      type="password"
+                      id="userrepass" 
+                      label="Confirmar Contraseña *" 
+                      required={true} 
+                      register={register} 
+                      error={errors.userrepass} 
+                    />
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      type="checkbox"
+                      id="userstatus" 
+                      label="Usuario Activo" 
+                      register={register} 
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          </CollapsibleSection>
 
-          {/* Sección condicional para Representante */}
-          {isRepresentative && (
-            <>
-              <RepresentativeForm register={register} errors={errors} />
-              <StudentsForm control={control} register={register} errors={errors} />
-              
-              {/* Resumen */}
-              <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="text-lg font-semibold mb-3 flex items-center">
-                  <FaMoneyBillWave className="mr-2" /> Resumen del Registro
-                </h4>
+            {/* Sección condicional para Representante */}
+            {isRepresentative && (
+              <>
+                <RepresentativeForm register={register} errors={errors} />
+                <StudentsForm control={control} register={register} errors={errors} />
+                
+                {/* Resumen */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 max-w-4xl mx-auto">
+                  <div className="flex items-center justify-center mb-4">
+                    <FaMoneyBillWave className="text-blue-500 text-xl mr-2" />
+                    <h4 className="text-lg font-semibold text-blue-800">Resumen del Registro</h4>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-700">
+                      Se registrará un <strong className="text-blue-600">representante</strong> con 
+                      <span className="font-bold mx-1">{(watch('studentsData' as any)?.length || 0)}</span>
+                      estudiante(s) asociado(s).
+                    </p>
+                    {watch('representativeData.initialBalance' as any) !== 0 && (
+                      <p className="text-gray-700 mt-2">
+                        <strong>Saldo inicial:</strong> ${watch('representativeData.initialBalance' as any) || 0}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Mensaje para Administrativo */}
+            {!isRepresentative && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-6 max-w-4xl mx-auto text-center">
+                <h4 className="text-lg font-semibold text-green-800 mb-3">Usuario Administrativo</h4>
                 <p className="text-gray-700">
-                  Se registrará un <strong>representante</strong> con {(watch('studentsData' as any)?.length || 0)} estudiante(s) asociado(s).
+                  Se registrará un usuario con permisos administrativos.
+                  <br />
+                  Este usuario no tendrá datos de representante ni estudiantes asociados.
                 </p>
-                {watch('representativeData.initialBalance' as any) !== 0 && (
-                  <p className="text-gray-700 mt-2">
-                    <strong>Saldo inicial:</strong> ${watch('representativeData.initialBalance' as any) || 0}
-                  </p>
-                )}
               </div>
-            </>
-          )}
+            )}
 
-          {/* Mensaje para Administrativo */}
-          {!isRepresentative && (
-            <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="text-lg font-semibold mb-3">Usuario Administrativo</h4>
-              <p className="text-gray-700">
-                Se registrará un usuario con permisos administrativos. Este usuario no tendrá
-                datos de representante ni estudiantes asociados.
-              </p>
+            {/* Botón de envío */}
+            <div className="flex justify-center pt-4">
+              <button
+                type="submit"
+                disabled={isPending}
+                className="px-10 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+              >
+                {isPending ? 'Registrando...' : 'Registrar Usuario'}
+              </button>
             </div>
-          )}
-
-          {/* Botón de envío */}
-          <div className="col-span-1 flex justify-center mt-6">
-            <button
-              type="submit"
-              disabled={isPending}
-              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isPending ? 'Registrando...' : 'Registrar Usuario'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </AnimatedPage>
     </>
   );
