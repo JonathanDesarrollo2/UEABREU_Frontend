@@ -46,15 +46,6 @@ export default function LayoutUsers() {
                 <ul className="flex flex-col lg:flex-row lg:space-x-2 space-y-2 lg:space-y-0">
                   <li>
                     <Link
-                      to="/admin/users"
-                      className={getButtonClass('/admin/users')}
-                    >
-                      <FaChartBar className="mr-2" />
-                      <span>Dashboard</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
                       to="/admin/users/list"
                       className={getButtonClass('/admin/users/list')}
                     >
