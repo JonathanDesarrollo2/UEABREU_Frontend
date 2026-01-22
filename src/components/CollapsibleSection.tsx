@@ -2,16 +2,19 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { Transition } from '@headlessui/react';
 import {
-  FaChevronDown,  // Flecha hacia abajo 
-  FaChevronUp,    // Flecha hacia arriba
+  FaChevronDown,
+  FaChevronUp,
 } from 'react-icons/fa';
+
 interface CollapsibleSectionProps {
   title: string;
   children: ReactNode;
   defaultIsOpen?: boolean;
 }
+
 export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, children, defaultIsOpen = true }) => {
   const [isOpen, setIsOpen] = useState<boolean>(defaultIsOpen);
+  
   return (
     <div className="col-span-1">
       <div
@@ -38,7 +41,10 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, c
         leaveFrom="opacity-100"
         leaveTo="opacity-0"
       >
-        {children}
+        {/* 🔥 CAMBIO CRÍTICO: Envolver children en un div */}
+        <div>
+          {children}
+        </div>
       </Transition>
     </div> 
   );
