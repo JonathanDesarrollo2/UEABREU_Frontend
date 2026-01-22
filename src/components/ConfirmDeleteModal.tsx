@@ -1,7 +1,6 @@
 import { Fragment, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import SpinnerGeneral from '../layouts/components/SpinnerGeneral';
-
+import SpinnerGeneral from '../layouts/components/spinnerGeneral';
 interface ConfirmDeleteModalProps {
   show: boolean;
   onClose: () => void;

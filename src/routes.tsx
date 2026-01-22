@@ -15,12 +15,12 @@ import AdminDashboard from './layouts/AdminDashboard'
 import AuthRedirector from './publicViews/Components/Redirector'
 import LayoutUsers from './layouts/UserLayout'
 import InsertUser from './privateViews/insertUser/insertUser'
-import UserList from './privateViews/userList/UserList'
 import UserDashboard from './layouts/UserLayout'
 import PaymentValidation from './privateViews/payment/paymentValidation'  // ✅ Nueva vista agregada
 import ClassSchedule from './privateViews/Schedule/ClassSchedule'
 import ManualBalance from './privateViews/balance/ManualBalance'
 import InsertTeacher from './privateViews/teacher/Teacher'
+import AdminListUsersBackend from './privateViews/userList/UserList'
 
 function ListRoutes() {
   return (
@@ -52,7 +52,7 @@ function ListRoutes() {
           <Route path="users" element={<LayoutUsers />}>
             <Route index element={<UserDashboard />} />
             <Route path="insert" element={<InsertUser />} />
-            <Route path="list" element={<UserList />} />
+            <Route path="list" element={<AdminListUsersBackend />} />
             <Route path="teacher" element={<InsertTeacher />} />
           </Route>
           <Route path="Balance" element={<ManualBalance />} />
