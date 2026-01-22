@@ -7,7 +7,9 @@ import {
   FaMoneyCheck,
   FaSignOutAlt,
   FaBars,
-  FaTimes
+  FaTimes,
+  FaUser,
+  FaUserPlus
 } from 'react-icons/fa';
 
 interface SessionContext {
@@ -32,10 +34,12 @@ export default function StudentLayout() {
   };
 
   // Solo estas opciones administrativas esenciales
-  const menuItems = [
-    { name: 'Dashboard', icon: FaHome, path: '/admin' },
-    { name: 'Pagos', icon: FaMoneyCheck, path: '/admin/Balance' },
-  ];
+const menuItems = [
+  { name: 'Dashboard', icon: FaHome, path: '/admin' },
+  { name: 'Pagos', icon: FaMoneyCheck, path: '/admin/Balance' },
+  { name: 'Usuarios', icon: FaUser, path: '/admin/users/list' },
+  { name: 'Nuevo Usuario', icon: FaUserPlus, path: '/admin/users/add' },
+];
 
   return (
     <div className="flex h-screen bg-gray-900">
