@@ -38,7 +38,7 @@ const menuItems = [
   { name: 'Dashboard', icon: FaHome, path: '/admin' },
   { name: 'Pagos', icon: FaMoneyCheck, path: '/admin/Balance' },
   { name: 'Usuarios', icon: FaUser, path: '/admin/users/list' },
-  { name: 'Nuevo Usuario', icon: FaUserPlus, path: '/admin/users/add' },
+  { name: 'Nuevo Usuario', icon: FaUserPlus, path: '/admin/users/insert' },
 ];
 
   return (
