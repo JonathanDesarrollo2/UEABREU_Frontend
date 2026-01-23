@@ -9,7 +9,8 @@ import {
   FaBars,
   FaTimes,
   FaUser,
-  FaUserPlus
+  FaUserPlus,
+  FaCalendar
 } from 'react-icons/fa';
 
 interface SessionContext {
@@ -39,6 +40,7 @@ const menuItems = [
   { name: 'Pagos', icon: FaMoneyCheck, path: '/admin/Balance' },
   { name: 'Usuarios', icon: FaUser, path: '/admin/users/list' },
   { name: 'Nuevo Usuario', icon: FaUserPlus, path: '/admin/users/insert' },
+  { name: 'Horario', icon: FaCalendar, path: '/admin/users/Schedule' },
 ];
 
   return (
