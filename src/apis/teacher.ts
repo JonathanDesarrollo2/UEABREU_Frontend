@@ -44,7 +44,7 @@ export async function getPaginatedTeachersAPI(
   search: string = ''
 ): Promise<TypeTeacherListResponse> {
   try {
-    const { data } = await api.get<TypeTeacherListResponse>('/academic/teacher/list', {
+    const { data } = await api.get<TypeTeacherListResponse>('/private/academic/teacher/list', {
       params: { page, limit, search }
     });
     return data;
@@ -64,7 +64,7 @@ export async function getPaginatedTeachersAPI(
 // Obtener profesor por ID
 export async function getTeacherByIdAPI(id: string): Promise<TypeTeacherResponse> {
   try {
-    const { data } = await api.get<TypeTeacherResponse>(`/academic/teacher/${id}`);
+    const { data } = await api.get<TypeTeacherResponse>(`/private/academic/teacher/${id}`);
     return data;
   } catch (error) {
     let mensaje = 'Error Desconocido';
@@ -91,7 +91,7 @@ export async function updateTeacherAPI(formData: TypeTeacherUpdate): Promise<Typ
       class: formData.class || '',
     };
     
-    const { data } = await api.post<TypeTeacherGenericResponse>('/academic/teacher/update', formattedData);
+    const { data } = await api.post<TypeTeacherGenericResponse>('/private/academic/teacher/update', formattedData);
     return data;
   } catch (error) {
     let mensaje = 'Error Desconocido';
@@ -109,7 +109,7 @@ export async function updateTeacherAPI(formData: TypeTeacherUpdate): Promise<Typ
 // Eliminar profesor
 export async function deleteTeacherAPI(id: string): Promise<TypeTeacherGenericResponse> {
   try {
-    const { data } = await api.post<TypeTeacherGenericResponse>('/academic/teacher/delete', { id });
+    const { data } = await api.post<TypeTeacherGenericResponse>('/private/academic/teacher/delete', { id });
     return data;
   } catch (error) {
     let mensaje = 'Error Desconocido';
@@ -127,7 +127,7 @@ export async function deleteTeacherAPI(id: string): Promise<TypeTeacherGenericRe
 // Obtener profesores activos (para select)
 export async function getActiveTeachersAPI(): Promise<TypeTeacherActiveList> {
   try {
-    const { data } = await api.get<TypeTeacherActiveList>('/academic/teacher/active/list');
+    const { data } = await api.get<TypeTeacherActiveList>('/private/academic/teacher/active/list');
     return data;
   } catch (error) {
     let mensaje = 'Error Desconocido';
