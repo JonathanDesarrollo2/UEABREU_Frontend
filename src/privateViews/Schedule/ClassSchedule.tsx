@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FaCalendarAlt, FaChalkboardTeacher, FaBook, FaEye } from 'react-icons/fa';
 import AddScheduleForm from './Components/AddScheduleForm';
-import AddSubjectForm from './Components/addSubjectForm';
 import AddTeacherForm from './Components/AddTeacherForm';
 import SchedulePreview from './Components/SchedulePreview';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ActionButtons } from '../../components/ActionButtons';
+import AddSubjectForm from './Components/addSubjectForm';
 
 // Importar componentes
 
