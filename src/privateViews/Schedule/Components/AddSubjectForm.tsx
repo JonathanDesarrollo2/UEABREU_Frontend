@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { getActiveTeachersAPI } from '../../../apis/teacher';
@@ -17,16 +17,21 @@ export default function AddSubjectForm() {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Cargar docentes al montar
-  useState(() => {
+  // Cargar docentes al montar - CORREGIDO
+  useEffect(() => {
     getActiveTeachersAPI()
       .then(response => {
         if (response.result && response.content) {
           setTeachers(response.content);
+        } else {
+          toast.error('No se pudieron cargar los docentes');
         }
       })
-      .catch(() => toast.error('Error al cargar docentes'));
-  });
+      .catch((error) => {
+        console.error('Error cargando docentes:', error);
+        toast.error('Error al cargar docentes');
+      });
+  }, []);
 
   const onSubmit = async (data: any) => {
     setIsLoading(true);
@@ -110,20 +115,24 @@ export default function AddSubjectForm() {
             options={SUBJECT_TYPE_OPTIONS}
           />
 
-          {/* Docente */}
-          <FormField
-            type="select"
-            id="teacherId"
-            label="Docente Asignado"
-            register={register}
-            options={[
-              { value: '', text: 'Sin docente asignado' },
-              ...teachers.map(teacher => ({
-                value: teacher.id,
-                text: teacher.fullName
-              }))
-            ]}
-          />
+          {/* Docente - CORREGIDO */}
+          <div className="flex flex-col mb-2">
+            <label htmlFor="teacherId" className="text-gray-700 font-bold mb-1">
+              Docente Asignado
+            </label>
+            <select
+              id="teacherId"
+              {...register('teacherId')}
+              className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
+            >
+              <option value="">Sin docente asignado</option>
+              {teachers.map(teacher => (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.fullName}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Clase y Comentarios */}
           <FormField

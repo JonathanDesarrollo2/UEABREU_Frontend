@@ -1,8 +1,8 @@
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
-import { useState } from 'react';
 import { addTeacherAPI } from '../../../apis/teacher';
 import { FormField } from '../../../components/FormField';
+import { useState } from 'react';
 
 export default function AddTeacherForm() {
   const { register, handleSubmit, reset } = useForm();
@@ -90,13 +90,21 @@ export default function AddTeacherForm() {
             register={register}
           />
 
-          <FormField
-            type="boolean"
-            id="status"
-            label="Estado"
-            register={register}
-            defaultValue="true"
-          />
+          {/* Estado - CORREGIDO: Usar select manual en lugar de FormField boolean */}
+          <div className="flex flex-col mb-2">
+            <label htmlFor="status" className="text-gray-700 font-bold mb-1">
+              Estado
+            </label>
+            <select
+              id="status"
+              {...register('status')}
+              className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
+              defaultValue="true"
+            >
+              <option value="true">Activo</option>
+              <option value="false">Inactivo</option>
+            </select>
+          </div>
 
           <FormField
             id="class"

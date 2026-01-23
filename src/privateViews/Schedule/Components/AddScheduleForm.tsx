@@ -71,9 +71,14 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
         .then(response => {
           if (response.result && response.content) {
             setSubjects(response.content);
+          } else {
+            console.warn('No se encontraron materias para el grado:', grade);
           }
         })
-        .catch(() => toast.error('Error al cargar materias'));
+        .catch((error) => {
+          console.error('Error cargando materias:', error);
+          toast.error('Error al cargar materias');
+        });
     }
   }, [grade]);
 
@@ -83,9 +88,14 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       .then(response => {
         if (response.result && response.content) {
           setTeachers(response.content);
+        } else {
+          console.warn('No se encontraron docentes activos');
         }
       })
-      .catch(() => toast.error('Error al cargar docentes'));
+      .catch((error) => {
+        console.error('Error cargando docentes:', error);
+        toast.error('Error al cargar docentes');
+      });
   }, []);
 
   // Cargar bloques ocupados para vista previa
@@ -107,7 +117,9 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             setOccupiedBlocks(occupied);
           }
         })
-        .catch(() => {});
+        .catch((error) => {
+          console.error('Error cargando horarios:', error);
+        });
     }
   }, [grade, section, day]);
 
@@ -137,6 +149,12 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       return;
     }
 
+    // Validar que se haya seleccionado una materia
+    if (!data.subjectId) {
+      toast.error('Debe seleccionar una materia');
+      return;
+    }
+
     // Calcular bloque final
     const formData = {
       ...data,
@@ -159,7 +177,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
         }
       },
       onError: (error: Error) => {
-        toast.error(error.message);
+        toast.error(error.message || 'Error al crear horario');
       },
     });
   };
@@ -167,6 +185,27 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const isBlockOccupied = (blockNumber: number) => {
     return occupiedBlocks.has(blockNumber.toString());
   };
+
+  const getBlockTimes = (blockNumber: number) => {
+    const blockTimes: Record<number, string> = {
+      1: '7:00',
+      2: '7:40',
+      3: '8:20',
+      4: '9:00',
+      5: '10:00',
+      6: '10:40',
+      7: '11:20',
+      8: '12:00',
+      9: '12:40'
+    };
+    
+    return {
+      start: blockTimes[blockNumber] || '',
+      end: blockTimes[blockNumber + 1] || '13:20'
+    };
+  };
+
+  const timeRange = getBlockTimes(startBlock || 1);
 
   return (
     <div className="space-y-6">
@@ -242,22 +281,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               <p className="text-sm text-blue-700">
                 <span className="font-semibold">Bloque Final:</span> {(startBlock || 1) + 1}
                 <span className="ml-2 text-gray-600">
-                  (Horario: {startBlock === 1 ? '7:00' : 
-                            startBlock === 2 ? '7:40' :
-                            startBlock === 3 ? '8:20' :
-                            startBlock === 4 ? '9:00' :
-                            startBlock === 5 ? '10:00' :
-                            startBlock === 6 ? '10:40' :
-                            startBlock === 7 ? '11:20' :
-                            startBlock === 8 ? '12:00' : '7:00'} - 
-                  {(startBlock || 1) + 1 === 2 ? '8:20' :
-                   (startBlock || 1) + 1 === 3 ? '9:00' :
-                   (startBlock || 1) + 1 === 4 ? '9:40' :
-                   (startBlock || 1) + 1 === 5 ? '10:40' :
-                   (startBlock || 1) + 1 === 6 ? '11:20' :
-                   (startBlock || 1) + 1 === 7 ? '12:00' :
-                   (startBlock || 1) + 1 === 8 ? '12:40' :
-                   (startBlock || 1) + 1 === 9 ? '13:20' : '8:20'})
+                  (Horario: {timeRange.start} - {timeRange.end})
                 </span>
               </p>
               
@@ -287,21 +311,29 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             ]}
           />
 
-          {/* Docente */}
-          <FormField
-            type="select"
-            id="teacherId"
-            label="Docente (opcional)"
-            register={register}
-            error={errors.teacherId}
-            options={[
-              { value: '', text: 'Seleccione un docente' },
-              ...teachers.map(teacher => ({
-                value: teacher.id,
-                text: `${teacher.fullName} - ${teacher.specialization || 'Sin especialización'}`
-              }))
-            ]}
-          />
+          {/* Docente - Select manual para evitar error de conversión */}
+          <div className="flex flex-col">
+            <label htmlFor="teacherId" className="text-gray-700 font-bold mb-1">
+              Docente (opcional)
+            </label>
+            <select
+              id="teacherId"
+              {...register('teacherId')}
+              className={`w-full px-3 py-2 border-2 border-solid ${
+                errors.teacherId ? "border-red-500" : "border-gray-300"
+              } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+            >
+              <option value="">Seleccione un docente</option>
+              {teachers.map(teacher => (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.fullName} - {teacher.specialization || 'Sin especialización'}
+                </option>
+              ))}
+            </select>
+            {errors.teacherId && (
+              <span className="text-red-500 text-sm mt-1">{errors.teacherId.message as string}</span>
+            )}
+          </div>
 
           {/* Aula y Edificio */}
           <FormField
