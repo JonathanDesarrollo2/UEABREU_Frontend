@@ -22,7 +22,7 @@ export async function addTeacherAPI(formData: TypeTeacherCreate): Promise<TypeTe
       class: formData.class || '',
     };
     
-    const { data } = await api.post<TypeTeacherGenericResponse>('/academic/teacher/add', formattedData);
+    const { data } = await api.post<TypeTeacherGenericResponse>('/private/academic/teacher/add', formattedData);
     return data;
   } catch (error) {
     let mensaje = 'Error Desconocido';
