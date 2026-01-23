@@ -31,7 +31,6 @@ const DAY_OPTIONS = [
   { value: 'viernes', text: 'Viernes' },
 ];
 
-// Cambiar valores a string (FormField espera strings)
 const BLOCK_OPTIONS = [
   { value: '1', text: 'Bloque 1 (7:00 - 7:40)' },
   { value: '2', text: 'Bloque 2 (7:40 - 8:20)' },
@@ -60,15 +59,13 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const grade = watch('grade');
   const section = watch('section');
   const day = watch('day');
-  // Convertir string a number para los cálculos
-  const startBlockValue = watch('startBlock');
-  const startBlock = typeof startBlockValue === 'string' ? parseInt(startBlockValue) : startBlockValue;
+  const startBlock = watch('startBlock');
   const subjectId = watch('subjectId');
 
-  // Cargar materias - CAMBIADO: usar getSubjectsAPI sin filtrar por grado primero
+  // Cargar TODAS las materias (sin filtrar por grado)
   useEffect(() => {
     setLoadingSubjects(true);
-    getSubjectsAPI({ grade: grade || undefined })
+    getSubjectsAPI()
       .then(response => {
         console.log('Respuesta de materias:', response);
         if (response.result && response.content) {
@@ -86,7 +83,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       .finally(() => {
         setLoadingSubjects(false);
       });
-  }, [grade]);
+  }, []);
 
   // Cargar docentes activos
   useEffect(() => {
@@ -120,7 +117,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             response.content.schedulesByDay[day].forEach((block: any) => {
               if (block.isOccupied || block.subject) {
                 occupied.add(block.blockId.toString());
-                // Si ocupa 2 bloques, marcar ambos
                 if (block.spans === 2) {
                   occupied.add((block.blockId + 1).toString());
                 }
@@ -154,7 +150,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
 
   const onSubmit = (data: any) => {
     // Verificar si el bloque está ocupado
-    const startBlockNum = typeof data.startBlock === 'string' ? parseInt(data.startBlock) : data.startBlock;
+    const startBlockNum = parseInt(data.startBlock);
     
     if (occupiedBlocks.has(startBlockNum.toString())) {
       toast.error('Este bloque ya está ocupado para este día');
@@ -167,7 +163,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       return;
     }
 
-    // Calcular bloque final
+    // Calcular bloque final y preparar datos
     const formData = {
       ...data,
       startBlock: startBlockNum,
@@ -219,13 +215,8 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     };
   };
 
-  const timeRange = getBlockTimes(startBlock || 1);
-
-  // Función para obtener texto del grado/sección/día seleccionado
-  const getSelectedText = (value: string, options: Array<{value: string, text: string}>) => {
-    const option = options.find(opt => opt.value === value);
-    return option ? option.text : 'No seleccionado';
-  };
+  const currentBlock = startBlock ? parseInt(startBlock) : 1;
+  const timeRange = getBlockTimes(currentBlock);
 
   return (
     <div className="space-y-6">
@@ -236,11 +227,11 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Código - CAMBIADO: 6 dígitos en lugar de 7 según tu ejemplo */}
+          {/* Código - 7 DÍGITOS como dice el backend */}
           <div className="md:col-span-2">
             <div className="flex flex-col">
               <label htmlFor="code" className="text-gray-700 font-bold mb-1">
-                Código del Horario (6 dígitos, ej: 1V2526) *
+                Código del Horario (7 dígitos, ejemplo: 1V2526) *
               </label>
               <input
                 id="code"
@@ -248,24 +239,23 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
                 {...register('code', { 
                   required: 'El código es requerido',
                   pattern: {
-                    value: /^\d[A-Z]\d{4}$/,
-                    message: 'Formato inválido (ej: 1V2526)'
-                  },
-                  minLength: { value: 6, message: 'Debe tener 6 caracteres' },
-                  maxLength: { value: 6, message: 'Debe tener 6 caracteres' }
+                    value: /^[0-9A-Z]{7}$/,
+                    message: 'Debe tener exactamente 7 dígitos/letras'
+                  }
                 })}
                 className={`w-full px-3 py-2 border-2 border-solid ${
                   errors.code ? "border-red-500" : "border-gray-300"
                 } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
-                placeholder="1V2526"
+                placeholder="Ej: 1V2526"
               />
               {errors.code && (
                 <span className="text-red-500 text-sm mt-1">{errors.code.message as string}</span>
               )}
+              <p className="text-xs text-gray-500 mt-1">Formato: 1V2526 (7 caracteres exactos)</p>
             </div>
           </div>
 
-          {/* Grado - CAMBIADO: Select manual para evitar conversión a número */}
+          {/* Grado - Select manual */}
           <div className="flex flex-col">
             <label htmlFor="grade" className="text-gray-700 font-bold mb-1">
               Grado *
@@ -274,7 +264,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               id="grade"
               {...register('grade', { 
                 required: 'El grado es requerido',
-                // No usar setValueAs para conversión a número
               })}
               className={`w-full px-3 py-2 border-2 border-solid ${
                 errors.grade ? "border-red-500" : "border-gray-300"
@@ -288,11 +277,11 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               ))}
             </select>
             {errors.grade && (
-              <span className="text-red-500 text-sm mt-1">{errors.grade?.message as string || 'Grado inválido'}</span>
+              <span className="text-red-500 text-sm mt-1">{errors.grade?.message as string}</span>
             )}
           </div>
 
-          {/* Sección - CAMBIADO: Select manual para evitar conversión a número */}
+          {/* Sección - Select manual */}
           <div className="flex flex-col">
             <label htmlFor="section" className="text-gray-700 font-bold mb-1">
               Sección *
@@ -301,7 +290,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               id="section"
               {...register('section', { 
                 required: 'La sección es requerida',
-                // No usar setValueAs para conversión a número
               })}
               className={`w-full px-3 py-2 border-2 border-solid ${
                 errors.section ? "border-red-500" : "border-gray-300"
@@ -315,11 +303,11 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               ))}
             </select>
             {errors.section && (
-              <span className="text-red-500 text-sm mt-1">{errors.section?.message as string || 'Sección inválida'}</span>
+              <span className="text-red-500 text-sm mt-1">{errors.section?.message as string}</span>
             )}
           </div>
 
-          {/* Día - CAMBIADO: Select manual */}
+          {/* Día - Select manual */}
           <div className="flex flex-col">
             <label htmlFor="day" className="text-gray-700 font-bold mb-1">
               Día de la Semana *
@@ -341,7 +329,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               ))}
             </select>
             {errors.day && (
-              <span className="text-red-500 text-sm mt-1">{errors.day?.message as string || 'Día inválido'}</span>
+              <span className="text-red-500 text-sm mt-1">{errors.day?.message as string}</span>
             )}
           </div>
 
@@ -375,14 +363,14 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             {/* Indicador visual del bloque final */}
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-700">
-                <span className="font-semibold">Bloque Final:</span> {(startBlock || 1) + 1}
+                <span className="font-semibold">Bloque Final:</span> {currentBlock + 1}
                 <span className="ml-2 text-gray-600">
                   (Horario: {timeRange.start} - {timeRange.end})
                 </span>
               </p>
               
               {/* Advertencia si el bloque está ocupado */}
-              {isBlockOccupied(startBlock || 1) && (
+              {isBlockOccupied(currentBlock) && (
                 <p className="text-red-600 text-sm mt-1 font-semibold">
                   ⚠️ Este bloque está ocupado. No puede asignar materia aquí.
                 </p>
@@ -406,21 +394,18 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               disabled={loadingSubjects}
             >
               <option value="">{loadingSubjects ? 'Cargando materias...' : 'Seleccione una materia'}</option>
-              {!loadingSubjects && subjects.length === 0 && (
-                <option value="" disabled>No hay materias disponibles</option>
-              )}
-              {subjects.map(subject => (
+              {!loadingSubjects && subjects.map(subject => (
                 <option key={subject.id} value={subject.id}>
                   {subject.name} ({subject.code})
                 </option>
               ))}
             </select>
             {errors.subjectId && (
-              <span className="text-red-500 text-sm mt-1">{errors.subjectId?.message as string || 'Materia inválida'}</span>
+              <span className="text-red-500 text-sm mt-1">{errors.subjectId?.message as string}</span>
             )}
-            {subjects.length === 0 && !loadingSubjects && grade && (
+            {subjects.length === 0 && !loadingSubjects && (
               <span className="text-yellow-600 text-sm mt-1">
-                No hay materias registradas para el grado {grade}. Primero agregue materias en la pestaña "Agregar Materia".
+                No hay materias registradas. Primero agregue materias en la pestaña "Agregar Materia".
               </span>
             )}
           </div>
@@ -433,30 +418,22 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             <select
               id="teacherId"
               {...register('teacherId')}
-              className={`w-full px-3 py-2 border-2 border-solid ${
-                errors.teacherId ? "border-red-500" : "border-gray-300"
-              } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+              className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
               disabled={loadingTeachers}
             >
               <option value="">{loadingTeachers ? 'Cargando docentes...' : 'Seleccione un docente'}</option>
-              {!loadingTeachers && teachers.length === 0 && (
-                <option value="" disabled>No hay docentes disponibles</option>
-              )}
-              {teachers.map(teacher => (
+              {!loadingTeachers && teachers.map(teacher => (
                 <option key={teacher.id} value={teacher.id}>
                   {teacher.fullName} - {teacher.specialization || 'Sin especialización'}
                 </option>
               ))}
             </select>
-            {errors.teacherId && (
-              <span className="text-red-500 text-sm mt-1">{errors.teacherId?.message as string}</span>
-            )}
           </div>
 
           {/* Aula */}
           <div className="flex flex-col">
             <label htmlFor="classroom" className="text-gray-700 font-bold mb-1">
-              Aula
+              Aula (opcional)
             </label>
             <input
               id="classroom"
@@ -470,7 +447,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           {/* Edificio */}
           <div className="flex flex-col">
             <label htmlFor="building" className="text-gray-700 font-bold mb-1">
-              Edificio
+              Edificio (opcional)
             </label>
             <input
               id="building"
@@ -482,34 +459,53 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           </div>
         </div>
 
-        {/* Resumen del horario - CORREGIDO: mostrar valores reales */}
+        {/* Resumen del horario */}
         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
           <h3 className="font-semibold text-gray-700 mb-2">Resumen del Horario</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-gray-500">Grado:</span>
-              <span className="ml-2 font-medium">{getSelectedText(grade, GRADE_OPTIONS)}</span>
+              <span className="ml-2 font-medium">
+                {GRADE_OPTIONS.find(g => g.value === grade)?.text || 'No seleccionado'}
+              </span>
             </div>
             <div>
               <span className="text-gray-500">Sección:</span>
-              <span className="ml-2 font-medium">{getSelectedText(section, SECTION_OPTIONS)}</span>
+              <span className="ml-2 font-medium">
+                {SECTION_OPTIONS.find(s => s.value === section)?.text || 'No seleccionado'}
+              </span>
             </div>
             <div>
               <span className="text-gray-500">Día:</span>
-              <span className="ml-2 font-medium">{getSelectedText(day, DAY_OPTIONS)}</span>
+              <span className="ml-2 font-medium">
+                {DAY_OPTIONS.find(d => d.value === day)?.text || 'No seleccionado'}
+              </span>
             </div>
             <div>
               <span className="text-gray-500">Bloques:</span>
-              <span className="ml-2 font-medium">{startBlock ? `${startBlock} - ${startBlock + 1}` : 'No seleccionado'}</span>
+              <span className="ml-2 font-medium">
+                {startBlock ? `${currentBlock} - ${currentBlock + 1}` : 'No seleccionado'}
+              </span>
             </div>
           </div>
+        </div>
+
+        {/* Información de ayuda */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 className="font-semibold text-blue-800 mb-2">📝 Notas importantes:</h4>
+          <ul className="text-sm text-gray-700 space-y-1">
+            <li>• <strong>Código:</strong> 7 dígitos/letras (ej: 1V2526)</li>
+            <li>• Cada materia ocupa <strong>2 bloques consecutivos</strong></li>
+            <li>• Las materias se pueden asignar a cualquier grado/sección</li>
+            <li>• Verifique que el bloque no esté ocupado antes de guardar</li>
+          </ul>
         </div>
 
         {/* Botón de envío */}
         <div className="flex justify-center pt-4">
           <button
             type="submit"
-            disabled={isPending || !grade || !section || !day || !subjectId}
+            disabled={isPending || !grade || !section || !day || !startBlock || !subjectId}
             className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md flex items-center"
           >
             {isPending ? (
