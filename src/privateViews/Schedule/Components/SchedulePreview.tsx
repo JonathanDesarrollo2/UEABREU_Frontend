@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
+import { getSchedulesByGradeSectionAPI } from '../../../apis/schedule';
 import { FaSync, FaPrint, FaSearch } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import { getSchedulesByGradeSectionAPI } from '../../../apis/schedule';
 
 const DAYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 const BLOCK_TIMES = [
@@ -38,10 +38,25 @@ interface SchedulePreviewProps {
   section?: string;
 }
 
+interface BlockData {
+  blockId: number;
+  time: string;
+  period: string;
+  isBreak?: boolean;
+  isOccupied?: boolean;
+  occupiedBy?: string;
+  subject?: string;
+  subjectCode?: string;
+  teacher?: string;
+  classroom?: string;
+  scheduleId?: string;
+  spans?: number;
+}
+
 export default function SchedulePreview({ grade: initialGrade = '1ro', section: initialSection = 'A' }: SchedulePreviewProps) {
   const [grade, setGrade] = useState(initialGrade);
   const [section, setSection] = useState(initialSection);
-  const [scheduleData, setScheduleData] = useState<any>(null);
+  const [scheduleData, setScheduleData] = useState<any>({ schedulesByDay: {} });
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ day: string; blockId: number } | null>(null);
 
@@ -49,13 +64,17 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     setIsLoading(true);
     try {
       const response = await getSchedulesByGradeSectionAPI(grade, section);
-      if (response.result) {
+      if (response.result && response.content) {
         setScheduleData(response.content);
+        console.log('Horario cargado:', response.content);
       } else {
-        toast.error('Error al cargar el horario');
+        console.warn('No se encontraron horarios para:', grade, section);
+        setScheduleData({ schedulesByDay: {} });
       }
     } catch (error) {
+      console.error('Error al cargar el horario:', error);
       toast.error('Error al cargar el horario');
+      setScheduleData({ schedulesByDay: {} });
     } finally {
       setIsLoading(false);
     }
@@ -73,20 +92,57 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     window.print();
   };
 
-  const getCellContent = (day: string, blockId: number) => {
-    if (!scheduleData?.schedulesByDay?.[day]) return null;
+  const getCellContent = (day: string, blockId: number): BlockData | null => {
+    if (!scheduleData?.schedulesByDay?.[day]) {
+      // Si es el bloque 5 (receso), devolver bloque de receso
+      if (blockId === 5) {
+        return {
+          blockId,
+          time: BLOCK_TIMES.find(b => b.id === blockId)?.time || '',
+          period: BLOCK_TIMES.find(b => b.id === blockId)?.period || '',
+          isBreak: true,
+          subject: 'RECESO'
+        };
+      }
+      return null;
+    }
     
     const block = scheduleData.schedulesByDay[day].find((b: any) => b.blockId === blockId);
-    if (!block) return null;
-
-    return block;
+    
+    // Si no se encuentra el bloque pero es el bloque 5 (receso), devolver bloque de receso
+    if (!block && blockId === 5) {
+      return {
+        blockId,
+        time: BLOCK_TIMES.find(b => b.id === blockId)?.time || '',
+        period: BLOCK_TIMES.find(b => b.id === blockId)?.period || '',
+        isBreak: true,
+        subject: 'RECESO'
+      };
+    }
+    
+    return block || null;
   };
 
-  const getCellClass = (block: any) => {
+  const getCellClass = (block: BlockData | null) => {
+    if (!block) return 'bg-white hover:bg-gray-50';
     if (block.isBreak) return 'bg-yellow-100';
     if (block.isOccupied) return 'bg-red-100';
-    if (block.subject) return 'bg-green-50 hover:bg-green-100';
+    if (block.subject && block.subject !== 'RECESO') return 'bg-green-50 hover:bg-green-100';
     return 'bg-white hover:bg-gray-50';
+  };
+
+  // Función para verificar si un bloque está siendo ocupado por otro bloque con rowspan
+  const isBlockSpanned = (day: string, blockId: number): boolean => {
+    if (!scheduleData?.schedulesByDay?.[day]) return false;
+    
+    // Buscar si algún bloque anterior tiene rowspan que incluya este bloque
+    for (let i = 1; i < blockId; i++) {
+      const previousBlock = getCellContent(day, i);
+      if (previousBlock?.spans === 2 && i + 1 === blockId) {
+        return true;
+      }
+    }
+    return false;
   };
 
   return (
@@ -108,6 +164,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                 value={grade}
                 onChange={(e) => setGrade(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
               >
                 {GRADE_OPTIONS.map(option => (
                   <option key={option.value} value={option.value}>{option.text}</option>
@@ -118,6 +175,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                 value={section}
                 onChange={(e) => setSection(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
               >
                 {SECTION_OPTIONS.map(option => (
                   <option key={option.value} value={option.value}>{option.text}</option>
@@ -130,7 +188,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center"
               >
                 <FaSearch className="mr-2" />
-                Buscar
+                {isLoading ? 'Cargando...' : 'Buscar'}
               </button>
             </div>
 
@@ -142,7 +200,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                 className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 flex items-center"
               >
                 <FaSync className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                {isLoading ? 'Cargando...' : 'Actualizar'}
+                Actualizar
               </button>
 
               <button
@@ -196,7 +254,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
             {BLOCK_TIMES.map(blockTime => (
               <tr key={blockTime.id} className="hover:bg-gray-50">
                 {/* Celda de bloque/hora */}
-                <td className="px-4 py-3 whitespace-nowrap text-sm border-r border-gray-200">
+                <td className="px-4 py-3 whitespace-nowrap text-sm border-r border-gray-200 bg-gray-50">
                   <div className="font-medium text-gray-900">Bloque {blockTime.id}</div>
                   <div className="text-gray-500 text-xs">{blockTime.time}</div>
                   <div className="text-gray-400 text-xs">{blockTime.period}</div>
@@ -204,19 +262,33 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
 
                 {/* Celdas por día */}
                 {DAYS.map(day => {
+                  // Verificar si este bloque está siendo ocupado por un rowspan
+                  const isSpanned = isBlockSpanned(day, blockTime.id);
+                  
+                  if (isSpanned) {
+                    // Si está ocupado por rowspan, no renderizar celda
+                    return null;
+                  }
+                  
                   const cellData = getCellContent(day, blockTime.id);
                   const isSelected = selectedCell?.day === day && selectedCell?.blockId === blockTime.id;
+                  const cellClass = getCellClass(cellData);
                   
                   return (
                     <td
                       key={`${day}-${blockTime.id}`}
-                      className={`px-4 py-3 text-sm border border-gray-200 ${getCellClass(cellData)} 
+                      className={`px-4 py-3 text-sm border border-gray-200 ${cellClass} 
                         ${isSelected ? 'ring-2 ring-blue-500' : ''}
                         ${cellData?.spans === 2 ? 'align-top' : ''}`}
                       onClick={() => setSelectedCell({ day, blockId: blockTime.id })}
                       rowSpan={cellData?.spans === 2 ? 2 : 1}
                     >
-                      {cellData?.subject ? (
+                      {cellData?.isBreak ? (
+                        <div className="text-center text-yellow-700 font-medium py-2">
+                          RECESO
+                          <div className="text-xs text-yellow-600 mt-1">{blockTime.time}</div>
+                        </div>
+                      ) : cellData?.subject && cellData.subject !== 'RECESO' ? (
                         <div className="space-y-1">
                           <div className="font-medium text-gray-900">{cellData.subject}</div>
                           {cellData.subjectCode && (
@@ -228,13 +300,17 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                           {cellData.classroom && (
                             <div className="text-xs text-gray-500">Aula: {cellData.classroom}</div>
                           )}
+                          <div className="text-xs text-gray-400 mt-2">{blockTime.time}</div>
                         </div>
-                      ) : cellData?.isBreak ? (
-                        <div className="text-center text-yellow-700 font-medium">RECESO</div>
                       ) : cellData?.isOccupied ? (
-                        <div className="text-center text-red-600 font-medium">OCUPADO</div>
+                        <div className="text-center text-red-600 font-medium py-2">
+                          OCUPADO
+                        </div>
                       ) : (
-                        <div className="text-center text-gray-400">Disponible</div>
+                        <div className="text-center text-gray-400 py-2">
+                          Disponible
+                          <div className="text-xs text-gray-300 mt-1">{blockTime.time}</div>
+                        </div>
                       )}
                     </td>
                   );
@@ -267,7 +343,13 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
             <div>
               <span className="text-gray-600">Estado:</span>
               <span className="ml-2 font-medium">
-                {getCellContent(selectedCell.day, selectedCell.blockId)?.subject ? 'Ocupado' : 'Disponible'}
+                {(() => {
+                  const cell = getCellContent(selectedCell.day, selectedCell.blockId);
+                  if (cell?.isBreak) return 'Receso';
+                  if (cell?.subject && cell.subject !== 'RECESO') return 'Ocupado por materia';
+                  if (cell?.isOccupied) return 'Ocupado';
+                  return 'Disponible';
+                })()}
               </span>
             </div>
           </div>
@@ -275,31 +357,43 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
       )}
 
       {/* Información general */}
-      {scheduleData && (
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-          <h3 className="font-semibold text-gray-800 mb-3">Resumen del Horario</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-3 bg-white rounded border">
-              <div className="text-2xl font-bold text-blue-600">
-                {Object.values(scheduleData.schedulesByDay || {}).flat().filter((b: any) => b.subject).length}
-              </div>
-              <div className="text-gray-600">Materias asignadas</div>
+      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <h3 className="font-semibold text-gray-800 mb-3">Resumen del Horario</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="text-center p-3 bg-white rounded border">
+            <div className="text-2xl font-bold text-blue-600">
+              {Object.values(scheduleData.schedulesByDay || {}).flat()
+                .filter((b: any) => b?.subject && b.subject !== 'RECESO').length}
             </div>
-            <div className="text-center p-3 bg-white rounded border">
-              <div className="text-2xl font-bold text-green-600">
-                {new Set(Object.values(scheduleData.schedulesByDay || {}).flat().filter((b: any) => b.teacher).map((b: any) => b.teacher)).size}
-              </div>
-              <div className="text-gray-600">Docentes asignados</div>
+            <div className="text-gray-600">Materias asignadas</div>
+          </div>
+          <div className="text-center p-3 bg-white rounded border">
+            <div className="text-2xl font-bold text-green-600">
+              {(() => {
+                const teachers = new Set();
+                Object.values(scheduleData.schedulesByDay || {}).flat()
+                  .filter((b: any) => b?.teacher)
+                  .forEach((b: any) => teachers.add(b.teacher));
+                return teachers.size;
+              })()}
             </div>
-            <div className="text-center p-3 bg-white rounded border">
-              <div className="text-2xl font-bold text-gray-600">
-                {Object.values(scheduleData.schedulesByDay || {}).flat().filter((b: any) => !b.subject && !b.isBreak).length}
-              </div>
-              <div className="text-gray-600">Bloques disponibles</div>
+            <div className="text-gray-600">Docentes asignados</div>
+          </div>
+          <div className="text-center p-3 bg-white rounded border">
+            <div className="text-2xl font-bold text-gray-600">
+              {Object.values(scheduleData.schedulesByDay || {}).flat()
+                .filter((b: any) => !b?.subject && !b?.isBreak && !b?.isOccupied).length}
             </div>
+            <div className="text-gray-600">Bloques disponibles</div>
           </div>
         </div>
-      )}
+        
+        {/* Información adicional */}
+        <div className="mt-4 text-sm text-gray-600">
+          <p>Grado: <span className="font-medium">{grade}</span> | Sección: <span className="font-medium">{section}</span></p>
+          <p className="mt-1">Total de bloques: 9 (8 disponibles + 1 receso)</p>
+        </div>
+      </div>
     </div>
   );
 }
