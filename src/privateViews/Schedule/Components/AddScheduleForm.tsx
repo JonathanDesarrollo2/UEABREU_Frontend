@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAddSchedule } from '../hooks/useAddSchedule';
 import { useScheduleForm } from '../hooks/useScheduleForm';
 import { toast } from 'react-toastify';
-import { getActiveTeachersAPI, getSchedulesByGradeSectionAPI, getSubjectsByGradeAPI } from '../../../apis/schedule';
-import { FormField } from '../../../components/FormField';
+import { getActiveTeachersAPI, getSchedulesByGradeSectionAPI, getSubjectsAPI } from '../../../apis/schedule';
 import type { TypeApiResponseGeneric } from '../../../types/schedule';
 
 // Opciones para los select
@@ -55,6 +54,8 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const [subjects, setSubjects] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [occupiedBlocks, setOccupiedBlocks] = useState<Set<string>>(new Set());
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
   
   const grade = watch('grade');
   const section = watch('section');
@@ -64,37 +65,48 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const startBlock = typeof startBlockValue === 'string' ? parseInt(startBlockValue) : startBlockValue;
   const subjectId = watch('subjectId');
 
-  // Cargar materias según el grado
+  // Cargar materias - CAMBIADO: usar getSubjectsAPI sin filtrar por grado primero
   useEffect(() => {
-    if (grade) {
-      getSubjectsByGradeAPI(grade)
-        .then(response => {
-          if (response.result && response.content) {
-            setSubjects(response.content);
-          } else {
-            console.warn('No se encontraron materias para el grado:', grade);
-          }
-        })
-        .catch((error) => {
-          console.error('Error cargando materias:', error);
-          toast.error('Error al cargar materias');
-        });
-    }
+    setLoadingSubjects(true);
+    getSubjectsAPI({ grade: grade || undefined })
+      .then(response => {
+        console.log('Respuesta de materias:', response);
+        if (response.result && response.content) {
+          setSubjects(response.content);
+        } else {
+          console.warn('No se encontraron materias');
+          setSubjects([]);
+        }
+      })
+      .catch((error) => {
+        console.error('Error cargando materias:', error);
+        toast.error('Error al cargar materias');
+        setSubjects([]);
+      })
+      .finally(() => {
+        setLoadingSubjects(false);
+      });
   }, [grade]);
 
   // Cargar docentes activos
   useEffect(() => {
+    setLoadingTeachers(true);
     getActiveTeachersAPI()
       .then(response => {
         if (response.result && response.content) {
           setTeachers(response.content);
         } else {
           console.warn('No se encontraron docentes activos');
+          setTeachers([]);
         }
       })
       .catch((error) => {
         console.error('Error cargando docentes:', error);
         toast.error('Error al cargar docentes');
+        setTeachers([]);
+      })
+      .finally(() => {
+        setLoadingTeachers(false);
       });
   }, []);
 
@@ -162,6 +174,8 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       endBlock: startBlockNum + 1,
     };
 
+    console.log('Datos a enviar:', formData);
+
     mutate(formData, {
       onSuccess: (response: TypeApiResponseGeneric) => {
         if (response.result) {
@@ -207,6 +221,12 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
 
   const timeRange = getBlockTimes(startBlock || 1);
 
+  // Función para obtener texto del grado/sección/día seleccionado
+  const getSelectedText = (value: string, options: Array<{value: string, text: string}>) => {
+    const option = options.find(opt => opt.value === value);
+    return option ? option.text : 'No seleccionado';
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
@@ -216,65 +236,141 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Código */}
+          {/* Código - CAMBIADO: 6 dígitos en lugar de 7 según tu ejemplo */}
           <div className="md:col-span-2">
-            <FormField
-              id="code"
-              label="Código del Horario (7 dígitos) *"
-              required
-              register={register}
-              error={errors.code}
-              validation={{
-                pattern: {
-                  value: /^\d+[A-Z]\d{4}$/,
-                  message: 'Formato: Número+Grado+Año (ej: 1V2526)'
-                }
-              }}
-            />
+            <div className="flex flex-col">
+              <label htmlFor="code" className="text-gray-700 font-bold mb-1">
+                Código del Horario (6 dígitos, ej: 1V2526) *
+              </label>
+              <input
+                id="code"
+                type="text"
+                {...register('code', { 
+                  required: 'El código es requerido',
+                  pattern: {
+                    value: /^\d[A-Z]\d{4}$/,
+                    message: 'Formato inválido (ej: 1V2526)'
+                  },
+                  minLength: { value: 6, message: 'Debe tener 6 caracteres' },
+                  maxLength: { value: 6, message: 'Debe tener 6 caracteres' }
+                })}
+                className={`w-full px-3 py-2 border-2 border-solid ${
+                  errors.code ? "border-red-500" : "border-gray-300"
+                } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+                placeholder="1V2526"
+              />
+              {errors.code && (
+                <span className="text-red-500 text-sm mt-1">{errors.code.message as string}</span>
+              )}
+            </div>
           </div>
 
-          {/* Grado y Sección */}
-          <FormField
-            type="select"
-            id="grade"
-            label="Grado *"
-            required
-            register={register}
-            error={errors.grade}
-            options={GRADE_OPTIONS}
-          />
+          {/* Grado - CAMBIADO: Select manual para evitar conversión a número */}
+          <div className="flex flex-col">
+            <label htmlFor="grade" className="text-gray-700 font-bold mb-1">
+              Grado *
+            </label>
+            <select
+              id="grade"
+              {...register('grade', { 
+                required: 'El grado es requerido',
+                // No usar setValueAs para conversión a número
+              })}
+              className={`w-full px-3 py-2 border-2 border-solid ${
+                errors.grade ? "border-red-500" : "border-gray-300"
+              } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+            >
+              <option value="">Seleccione un grado</option>
+              {GRADE_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.text}
+                </option>
+              ))}
+            </select>
+            {errors.grade && (
+              <span className="text-red-500 text-sm mt-1">{errors.grade?.message as string || 'Grado inválido'}</span>
+            )}
+          </div>
 
-          <FormField
-            type="select"
-            id="section"
-            label="Sección *"
-            required
-            register={register}
-            error={errors.section}
-            options={SECTION_OPTIONS}
-          />
+          {/* Sección - CAMBIADO: Select manual para evitar conversión a número */}
+          <div className="flex flex-col">
+            <label htmlFor="section" className="text-gray-700 font-bold mb-1">
+              Sección *
+            </label>
+            <select
+              id="section"
+              {...register('section', { 
+                required: 'La sección es requerida',
+                // No usar setValueAs para conversión a número
+              })}
+              className={`w-full px-3 py-2 border-2 border-solid ${
+                errors.section ? "border-red-500" : "border-gray-300"
+              } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+            >
+              <option value="">Seleccione una sección</option>
+              {SECTION_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.text}
+                </option>
+              ))}
+            </select>
+            {errors.section && (
+              <span className="text-red-500 text-sm mt-1">{errors.section?.message as string || 'Sección inválida'}</span>
+            )}
+          </div>
 
-          {/* Día y Bloque */}
-          <FormField
-            type="select"
-            id="day"
-            label="Día de la Semana *"
-            required
-            register={register}
-            error={errors.day}
-            options={DAY_OPTIONS}
-          />
+          {/* Día - CAMBIADO: Select manual */}
+          <div className="flex flex-col">
+            <label htmlFor="day" className="text-gray-700 font-bold mb-1">
+              Día de la Semana *
+            </label>
+            <select
+              id="day"
+              {...register('day', { 
+                required: 'El día es requerido',
+              })}
+              className={`w-full px-3 py-2 border-2 border-solid ${
+                errors.day ? "border-red-500" : "border-gray-300"
+              } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+            >
+              <option value="">Seleccione un día</option>
+              {DAY_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.text}
+                </option>
+              ))}
+            </select>
+            {errors.day && (
+              <span className="text-red-500 text-sm mt-1">{errors.day?.message as string || 'Día inválido'}</span>
+            )}
+          </div>
 
+          {/* Bloque Inicial - Select manual */}
           <div className="space-y-2">
-            <FormField
-              type="select"
-              id="startBlock"
-              label="Bloque Inicial *"
-              required
-              register={register}
-              error={errors.startBlock}
-              options={BLOCK_OPTIONS}
-            />
+            <div className="flex flex-col">
+              <label htmlFor="startBlock" className="text-gray-700 font-bold mb-1">
+                Bloque Inicial *
+              </label>
+              <select
+                id="startBlock"
+                {...register('startBlock', { 
+                  required: 'El bloque inicial es requerido',
+                })}
+                className={`w-full px-3 py-2 border-2 border-solid ${
+                  errors.startBlock ? "border-red-500" : "border-gray-300"
+                } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+              >
+                <option value="">Seleccione un bloque</option>
+                {BLOCK_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.text}
+                  </option>
+                ))}
+              </select>
+              {errors.startBlock && (
+                <span className="text-red-500 text-sm mt-1">{errors.startBlock?.message as string}</span>
+              )}
+            </div>
             
             {/* Indicador visual del bloque final */}
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
@@ -294,24 +390,42 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             </div>
           </div>
 
-          {/* Materia */}
-          <FormField
-            type="select"
-            id="subjectId"
-            label="Materia *"
-            required
-            register={register}
-            error={errors.subjectId}
-            options={[
-              { value: '', text: 'Seleccione una materia' },
-              ...subjects.map(subject => ({
-                value: subject.id,
-                text: `${subject.name} (${subject.code})`
-              }))
-            ]}
-          />
+          {/* Materia - Select manual */}
+          <div className="flex flex-col">
+            <label htmlFor="subjectId" className="text-gray-700 font-bold mb-1">
+              Materia *
+            </label>
+            <select
+              id="subjectId"
+              {...register('subjectId', { 
+                required: 'La materia es requerida',
+              })}
+              className={`w-full px-3 py-2 border-2 border-solid ${
+                errors.subjectId ? "border-red-500" : "border-gray-300"
+              } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+              disabled={loadingSubjects}
+            >
+              <option value="">{loadingSubjects ? 'Cargando materias...' : 'Seleccione una materia'}</option>
+              {!loadingSubjects && subjects.length === 0 && (
+                <option value="" disabled>No hay materias disponibles</option>
+              )}
+              {subjects.map(subject => (
+                <option key={subject.id} value={subject.id}>
+                  {subject.name} ({subject.code})
+                </option>
+              ))}
+            </select>
+            {errors.subjectId && (
+              <span className="text-red-500 text-sm mt-1">{errors.subjectId?.message as string || 'Materia inválida'}</span>
+            )}
+            {subjects.length === 0 && !loadingSubjects && grade && (
+              <span className="text-yellow-600 text-sm mt-1">
+                No hay materias registradas para el grado {grade}. Primero agregue materias en la pestaña "Agregar Materia".
+              </span>
+            )}
+          </div>
 
-          {/* Docente - Select manual para evitar error de conversión */}
+          {/* Docente - Select manual */}
           <div className="flex flex-col">
             <label htmlFor="teacherId" className="text-gray-700 font-bold mb-1">
               Docente (opcional)
@@ -322,8 +436,12 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               className={`w-full px-3 py-2 border-2 border-solid ${
                 errors.teacherId ? "border-red-500" : "border-gray-300"
               } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+              disabled={loadingTeachers}
             >
-              <option value="">Seleccione un docente</option>
+              <option value="">{loadingTeachers ? 'Cargando docentes...' : 'Seleccione un docente'}</option>
+              {!loadingTeachers && teachers.length === 0 && (
+                <option value="" disabled>No hay docentes disponibles</option>
+              )}
               {teachers.map(teacher => (
                 <option key={teacher.id} value={teacher.id}>
                   {teacher.fullName} - {teacher.specialization || 'Sin especialización'}
@@ -331,41 +449,54 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               ))}
             </select>
             {errors.teacherId && (
-              <span className="text-red-500 text-sm mt-1">{errors.teacherId.message as string}</span>
+              <span className="text-red-500 text-sm mt-1">{errors.teacherId?.message as string}</span>
             )}
           </div>
 
-          {/* Aula y Edificio */}
-          <FormField
-            id="classroom"
-            label="Aula"
-            register={register}
-            error={errors.classroom}
-          />
+          {/* Aula */}
+          <div className="flex flex-col">
+            <label htmlFor="classroom" className="text-gray-700 font-bold mb-1">
+              Aula
+            </label>
+            <input
+              id="classroom"
+              type="text"
+              {...register('classroom')}
+              className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
+              placeholder="Ej: Aula 101"
+            />
+          </div>
 
-          <FormField
-            id="building"
-            label="Edificio"
-            register={register}
-            error={errors.building}
-          />
+          {/* Edificio */}
+          <div className="flex flex-col">
+            <label htmlFor="building" className="text-gray-700 font-bold mb-1">
+              Edificio
+            </label>
+            <input
+              id="building"
+              type="text"
+              {...register('building')}
+              className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
+              placeholder="Ej: Edificio Principal"
+            />
+          </div>
         </div>
 
-        {/* Resumen del horario */}
+        {/* Resumen del horario - CORREGIDO: mostrar valores reales */}
         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
           <h3 className="font-semibold text-gray-700 mb-2">Resumen del Horario</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-gray-500">Grado:</span>
-              <span className="ml-2 font-medium">{grade || 'No seleccionado'}</span>
+              <span className="ml-2 font-medium">{getSelectedText(grade, GRADE_OPTIONS)}</span>
             </div>
             <div>
               <span className="text-gray-500">Sección:</span>
-              <span className="ml-2 font-medium">{section || 'No seleccionado'}</span>
+              <span className="ml-2 font-medium">{getSelectedText(section, SECTION_OPTIONS)}</span>
             </div>
             <div>
               <span className="text-gray-500">Día:</span>
-              <span className="ml-2 font-medium">{day ? day.charAt(0).toUpperCase() + day.slice(1) : 'No seleccionado'}</span>
+              <span className="ml-2 font-medium">{getSelectedText(day, DAY_OPTIONS)}</span>
             </div>
             <div>
               <span className="text-gray-500">Bloques:</span>
@@ -378,7 +509,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
         <div className="flex justify-center pt-4">
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || !grade || !section || !day || !subjectId}
             className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md flex items-center"
           >
             {isPending ? (
