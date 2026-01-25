@@ -64,54 +64,70 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
   try {
     console.log('🔄 Iniciando carga de dashboard...');
     
-    // Obtener múltiples datos en paralelo - CON RUTAS CORRECTAS
-    const [
-      teachersRes,
-      studentsRes,
-      repsRes,
-      financialRes,
-      topDebtorsRes,
-      recentTransactionsRes,
-      userStatsRes
-    ] = await Promise.all([
-      // Docentes - RUTA CORRECTA
+    // Usar Promise.allSettled para manejar errores individuales
+    const promises = [
+      // Docentes
       api.get('/private/academic/teacher/list', { params: { page: 1, limit: 100 } }),
-      // Estudiantes - RUTA CORRECTA
-      api.get('/private/user/students/list', { params: { limit: 100 } }),
-      // Representantes - RUTA CORRECTA (sin filtros que puedan fallar)
+      // Estudiantes - USANDO RUTA CORRECTA
+      api.get('/private/user/students/list', { params: { limit: 1000 } }),
+      // Representantes
       api.get('/private/balance/representatives', { 
         params: { 
           page: 1,
-          limit: 100
+          limit: 1000
         } 
       }),
-      // Estadísticas financieras - RUTA CORRECTA
+      // Estadísticas financieras
       api.get('/private/balance/statistics/financial'),
-      // Top deudores - RUTA CORRECTA
+      // Top deudores
       api.get('/private/balance/representatives/top-debtors', { params: { limit: 5 } }),
-      // Transacciones recientes - RUTA CORRECTA
+      // Transacciones recientes
       api.get('/private/balance/transactions/recent', { params: { limit: 10 } }),
-      // Estadísticas de usuarios - RUTA CORRECTA (método que ya tienes)
+      // Estadísticas de usuarios
       api.get('/private/user/statistics')
-    ]);
+    ];
+
+    const results = await Promise.allSettled(promises);
+
+    // Procesar cada resultado con manejo de errores
+    const teachersRes = results[0];
+    const studentsRes = results[1];
+    const repsRes = results[2];
+    const financialRes = results[3];
+    const topDebtorsRes = results[4];
+    const recentTransactionsRes = results[5];
+    const userStatsRes = results[6];
 
     console.log('✅ Respuestas recibidas del dashboard:');
-    console.log('- Teachers:', teachersRes.data?.result, 'total:', teachersRes.data?.content?.length);
-    console.log('- Students:', studentsRes.data?.result, 'total:', studentsRes.data?.content?.length);
-    console.log('- Representatives:', repsRes.data?.result);
-    console.log('- Financial:', financialRes.data?.result);
-    console.log('- Top Debtors:', topDebtorsRes.data?.result);
-    console.log('- Recent Transactions:', recentTransactionsRes.data?.result);
-    console.log('- User Stats:', userStatsRes.data?.result);
 
     // Procesar los datos con validación robusta
-    const teachers = Array.isArray(teachersRes.data?.content) ? teachersRes.data.content : [];
-    const students = Array.isArray(studentsRes.data?.content) ? studentsRes.data.content : [];
-    const reps = Array.isArray(repsRes.data?.content?.representatives) ? repsRes.data.content.representatives : [];
-    const financial = financialRes.data?.content || {};
-    const topDebtors = Array.isArray(topDebtorsRes.data?.content?.debtors) ? topDebtorsRes.data.content.debtors : [];
-    const recentTransactions = Array.isArray(recentTransactionsRes.data?.content) ? recentTransactionsRes.data.content : [];
-    const userStats = userStatsRes.data?.content || {};
+    const teachers = teachersRes.status === 'fulfilled' && teachersRes.value.data?.result 
+      ? teachersRes.value.data.content 
+      : [];
+    
+    const students = studentsRes.status === 'fulfilled' && studentsRes.value.data?.result 
+      ? studentsRes.value.data.content 
+      : [];
+    
+    const reps = repsRes.status === 'fulfilled' && repsRes.value.data?.result 
+      ? (repsRes.value.data.content?.representatives || repsRes.value.data.content || [])
+      : [];
+    
+    const financial = financialRes.status === 'fulfilled' && financialRes.value.data?.result 
+      ? financialRes.value.data.content 
+      : {};
+    
+    const topDebtors = topDebtorsRes.status === 'fulfilled' && topDebtorsRes.value.data?.result 
+      ? (topDebtorsRes.value.data.content?.debtors || [])
+      : [];
+    
+    const recentTransactions = recentTransactionsRes.status === 'fulfilled' && recentTransactionsRes.value.data?.result 
+      ? recentTransactionsRes.value.data.content 
+      : [];
+    
+    const userStats = userStatsRes.status === 'fulfilled' && userStatsRes.value.data?.result 
+      ? userStatsRes.value.data.content 
+      : {};
 
     console.log('📊 Datos procesados:');
     console.log('- Total teachers:', teachers.length);
@@ -220,7 +236,12 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
       financial: financialData,
       recentTransactions: formattedTransactions,
       topDebtors: formattedTopDebtors,
-      topTeachers: [], // Puedes llenar esto si tienes endpoint específico
+      topTeachers: teachers.slice(0, 5).map((t: any) => ({
+        id: t.id,
+        fullName: t.fullName,
+        specialization: t.specialization || 'Sin especialización',
+        subjectCount: t.subjects?.length || 0
+      })),
       summary: {
         totalUsers: userStatsData.totalUsers,
         totalSchedules: 0, // Necesitarás endpoint específico
