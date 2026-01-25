@@ -504,71 +504,102 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
 
       {/* Modal de confirmación para borrar */}
       {showDeleteModal && scheduleToDelete && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-          <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                <FaExclamationTriangle className="h-6 w-6 text-red-600" />
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    {/* Fondo muy sutil */}
+    <div 
+      className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" 
+      onClick={() => {
+        setShowDeleteModal(false);
+        setScheduleToDelete(null);
+      }}
+    ></div>
+    
+    {/* Modal clean */}
+    <div className="relative bg-white rounded-xl shadow-xl border border-gray-200 max-w-md w-full animate-in zoom-in-95">
+      {/* Encabezado */}
+      <div className="p-6 border-b border-gray-100">
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+            <FaExclamationTriangle className="h-6 w-6 text-red-600" />
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">Eliminar materia</h3>
+            <p className="text-gray-600 text-sm mt-1">¿Estás seguro de continuar?</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Información */}
+      <div className="p-6">
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-2">Detalles de la materia:</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-gray-500">Materia:</span>
+                <p className="font-medium text-gray-900">{scheduleToDelete.subject}</p>
               </div>
-              <h3 className="text-lg font-medium leading-6 text-gray-900 mt-2">
-                ¿Seguro que quieres limpiar este bloque?
-              </h3>
-              <div className="mt-2 px-7 py-3">
-                <p className="text-sm text-gray-500">
-                  Estás a punto de eliminar la siguiente materia del horario:
-                </p>
-                <div className="bg-gray-100 p-3 rounded-md mt-2">
-                  <p className="font-semibold text-gray-700">{scheduleToDelete.subject}</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Código: <span className="font-medium">{scheduleToDelete.code}</span>
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Día: <span className="font-medium capitalize">{scheduleToDelete.day}</span>
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Bloques: <span className="font-medium">{scheduleToDelete.startBlock} y {scheduleToDelete.endBlock}</span>
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Horario: <span className="font-medium">{getTwoBlockTimeRange(scheduleToDelete.blockId)}</span>
-                  </p>
-                </div>
-                <p className="text-sm text-red-600 font-medium mt-4">
-                  ⚠️ Esta acción no se puede deshacer. Se eliminarán ambos bloques ocupados por la materia.
-                </p>
+              <div>
+                <span className="text-gray-500">Código:</span>
+                <p className="font-medium text-blue-600">{scheduleToDelete.code}</p>
               </div>
-              <div className="flex justify-center gap-3 mt-4">
-                <button
-                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 disabled:opacity-50"
-                  onClick={closeDeleteModal}
-                  disabled={isDeleting}
-                >
-                  Cancelar
-                </button>
-                <button
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center"
-                  onClick={handleDeleteSchedule}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Eliminando...
-                    </>
-                  ) : (
-                    <>
-                      <FaTrash className="mr-2" />
-                      Sí, eliminar materia
-                    </>
-                  )}
-                </button>
+              <div>
+                <span className="text-gray-500">Día:</span>
+                <p className="font-medium text-gray-900 capitalize">{scheduleToDelete.day}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Horario:</span>
+                <p className="font-medium text-gray-900">{getTwoBlockTimeRange(scheduleToDelete.blockId)}</p>
               </div>
             </div>
           </div>
+
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2 text-red-700">
+              <FaExclamationTriangle className="h-4 w-4 flex-shrink-0" />
+              <p className="text-sm font-medium">
+                Esta acción no se puede deshacer. La materia será eliminada del horario.
+              </p>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
+
+      {/* Botones */}
+      <div className="p-6 pt-4 border-t border-gray-100">
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setShowDeleteModal(false);
+              setScheduleToDelete(null);
+            }}
+            disabled={isLoading}
+            className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleDeleteSchedule}
+            disabled={isLoading}
+            className="flex-1 px-4 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center"
+          >
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Eliminando
+              </>
+            ) : (
+              'Eliminar'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
