@@ -65,11 +65,8 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     code?: string; 
     subject?: string; 
     day: string; 
-    blockId: number;
-    startBlock?: number;
-    endBlock?: number;
+    blockId: number 
   } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadSchedule = async () => {
     setIsLoading(true);
@@ -142,7 +139,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     return 'bg-white hover:bg-gray-50';
   };
 
-  // Función para verificar si un bloque está siendo ocupado por otro bloque con rowspan
   const isBlockSpanned = (day: string, blockId: number): boolean => {
     if (!scheduleData?.schedulesByDay?.[day]) return false;
     
@@ -166,7 +162,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
       const endTime = endBlock.time.split(' - ')[1];
       return `${startTime} - ${endTime}`;
     }
-    return startBlock?.time || '';
+    return BLOCK_TIMES.find(b => b.id === startBlockId)?.time || '';
   };
 
   // Función para manejar el clic en una celda con materia
@@ -180,9 +176,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         code: cellData.subjectCode,
         subject: cellData.subject,
         day,
-        blockId,
-        startBlock: cellData.blockId,
-        endBlock: cellData.blockId ? cellData.blockId + 1 : undefined
+        blockId
       });
       setShowDeleteModal(true);
     } else {
@@ -191,11 +185,17 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     }
   };
 
+  // Función para cerrar el modal de eliminación
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setScheduleToDelete(null);
+  };
+
   // Función para borrar el horario
   const handleDeleteSchedule = async () => {
     if (!scheduleToDelete?.id) return;
     
-    setIsDeleting(true);
+    setIsLoading(true);
     try {
       const response = await deleteScheduleAPI(scheduleToDelete.id);
       
@@ -204,8 +204,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         // Recargar el horario
         await loadSchedule();
         // Cerrar modal
-        setShowDeleteModal(false);
-        setScheduleToDelete(null);
+        closeDeleteModal();
       } else {
         toast.error(response.error?.[0] || 'Error al eliminar horario');
       }
@@ -213,14 +212,8 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
       console.error('Error al eliminar horario:', error);
       toast.error(error.message || 'Error al eliminar horario');
     } finally {
-      setIsDeleting(false);
+      setIsLoading(false);
     }
-  };
-
-  // Función para cerrar el modal
-  const closeDeleteModal = () => {
-    setShowDeleteModal(false);
-    setScheduleToDelete(null);
   };
 
   return (
@@ -351,7 +344,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                   const cellData = getCellContent(day, blockTime.id);
                   const isSelected = selectedCell?.day === day && selectedCell?.blockId === blockTime.id;
                   const cellClass = getCellClass(cellData);
-                  const hasSubject = cellData?.subject && cellData.subject !== 'RECESO';
                   
                   return (
                     <td
@@ -367,11 +359,10 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                           RECESO
                           <div className="text-xs text-yellow-600 mt-1">{blockTime.time}</div>
                         </div>
-                      ) : hasSubject ? (
+                      ) : cellData?.subject && cellData.subject !== 'RECESO' ? (
                         <div className="space-y-1 group relative">
                           <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button 
-                              className="p-1 bg-red-500 text-white rounded-full hover:bg-red-700 cursor-pointer"
+                            <FaTrash className="text-red-500 hover:text-red-700 cursor-pointer" 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setScheduleToDelete({
@@ -379,15 +370,11 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                                   code: cellData.subjectCode,
                                   subject: cellData.subject,
                                   day,
-                                  blockId: blockTime.id,
-                                  startBlock: cellData.blockId,
-                                  endBlock: cellData.blockId ? cellData.blockId + 1 : undefined
+                                  blockId: blockTime.id
                                 });
                                 setShowDeleteModal(true);
-                              }}
-                            >
-                              <FaTrash className="w-3 h-3" />
-                            </button>
+                              }} 
+                            />
                           </div>
                           <div className="font-medium text-gray-900">{cellData.subject}</div>
                           {cellData.subjectCode && (
@@ -496,110 +483,101 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         <div className="mt-4 text-sm text-gray-600">
           <p>Grado: <span className="font-medium">{grade}</span> | Sección: <span className="font-medium">{section}</span></p>
           <p className="mt-1">Total de bloques: 9 (8 disponibles + 1 receso)</p>
-          <p className="mt-1 text-blue-600 font-medium">
-            💡 Haz clic en una materia para eliminarla del horario
-          </p>
         </div>
       </div>
 
       {/* Modal de confirmación para borrar */}
       {showDeleteModal && scheduleToDelete && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-    {/* Fondo muy sutil */}
-    <div 
-      className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" 
-      onClick={() => {
-        setShowDeleteModal(false);
-        setScheduleToDelete(null);
-      }}
-    ></div>
-    
-    {/* Modal clean */}
-    <div className="relative bg-white rounded-xl shadow-xl border border-gray-200 max-w-md w-full animate-in zoom-in-95">
-      {/* Encabezado */}
-      <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-            <FaExclamationTriangle className="h-6 w-6 text-red-600" />
-          </div>
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900">Eliminar materia</h3>
-            <p className="text-gray-600 text-sm mt-1">¿Estás seguro de continuar?</p>
-          </div>
-        </div>
-      </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Fondo con blur muy sutil */}
+          <div 
+            className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" 
+            onClick={closeDeleteModal}
+          ></div>
+          
+          {/* Modal clean */}
+          <div className="relative bg-white rounded-xl shadow-xl border border-gray-200 max-w-md w-full animate-in zoom-in-95">
+            {/* Encabezado */}
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <FaExclamationTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Eliminar materia</h3>
+                  <p className="text-gray-600 text-sm mt-1">¿Estás seguro de continuar?</p>
+                </div>
+              </div>
+            </div>
 
-      {/* Información */}
-      <div className="p-6">
-        <div className="space-y-4">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-2">Detalles de la materia:</h4>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="text-gray-500">Materia:</span>
-                <p className="font-medium text-gray-900">{scheduleToDelete.subject}</p>
+            {/* Información */}
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-2">Detalles de la materia:</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-500">Materia:</span>
+                      <p className="font-medium text-gray-900">{scheduleToDelete.subject}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Código:</span>
+                      <p className="font-medium text-blue-600">{scheduleToDelete.code}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Día:</span>
+                      <p className="font-medium text-gray-900 capitalize">{scheduleToDelete.day}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Horario:</span>
+                      <p className="font-medium text-gray-900">{getTwoBlockTimeRange(scheduleToDelete.blockId)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 text-red-700">
+                    <FaExclamationTriangle className="h-4 w-4 flex-shrink-0" />
+                    <p className="text-sm font-medium">
+                      Esta acción no se puede deshacer. La materia será eliminada del horario.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="text-gray-500">Código:</span>
-                <p className="font-medium text-blue-600">{scheduleToDelete.code}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">Día:</span>
-                <p className="font-medium text-gray-900 capitalize">{scheduleToDelete.day}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">Horario:</span>
-                <p className="font-medium text-gray-900">{getTwoBlockTimeRange(scheduleToDelete.blockId)}</p>
+            </div>
+
+            {/* Botones */}
+            <div className="p-6 pt-4 border-t border-gray-100">
+              <div className="flex gap-3">
+                <button
+                  onClick={closeDeleteModal}
+                  disabled={isLoading}
+                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteSchedule}
+                  disabled={isLoading}
+                  className="flex-1 px-4 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center"
+                >
+                  {isLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Eliminando
+                    </>
+                  ) : (
+                    'Eliminar'
+                  )}
+                </button>
               </div>
             </div>
           </div>
-
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center space-x-2 text-red-700">
-              <FaExclamationTriangle className="h-4 w-4 flex-shrink-0" />
-              <p className="text-sm font-medium">
-                Esta acción no se puede deshacer. La materia será eliminada del horario.
-              </p>
-            </div>
-          </div>
         </div>
-      </div>
-
-      {/* Botones */}
-      <div className="p-6 pt-4 border-t border-gray-100">
-        <div className="flex gap-3">
-          <button
-            onClick={() => {
-              setShowDeleteModal(false);
-              setScheduleToDelete(null);
-            }}
-            disabled={isLoading}
-            className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleDeleteSchedule}
-            disabled={isLoading}
-            className="flex-1 px-4 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center"
-          >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Eliminando
-              </>
-            ) : (
-              'Eliminar'
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 }
