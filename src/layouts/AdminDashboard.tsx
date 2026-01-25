@@ -28,6 +28,7 @@ interface SessionContext {
   nivel?: number;
 }
 
+
 export default function AdminDashboard() {
   const sessionContext = useOutletContext<SessionContext>();
   const [stats, setStats] = useState<DashboardStats | null>(null);
