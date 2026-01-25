@@ -61,31 +61,31 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
     // Obtener múltiples datos en paralelo con manejo de errores individual
     const promises = [
       // Docentes
-      api.get('/private/academic/teacher/list', { params: { limit: 1000, page: 1 } })
+      api.get('api/private/academic/teacher/list', { params: { limit: 1000, page: 1 } })
         .catch(error => ({ data: { result: false, content: [], error: error.message } })),
       
       // Estudiantes
-      api.get('/private/user/students/list', { params: { limit: 1000 } })
+      api.get('api/private/user/students/list', { params: { limit: 1000 } })
         .catch(error => ({ data: { result: false, content: [], error: error.message } })),
       
       // Representantes
-      api.get('/private/balance/representatives', { params: { limit: 1000, page: 1 } })
+      api.get('api/private/balance/representatives', { params: { limit: 1000, page: 1 } })
         .catch(error => ({ data: { result: false, content: { representatives: [] }, error: error.message } })),
       
       // Estadísticas financieras
-      api.get('/private/balance/statistics/financial')
+      api.get('api/private/balance/statistics/financial')
         .catch(error => ({ data: { result: false, content: {}, error: error.message } })),
       
       // Top deudores
-      api.get('/private/balance/representatives/top-debtors', { params: { limit: 5 } })
+      api.get('api/private/balance/representatives/top-debtors', { params: { limit: 5 } })
         .catch(error => ({ data: { result: false, content: { debtors: [] }, error: error.message } })),
       
       // Transacciones recientes
-      api.get('/private/balance/transactions/recent', { params: { limit: 10 } })
+      api.get('api/private/balance/transactions/recent', { params: { limit: 10 } })
         .catch(error => ({ data: { result: false, content: [], error: error.message } })),
       
       // Estadísticas generales
-      api.get('/private/user/statistics')
+      api.get('api/private/user/statistics')
         .catch(error => ({ data: { result: false, content: {}, error: error.message } })),
     ];
 
