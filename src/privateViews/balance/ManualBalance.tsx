@@ -35,7 +35,7 @@ interface Representative {
   }>;
 }
 
-// Interface corregida con los valores del enum del backend
+// Interface corregida con los valores CORRECTOS del enum del backend
 interface TransactionForm {
   amount: number;
   description: string;
@@ -54,15 +54,21 @@ export default function ManualBalance() {
   const [formData, setFormData] = useState<TransactionForm>({
     amount: 0,
     description: '',
-    paymentMethod: 'cash', // CAMBIADO de 'efectivo' a 'cash'
+    paymentMethod: 'cash', // CORREGIDO: 'cash' en lugar de 'efectivo'
     reference: '',
-    createdBy: localStorage.getItem('userId') || undefined
+    createdBy: undefined // Inicializado como undefined
   });
   const [isSearching, setIsSearching] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
 
-  // Función para mapear valores de frontend a backend (opcional, por si usas nombres diferentes)
+  // Función para validar UUID
+  const isValidUUID = (uuid: string): boolean => {
+    const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return regex.test(uuid);
+  };
+
+  // Función para mapear valores de backend a nombres para mostrar
   const mapPaymentMethodToDisplay = (method: string): string => {
     const map: Record<string, string> = {
       'cash': 'Efectivo',
@@ -214,14 +220,27 @@ export default function ManualBalance() {
         ? `/private/balance/representative/${selectedRep.id}/deposit`
         : `/private/balance/representative/${selectedRep.id}/withdraw`;
 
+      // Obtener userId de localStorage y validar que sea UUID válido
+      const userId = localStorage.getItem('userId');
+      let validCreatedBy = undefined;
+      
+      if (userId && isValidUUID(userId)) {
+        validCreatedBy = userId;
+      } else {
+        console.warn('⚠️ userId no es un UUID válido o no está presente:', userId);
+        // Si no es válido, no enviamos createdBy (backend lo manejará como null)
+      }
+
       // Preparar datos para el backend - USANDO VALORES CORRECTOS
       const transactionData = {
         amount: parseFloat(formData.amount.toString()),
         description: formData.description,
         paymentMethod: formData.paymentMethod, // Esto ya es el valor correcto ('cash', etc.)
         reference: formData.reference || `MANUAL-${Date.now()}`,
-        createdBy: formData.createdBy
+        createdBy: validCreatedBy // Solo enviar si es UUID válido
       };
+
+      console.log('📤 Enviando transacción:', transactionData);
 
       const response = await api.post(endpoint, transactionData);
 
@@ -241,7 +260,7 @@ export default function ManualBalance() {
           description: '',
           paymentMethod: formData.paymentMethod,
           reference: '',
-          createdBy: localStorage.getItem('userId') || undefined
+          createdBy: undefined
         });
       } else {
         const errorMsg = response.data.error?.join(', ') || 'Error al procesar la transacción';
