@@ -35,10 +35,11 @@ interface Representative {
   }>;
 }
 
+// Interface corregida con los valores del enum del backend
 interface TransactionForm {
   amount: number;
   description: string;
-  paymentMethod: 'efectivo' | 'transferencia' | 'tarjeta' | 'cheque' | 'pago_movil';
+  paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
   reference?: string;
   createdBy?: string;
 }
@@ -53,7 +54,7 @@ export default function ManualBalance() {
   const [formData, setFormData] = useState<TransactionForm>({
     amount: 0,
     description: '',
-    paymentMethod: 'efectivo',
+    paymentMethod: 'cash', // CAMBIADO de 'efectivo' a 'cash'
     reference: '',
     createdBy: localStorage.getItem('userId') || undefined
   });
@@ -61,28 +62,34 @@ export default function ManualBalance() {
   const [showHistory, setShowHistory] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
 
-  // Buscar representantes - PARÁMETROS SIMPLIFICADOS
+  // Función para mapear valores de frontend a backend (opcional, por si usas nombres diferentes)
+  const mapPaymentMethodToDisplay = (method: string): string => {
+    const map: Record<string, string> = {
+      'cash': 'Efectivo',
+      'bank_transfer': 'Transferencia Bancaria',
+      'debit_card': 'Tarjeta de Débito',
+      'credit_card': 'Tarjeta de Crédito',
+      'pago_movil': 'Pago Móvil',
+      'check': 'Cheque'
+    };
+    return map[method] || method;
+  };
+
+  // Buscar representantes
   const searchRepresentatives = async () => {
     if (!searchTerm.trim()) return;
     
     setIsSearching(true);
     try {
-      // Parámetros mínimos y seguros para evitar errores de validación
       const params: Record<string, any> = {
         search: searchTerm,
         limit: 10,
         page: 1
       };
 
-      // Eliminar todos los parámetros opcionales que puedan causar errores
-      console.log('🔍 Buscando con parámetros:', params);
-
       const response = await api.get('/private/balance/representatives', { params });
 
-      console.log('✅ Respuesta búsqueda:', response.data);
-
       if (response.data.result) {
-        // Manejar diferentes formatos de respuesta
         let reps = [];
         if (response.data.content?.representatives) {
           reps = response.data.content.representatives;
@@ -93,7 +100,6 @@ export default function ManualBalance() {
         }
         
         setSearchResults(reps);
-        console.log('✅ Representantes encontrados:', reps.length);
         
         if (reps.length === 0) {
           toast.info('No se encontraron representantes');
@@ -104,16 +110,9 @@ export default function ManualBalance() {
       }
     } catch (error: any) {
       console.error('❌ Error buscando representantes:', error);
-      console.error('Detalles:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url
-      });
       
-      // Intentar con parámetros aún más simples
+      // Intentar con parámetros más simples
       try {
-        console.log('🔄 Intentando búsqueda alternativa...');
         const simpleResponse = await api.get(`/private/balance/representatives?search=${encodeURIComponent(searchTerm)}&limit=10`);
         
         if (simpleResponse.data.result) {
@@ -138,7 +137,6 @@ export default function ManualBalance() {
   const loadRepresentativeDetails = async (id: string) => {
     try {
       const response = await api.get(`/private/balance/representative/${id}/balance`);
-      console.log('📊 Detalles representante:', response.data);
       
       if (response.data.result) {
         const repData = response.data.content?.representative || response.data.content;
@@ -146,8 +144,8 @@ export default function ManualBalance() {
         setFormData(prev => ({
           ...prev,
           description: transactionType === 'deposit' 
-            ? 'Depósito manual en efectivo'
-            : 'Retiro manual en efectivo'
+            ? 'Depósito manual'
+            : 'Retiro manual'
         }));
         loadTransactionHistory(id);
         toast.success('Representante seleccionado');
@@ -156,7 +154,6 @@ export default function ManualBalance() {
       }
     } catch (error: any) {
       console.error('❌ Error cargando detalles:', error);
-      console.error('Detalles:', error.response?.data);
       toast.error(error.response?.data?.error?.[0] || 'Error al cargar información del representante');
     }
   };
@@ -168,15 +165,12 @@ export default function ManualBalance() {
         params: { limit: 5 }
       });
       
-      console.log('📜 Historial transacciones:', response.data);
-      
       if (response.data.result) {
         const trans = response.data.content?.transactions || response.data.content || [];
         setTransactions(Array.isArray(trans) ? trans : []);
       }
     } catch (error: any) {
       console.error('❌ Error cargando historial:', error);
-      // No mostrar error para historial, es opcional
     }
   };
 
@@ -220,24 +214,16 @@ export default function ManualBalance() {
         ? `/private/balance/representative/${selectedRep.id}/deposit`
         : `/private/balance/representative/${selectedRep.id}/withdraw`;
 
-      console.log('📤 Enviando transacción:', {
-        endpoint,
-        formData,
-        transactionType
-      });
-
-      // Preparar datos para el backend
+      // Preparar datos para el backend - USANDO VALORES CORRECTOS
       const transactionData = {
         amount: parseFloat(formData.amount.toString()),
         description: formData.description,
-        paymentMethod: formData.paymentMethod,
+        paymentMethod: formData.paymentMethod, // Esto ya es el valor correcto ('cash', etc.)
         reference: formData.reference || `MANUAL-${Date.now()}`,
         createdBy: formData.createdBy
       };
 
       const response = await api.post(endpoint, transactionData);
-
-      console.log('✅ Respuesta transacción:', response.data);
 
       if (response.data.result) {
         toast.success(
@@ -253,25 +239,26 @@ export default function ManualBalance() {
         setFormData({
           amount: 0,
           description: '',
-          paymentMethod: formData.paymentMethod, // Mantener el mismo método
+          paymentMethod: formData.paymentMethod,
           reference: '',
           createdBy: localStorage.getItem('userId') || undefined
         });
       } else {
-        toast.error(response.data.error?.join(', ') || 'Error al procesar la transacción');
+        const errorMsg = response.data.error?.join(', ') || 'Error al procesar la transacción';
+        toast.error(errorMsg);
       }
     } catch (error: any) {
       console.error('❌ Error procesando transacción:', error);
-      console.error('Detalles:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url
-      });
-      toast.error(
-        error.response?.data?.error?.join(', ') || 
-        'Error al procesar la transacción. Verifique los datos.'
-      );
+      
+      // Mostrar error específico del backend
+      const backendError = error.response?.data?.error;
+      if (backendError && Array.isArray(backendError)) {
+        toast.error(backendError.join(', '));
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Error al procesar la transacción. Verifique los datos.');
+      }
     } finally {
       setLoading(false);
     }
@@ -399,7 +386,6 @@ export default function ManualBalance() {
                       <div
                         key={rep.id}
                         onClick={() => {
-                          console.log('🎯 Seleccionando representante:', rep);
                           loadRepresentativeDetails(rep.id);
                           setSearchResults([]);
                           setSearchTerm('');
@@ -540,7 +526,7 @@ export default function ManualBalance() {
                               {transaction.type === 'deposit' ? '+' : '-'}{formatCurrency(transaction.amount || 0)}
                             </div>
                             <div className="text-sm text-gray-600 capitalize">
-                              {transaction.paymentMethod || 'efectivo'}
+                              {mapPaymentMethodToDisplay(transaction.paymentMethod || 'cash')}
                             </div>
                           </div>
                         </div>
@@ -615,13 +601,13 @@ export default function ManualBalance() {
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder={transactionType === 'deposit' ? 'Depósito manual en efectivo...' : 'Retiro manual en efectivo...'}
+                    placeholder={transactionType === 'deposit' ? 'Depósito manual...' : 'Retiro manual...'}
                     rows={3}
                     required
                   />
                 </div>
 
-                {/* Método de pago */}
+                {/* Método de pago - CORREGIDO con valores correctos */}
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Método de Pago *
@@ -631,11 +617,12 @@ export default function ManualBalance() {
                     onChange={(e) => setFormData({...formData, paymentMethod: e.target.value as any})}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   >
-                    <option value="efectivo">Efectivo</option>
-                    <option value="transferencia">Transferencia Bancaria</option>
+                    <option value="cash">Efectivo</option>
+                    <option value="bank_transfer">Transferencia Bancaria</option>
                     <option value="pago_movil">Pago Móvil</option>
-                    <option value="tarjeta">Tarjeta de Débito/Crédito</option>
-                    <option value="cheque">Cheque</option>
+                    <option value="debit_card">Tarjeta de Débito</option>
+                    <option value="credit_card">Tarjeta de Crédito</option>
+                    <option value="check">Cheque</option>
                   </select>
                 </div>
 
