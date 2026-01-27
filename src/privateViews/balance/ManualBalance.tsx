@@ -61,30 +61,43 @@ export default function ManualBalance() {
   const [showHistory, setShowHistory] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
 
-  // Buscar representantes - RUTA CORREGIDA
+  // Buscar representantes - PARÁMETROS SIMPLIFICADOS
   const searchRepresentatives = async () => {
     if (!searchTerm.trim()) return;
     
     setIsSearching(true);
     try {
-      // CORRECCIÓN: Elimina el prefijo /api/ porque tu axios ya lo tiene
-      const response = await api.get('/private/balance/representatives', {
-        params: {
-          search: searchTerm,
-          limit: 10,
-          page: 1,
-          sortBy: 'fullName',
-          sortOrder: 'asc'
-        }
-      });
+      // Parámetros mínimos y seguros para evitar errores de validación
+      const params: Record<string, any> = {
+        search: searchTerm,
+        limit: 10,
+        page: 1
+      };
 
-      console.log('🔍 Respuesta búsqueda:', response.data);
+      // Eliminar todos los parámetros opcionales que puedan causar errores
+      console.log('🔍 Buscando con parámetros:', params);
+
+      const response = await api.get('/private/balance/representatives', { params });
+
+      console.log('✅ Respuesta búsqueda:', response.data);
 
       if (response.data.result) {
-        // Asegurarse de que sea un array
-        const reps = response.data.content?.representatives || response.data.content || [];
-        setSearchResults(Array.isArray(reps) ? reps : []);
+        // Manejar diferentes formatos de respuesta
+        let reps = [];
+        if (response.data.content?.representatives) {
+          reps = response.data.content.representatives;
+        } else if (Array.isArray(response.data.content)) {
+          reps = response.data.content;
+        } else if (response.data.content) {
+          reps = [response.data.content];
+        }
+        
+        setSearchResults(reps);
         console.log('✅ Representantes encontrados:', reps.length);
+        
+        if (reps.length === 0) {
+          toast.info('No se encontraron representantes');
+        }
       } else {
         toast.error(response.data.error?.[0] || 'Error al buscar representantes');
         setSearchResults([]);
@@ -97,22 +110,39 @@ export default function ManualBalance() {
         status: error.response?.status,
         url: error.config?.url
       });
-      toast.error(error.response?.data?.error?.[0] || 'Error al buscar representantes');
-      setSearchResults([]);
+      
+      // Intentar con parámetros aún más simples
+      try {
+        console.log('🔄 Intentando búsqueda alternativa...');
+        const simpleResponse = await api.get(`/private/balance/representatives?search=${encodeURIComponent(searchTerm)}&limit=10`);
+        
+        if (simpleResponse.data.result) {
+          let reps = [];
+          if (simpleResponse.data.content?.representatives) {
+            reps = simpleResponse.data.content.representatives;
+          } else if (Array.isArray(simpleResponse.data.content)) {
+            reps = simpleResponse.data.content;
+          }
+          setSearchResults(reps);
+        }
+      } catch (secondError: any) {
+        toast.error(secondError.response?.data?.error?.[0] || 'Error de conexión');
+        setSearchResults([]);
+      }
     } finally {
       setIsSearching(false);
     }
   };
 
-  // Cargar detalles del representante seleccionado - RUTA CORREGIDA
+  // Cargar detalles del representante seleccionado
   const loadRepresentativeDetails = async (id: string) => {
     try {
-      // CORRECCIÓN: Elimina el prefijo /api/
       const response = await api.get(`/private/balance/representative/${id}/balance`);
       console.log('📊 Detalles representante:', response.data);
       
       if (response.data.result) {
-        setSelectedRep(response.data.content?.representative || response.data.content);
+        const repData = response.data.content?.representative || response.data.content;
+        setSelectedRep(repData);
         setFormData(prev => ({
           ...prev,
           description: transactionType === 'deposit' 
@@ -131,10 +161,9 @@ export default function ManualBalance() {
     }
   };
 
-  // Cargar historial de transacciones - RUTA CORREGIDA
+  // Cargar historial de transacciones
   const loadTransactionHistory = async (representativeId: string) => {
     try {
-      // CORRECCIÓN: Elimina el prefijo /api/
       const response = await api.get(`/private/balance/representative/${representativeId}/transactions`, {
         params: { limit: 5 }
       });
@@ -164,7 +193,7 @@ export default function ManualBalance() {
     return () => clearTimeout(delaySearch);
   }, [searchTerm]);
 
-  // Manejar envío del formulario - RUTAS CORREGIDAS
+  // Manejar envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -175,6 +204,12 @@ export default function ManualBalance() {
 
     if (!formData.amount || formData.amount <= 0) {
       toast.error('El monto debe ser mayor a 0');
+      return;
+    }
+
+    // Validación extra para retiros
+    if (transactionType === 'withdrawal' && formData.amount > (selectedRep.balance || 0)) {
+      toast.error('Saldo insuficiente para este retiro');
       return;
     }
 
@@ -191,28 +226,34 @@ export default function ManualBalance() {
         transactionType
       });
 
-      const response = await api.post(endpoint, {
-        ...formData,
-        amount: parseFloat(formData.amount.toString())
-      });
+      // Preparar datos para el backend
+      const transactionData = {
+        amount: parseFloat(formData.amount.toString()),
+        description: formData.description,
+        paymentMethod: formData.paymentMethod,
+        reference: formData.reference || `MANUAL-${Date.now()}`,
+        createdBy: formData.createdBy
+      };
+
+      const response = await api.post(endpoint, transactionData);
 
       console.log('✅ Respuesta transacción:', response.data);
 
       if (response.data.result) {
         toast.success(
           transactionType === 'deposit' 
-            ? 'Depósito registrado exitosamente'
-            : 'Retiro registrado exitosamente'
+            ? '✅ Depósito registrado exitosamente'
+            : '✅ Retiro registrado exitosamente'
         );
 
         // Actualizar datos del representante
         await loadRepresentativeDetails(selectedRep.id);
         
-        // Limpiar formulario
+        // Limpiar formulario pero mantener el método de pago
         setFormData({
           amount: 0,
           description: '',
-          paymentMethod: 'efectivo',
+          paymentMethod: formData.paymentMethod, // Mantener el mismo método
           reference: '',
           createdBy: localStorage.getItem('userId') || undefined
         });
@@ -229,7 +270,7 @@ export default function ManualBalance() {
       });
       toast.error(
         error.response?.data?.error?.join(', ') || 
-        'Error al procesar la transacción'
+        'Error al procesar la transacción. Verifique los datos.'
       );
     } finally {
       setLoading(false);
@@ -417,7 +458,7 @@ export default function ManualBalance() {
                     </div>
                     <div className="text-right">
                       <div className={`text-2xl font-bold ${getBalanceColor(selectedRep.balance || 0)}`}>
-                        {formatCurrency(selectedRep.balance || 0)}
+                        {selectedRep.balanceFormatted || formatCurrency(selectedRep.balance || 0)}
                       </div>
                       <div className="text-sm text-gray-600">
                         Saldo actual
