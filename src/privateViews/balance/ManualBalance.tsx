@@ -38,7 +38,7 @@ interface Representative {
 interface TransactionForm {
   amount: number;
   description: string;
-  paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check' | 'efectivo' | 'transferencia' | 'tarjeta';
+  paymentMethod: 'efectivo' | 'transferencia' | 'tarjeta' | 'cheque' | 'pago_movil';
   reference?: string;
   createdBy?: string;
 }
@@ -61,13 +61,14 @@ export default function ManualBalance() {
   const [showHistory, setShowHistory] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
 
-  // Buscar representantes - CORREGIDO: Ruta completa
+  // Buscar representantes - RUTA CORREGIDA
   const searchRepresentatives = async () => {
     if (!searchTerm.trim()) return;
     
     setIsSearching(true);
     try {
-      const response = await api.get('/api/private/balance/representatives', {
+      // CORRECCIÓN: Elimina el prefijo /api/ porque tu axios ya lo tiene
+      const response = await api.get('/private/balance/representatives', {
         params: {
           search: searchTerm,
           limit: 10,
@@ -103,10 +104,11 @@ export default function ManualBalance() {
     }
   };
 
-  // Cargar detalles del representante seleccionado - CORREGIDO: Ruta completa
+  // Cargar detalles del representante seleccionado - RUTA CORREGIDA
   const loadRepresentativeDetails = async (id: string) => {
     try {
-      const response = await api.get(`/api/private/balance/representative/${id}/balance`);
+      // CORRECCIÓN: Elimina el prefijo /api/
+      const response = await api.get(`/private/balance/representative/${id}/balance`);
       console.log('📊 Detalles representante:', response.data);
       
       if (response.data.result) {
@@ -129,10 +131,11 @@ export default function ManualBalance() {
     }
   };
 
-  // Cargar historial de transacciones - CORREGIDO: Ruta completa
+  // Cargar historial de transacciones - RUTA CORREGIDA
   const loadTransactionHistory = async (representativeId: string) => {
     try {
-      const response = await api.get(`/api/private/balance/representative/${representativeId}/transactions`, {
+      // CORRECCIÓN: Elimina el prefijo /api/
+      const response = await api.get(`/private/balance/representative/${representativeId}/transactions`, {
         params: { limit: 5 }
       });
       
@@ -151,17 +154,17 @@ export default function ManualBalance() {
   // Manejar búsqueda
   useEffect(() => {
     const delaySearch = setTimeout(() => {
-      if (searchTerm.trim().length >= 2) { // Reducido a 2 caracteres
+      if (searchTerm.trim().length >= 2) {
         searchRepresentatives();
       } else {
         setSearchResults([]);
       }
-    }, 300); // Reducido el delay
+    }, 300);
 
     return () => clearTimeout(delaySearch);
   }, [searchTerm]);
 
-  // Manejar envío del formulario - CORREGIDO: Rutas completas
+  // Manejar envío del formulario - RUTAS CORREGIDAS
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -179,8 +182,8 @@ export default function ManualBalance() {
 
     try {
       const endpoint = transactionType === 'deposit' 
-        ? `/api/private/balance/representative/${selectedRep.id}/deposit`
-        : `/api/private/balance/representative/${selectedRep.id}/withdraw`;
+        ? `/private/balance/representative/${selectedRep.id}/deposit`
+        : `/private/balance/representative/${selectedRep.id}/withdraw`;
 
       console.log('📤 Enviando transacción:', {
         endpoint,
