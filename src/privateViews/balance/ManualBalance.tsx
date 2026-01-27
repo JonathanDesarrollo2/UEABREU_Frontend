@@ -54,16 +54,17 @@ export default function ManualBalance() {
   const [formData, setFormData] = useState<TransactionForm>({
     amount: 0,
     description: '',
-    paymentMethod: 'cash', // CORREGIDO: 'cash' en lugar de 'efectivo'
+    paymentMethod: 'cash',
     reference: '',
-    createdBy: undefined // Inicializado como undefined
+    createdBy: undefined
   });
   const [isSearching, setIsSearching] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
 
-  // Función para validar UUID
-  const isValidUUID = (uuid: string): boolean => {
+  // Función para validar UUID - SILENCIOSA
+  const isValidUUID = (uuid: string | null): boolean => {
+    if (!uuid) return false;
     const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return regex.test(uuid);
   };
@@ -115,9 +116,7 @@ export default function ManualBalance() {
         setSearchResults([]);
       }
     } catch (error: any) {
-      console.error('❌ Error buscando representantes:', error);
-      
-      // Intentar con parámetros más simples
+      // Error silencioso - solo mostrar toast si es necesario
       try {
         const simpleResponse = await api.get(`/private/balance/representatives?search=${encodeURIComponent(searchTerm)}&limit=10`);
         
@@ -130,8 +129,8 @@ export default function ManualBalance() {
           }
           setSearchResults(reps);
         }
-      } catch (secondError: any) {
-        toast.error(secondError.response?.data?.error?.[0] || 'Error de conexión');
+      } catch {
+        toast.error('Error de conexión al buscar representantes');
         setSearchResults([]);
       }
     } finally {
@@ -159,7 +158,6 @@ export default function ManualBalance() {
         toast.error(response.data.error?.[0] || 'Error al cargar información');
       }
     } catch (error: any) {
-      console.error('❌ Error cargando detalles:', error);
       toast.error(error.response?.data?.error?.[0] || 'Error al cargar información del representante');
     }
   };
@@ -176,7 +174,7 @@ export default function ManualBalance() {
         setTransactions(Array.isArray(trans) ? trans : []);
       }
     } catch (error: any) {
-      console.error('❌ Error cargando historial:', error);
+      // Error silencioso para historial
     }
   };
 
@@ -193,7 +191,7 @@ export default function ManualBalance() {
     return () => clearTimeout(delaySearch);
   }, [searchTerm]);
 
-  // Manejar envío del formulario
+  // Manejar envío del formulario - VERSIÓN CORREGIDA SIN DEBUG
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -220,27 +218,23 @@ export default function ManualBalance() {
         ? `/private/balance/representative/${selectedRep.id}/deposit`
         : `/private/balance/representative/${selectedRep.id}/withdraw`;
 
-      // Obtener userId de localStorage y validar que sea UUID válido
+      // Obtener userId de localStorage - SIN WARNINGS
       const userId = localStorage.getItem('userId');
       let validCreatedBy = undefined;
       
       if (userId && isValidUUID(userId)) {
         validCreatedBy = userId;
-      } else {
-        console.warn('⚠️ userId no es un UUID válido o no está presente:', userId);
-        // Si no es válido, no enviamos createdBy (backend lo manejará como null)
       }
+      // Si no es válido, no enviamos createdBy (backend lo manejará como null)
 
-      // Preparar datos para el backend - USANDO VALORES CORRECTOS
+      // Preparar datos para el backend - SIN CONSOLE.LOG
       const transactionData = {
         amount: parseFloat(formData.amount.toString()),
         description: formData.description,
-        paymentMethod: formData.paymentMethod, // Esto ya es el valor correcto ('cash', etc.)
+        paymentMethod: formData.paymentMethod,
         reference: formData.reference || `MANUAL-${Date.now()}`,
         createdBy: validCreatedBy // Solo enviar si es UUID válido
       };
-
-      console.log('📤 Enviando transacción:', transactionData);
 
       const response = await api.post(endpoint, transactionData);
 
@@ -267,8 +261,6 @@ export default function ManualBalance() {
         toast.error(errorMsg);
       }
     } catch (error: any) {
-      console.error('❌ Error procesando transacción:', error);
-      
       // Mostrar error específico del backend
       const backendError = error.response?.data?.error;
       if (backendError && Array.isArray(backendError)) {
@@ -626,7 +618,7 @@ export default function ManualBalance() {
                   />
                 </div>
 
-                {/* Método de pago - CORREGIDO con valores correctos */}
+                {/* Método de pago */}
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Método de Pago *
