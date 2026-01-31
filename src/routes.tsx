@@ -22,6 +22,8 @@ import ManualBalance from './privateViews/balance/ManualBalance'
 import InsertTeacher from './privateViews/teacher/Teacher'
 import AdminListUsersBackend from './privateViews/userList/UserList'
 import ScheduleView from './privateViews/Schedule/ClassSchedule'
+import AdminListSubjectsBackend from './privateViews/ListSubject/AdminLIstSubjectBackend'
+import AdminListStudentsBackend from './privateViews/AdminListStudentBackend/AdminListStudentBackend'
 
 function ListRoutes() {
   return (
@@ -58,6 +60,8 @@ function ListRoutes() {
             <Route path="Schedule" element={<ScheduleView />} />
           </Route>
           <Route path="Balance" element={<ManualBalance />} />
+          <Route path="ListSubjects" element={<AdminListSubjectsBackend />} />
+          <Route path="listStudents" element={<AdminListStudentsBackend />} />
         </Route>
       </Route>
     </Routes>

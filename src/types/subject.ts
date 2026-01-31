@@ -1,3 +1,4 @@
+// Tipos principales de Subject
 export interface TypeSubject {
   id?: string;
   name?: string;
@@ -20,6 +21,7 @@ export interface TypeSubject {
   };
 }
 
+// Para creación de materia
 export interface TypeSubjectCreate {
   name: string;
   code: string;
@@ -32,6 +34,7 @@ export interface TypeSubjectCreate {
   teacherId?: string;
 }
 
+// Para actualización de materia
 export interface TypeSubjectUpdate {
   id: string;
   name?: string;
@@ -45,6 +48,7 @@ export interface TypeSubjectUpdate {
   teacherId?: string;
 }
 
+// Respuesta de la API para lista paginada
 export interface TypeSubjectListResponse {
   result: boolean;
   content: TypeSubject[];
@@ -56,14 +60,26 @@ export interface TypeSubjectListResponse {
   error: string[];
 }
 
+// Respuesta de la API para una sola materia
 export interface TypeSubjectResponse {
   result: boolean;
   content: TypeSubject;
   error: string[];
 }
 
+// Respuesta genérica de la API (para creación, actualización, eliminación)
 export interface TypeSubjectGenericResponse {
   result: boolean;
   content: string[] | any[];
   error: string[];
+}
+
+// Para búsqueda/filtros
+export interface TypeSubjectFilter {
+  page?: number;
+  limit?: number;
+  search?: string;
+  grade?: string;
+  subjectType?: string;
+  teacherId?: string;
 }
