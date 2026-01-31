@@ -6,11 +6,20 @@ import { useAddUser } from "./hook/useAddUser";
 import { useCallback, useState, useEffect } from 'react';
 import { loginInsertSchema, type TypeLogin_insert } from "../../types/login";
 import { toast } from "react-toastify";
-import { FaUserPlus, FaMoneyBillWave } from 'react-icons/fa';
+import { FaUserPlus, FaMoneyBillWave, FaGraduationCap } from 'react-icons/fa';
 import AnimatedPage from "../../components/AnimatedPage";
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import SpinnerGeneral from "../../layouts/components/spinnerGeneral";
+
+// Definir opciones para el estado del estudiante según el modelo - CORREGIDO para FormField
+const studentStatusOptions = [
+  { value: 'pendiente', text: 'Pendiente' },
+  { value: 'regular', text: 'Regular' },
+  { value: 'repitiente', text: 'Repitiente' },
+  { value: 'condicionado', text: 'Condicionado' },
+  { value: 'inactivo', text: 'Inactivo' }
+];
 
 // Tipo local extendido para el formulario
 type ExtendedUserInsert = TypeLogin_insert & {
@@ -42,8 +51,10 @@ type ExtendedUserInsert = TypeLogin_insert & {
     diseasesDescription?: string;
     emergencyContact: string;
     emergencyPhone: string;
+    status?: 'pendiente' | 'regular' | 'repitiente' | 'condicionado' | 'inactivo';
   }>;
 };
+
 const useInsertUserForm = () => {
   return useForm<ExtendedUserInsert>({
     resolver: zodResolver(loginInsertSchema),
@@ -178,7 +189,8 @@ const StudentsForm = ({ control, register, errors }: any) => {
       hasDiseases: false,
       diseasesDescription: '',
       emergencyContact: '',
-      emergencyPhone: ''
+      emergencyPhone: '',
+      status: 'pendiente'
     });
   };
 
@@ -203,6 +215,7 @@ const StudentsForm = ({ control, register, errors }: any) => {
           <div key={field.id} className="mb-8 p-6 border border-gray-200 rounded-lg bg-white shadow-sm">
             <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
               <h4 className="text-lg font-semibold text-gray-800 mb-2 sm:mb-0">
+                <FaGraduationCap className="inline mr-2 text-blue-500" />
                 Estudiante #{index + 1}
               </h4>
               <button
@@ -241,6 +254,16 @@ const StudentsForm = ({ control, register, errors }: any) => {
                     required={true} 
                     register={register} 
                     error={errors?.studentsData?.[index]?.birthDate} 
+                  />
+                  <FormField 
+                    type="select"
+                    id={`studentsData.${index}.status`} 
+                    label="Estado Académico *" 
+                    required={true}
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.status}
+                    options={studentStatusOptions}
+                    defaultValue="pendiente"
                   />
                 </div>
 
@@ -461,7 +484,13 @@ export default function InsertUser() {
           ...formdata.representativeData,
           initialBalance: formdata.representativeData.initialBalance || 0,
         };
-        dataToSend.studentsData = formdata.studentsData;
+        // CORRECCIÓN: Usar optional chaining y verificar que studentsData existe
+        if (formdata.studentsData) {
+          dataToSend.studentsData = formdata.studentsData.map(student => ({
+            ...student,
+            status: student.status || 'pendiente' // Asegurar que siempre tenga estado
+          }));
+        }
       }
 
       mutate(dataToSend, {
