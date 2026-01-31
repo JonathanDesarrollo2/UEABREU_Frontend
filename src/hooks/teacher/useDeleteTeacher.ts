@@ -1,25 +1,26 @@
-// src/hooks/teacher/useDeleteTeacher.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { deleteTeacherAPI } from "../../apis/teacher";
-import type { TypeTeacherGenericResponse } from "../../types/teacher";
 
 export const useDeleteTeacher = () => {
   const queryClient = useQueryClient();
+
   const mutation = useMutation({
-    mutationFn: deleteTeacherAPI,
+    mutationFn: (id: string) => deleteTeacherAPI(id),
     onError: (error: Error) => {
-      toast.error(error.message || "Error al eliminar docente");
+      toast.error(error.message || "Error al eliminar profesor");
     },
-    onSuccess: (dataAPI: TypeTeacherGenericResponse) => {
+    onSuccess: (dataAPI) => {
       if (dataAPI.result) {
-        toast.success(dataAPI.content[0] || "Docente eliminado exitosamente");
+        toast.success(dataAPI.content[0] || "Profesor eliminado exitosamente");
         queryClient.invalidateQueries({ queryKey: ['teachers'] });
+        queryClient.invalidateQueries({ queryKey: ['statistics'] });
       } else {
-        toast.error(dataAPI.error[0] || "Error al eliminar docente");
+        toast.error(dataAPI.error[0] || "Error al eliminar profesor");
       }
     },
   });
+  
   return {
     mutate: mutation.mutate,
     reset: mutation.reset,
