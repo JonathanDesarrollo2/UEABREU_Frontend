@@ -40,7 +40,7 @@ const menuItems = [
   { name: 'Pagos', icon: FaMoneyCheck, path: '/admin/Balance' },
   { name: 'Usuarios', icon: FaUser, path: '/admin/users/list' },
   { name: 'Nuevo Usuario', icon: FaUserPlus, path: '/admin/users/insert' },
-  { name: 'Horario', icon: FaCalendar, path: '/admin/users/Schedule' },
+  { name: 'Horario', icon: FaCalendar, path: '/admin/Schedule' },
   { name: 'Materias', icon: FaGraduationCap, path: '/admin/ListSubjects' },
   { name: 'Estudiantes', icon: FaGraduationCap, path: '/admin/listStudents' },
   { name: 'Profesores', icon: FaUser, path: '/admin/ListTeacher' },
