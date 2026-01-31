@@ -35,10 +35,11 @@ export interface TypeUser_full {
   };
 }
 
+// Añade esto a tus tipos existentes
 export interface TypeUserBuscar {
   idBus: string;
   DeBus: string;
-  nivelFilter?: 'all' | '1' | '2';
+  nivelFilter?: 'all' | '1' | '2' | 'admin-emails';
 }
 
 export interface TypeUser_delete {

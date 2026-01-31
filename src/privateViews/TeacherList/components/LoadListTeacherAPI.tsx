@@ -1,26 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import SpinnerGeneral from '../../../layouts/components/spinnerGeneral';
+import { LoadPaginatedUsers } from '../../../apis/user';
+import SpinnerGeneral from '../../../layouts/components/spinnerGeneral'
 import ListEmpty from '../../../components/ListEmpty';
 import Pagination from '../../../components/Pagination';
-import { getPaginatedTeachersAPI } from '../../../apis/teacher';
-import ListTeachersAPI from './ListTeacherAPI';
+import type { TypeUserBuscar } from '../../../types/user';
+import ListAPIs from '../../userList/components/ListApis';
 
-interface BusTeacherProps {
-  Buscar: {
-    idBus: string;
-    DeBus: string;
-    status?: string;
-  };
+interface BusUserProps {
+  Buscar: TypeUserBuscar;
 }
 
-export default function LoadListTeachersAPI({ Buscar }: BusTeacherProps) {
+export default function LoadListAPI({ Buscar }: BusUserProps) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
+  // Ajustar los parámetros de búsqueda antes de enviarlos
+  const adjustedBuscar = React.useMemo(() => {
+    // Si el filtro es 'admin-emails', lo convertimos a '2' para el backend
+    const nivelFilter = Buscar.nivelFilter === 'admin-emails' ? '2' : Buscar.nivelFilter;
+    
+    return {
+      ...Buscar,
+      nivelFilter
+    };
+  }, [Buscar]);
+
   const { data, isError, isLoading } = useQuery({
-    queryKey: ['teachers', { page, limit, Buscar }],
-    queryFn: () => getPaginatedTeachersAPI(page, limit, Buscar.DeBus),
+    queryKey: ['users', { page, limit, Buscar: adjustedBuscar }],
+    queryFn: () => LoadPaginatedUsers({ page, limit, Buscar: adjustedBuscar }),
   });
 
   useEffect(() => {
@@ -39,13 +47,12 @@ export default function LoadListTeachersAPI({ Buscar }: BusTeacherProps) {
   if (isError) {
     return (
       <ListEmpty 
-        message="Error cargando la lista de profesores..."
+        message="Error cargando la lista de usuarios..."
         columns={[
+          { name: "Email", widthPercent: 25 },
+          { name: "Login", widthPercent: 20 },
           { name: "Nombre", widthPercent: 20 },
-          { name: "Cédula", widthPercent: 15 },
-          { name: "Email", widthPercent: 20 },
-          { name: "Teléfono", widthPercent: 15 },
-          { name: "Especialización", widthPercent: 15 },
+          { name: "Nivel", widthPercent: 15 },
           { name: "Estado", widthPercent: 10 },
           { name: "Acciones", widthPercent: 10 },
         ]}
@@ -54,19 +61,26 @@ export default function LoadListTeachersAPI({ Buscar }: BusTeacherProps) {
   }
 
   if (!data || data.content.length === 0) {
-    const mensaje = Buscar.DeBus 
-      ? `No hay profesores que coincidan con "${Buscar.DeBus}"...` 
-      : `No hay profesores registrados...`;
+    let mensaje = '';
+    
+    if (Buscar.nivelFilter === 'admin-emails' || Buscar.nivelFilter === '2') {
+      mensaje = Buscar.DeBus 
+        ? `No hay correos administrativos que coincidan con "${Buscar.DeBus}"...` 
+        : `No hay usuarios administrativos registrados...`;
+    } else {
+      mensaje = Buscar.DeBus 
+        ? `No hay usuarios que coincidan con "${Buscar.DeBus}"...` 
+        : `No hay usuarios registrados...`;
+    }
     
     return (
       <ListEmpty 
         message={mensaje}
         columns={[
+          { name: "Email", widthPercent: 25 },
+          { name: "Login", widthPercent: 20 },
           { name: "Nombre", widthPercent: 20 },
-          { name: "Cédula", widthPercent: 15 },
-          { name: "Email", widthPercent: 20 },
-          { name: "Teléfono", widthPercent: 15 },
-          { name: "Especialización", widthPercent: 15 },
+          { name: "Nivel", widthPercent: 15 },
           { name: "Estado", widthPercent: 10 },
           { name: "Acciones", widthPercent: 10 },
         ]}
@@ -74,20 +88,13 @@ export default function LoadListTeachersAPI({ Buscar }: BusTeacherProps) {
     );
   }
 
-  // Manejar el caso cuando pagination podría ser undefined
-  const pagination = data.pagination || {
-    totalRecords: data.content.length,
-    currentPage: page,
-    totalPages: 1
-  };
-
   return (
     <>
-      <ListTeachersAPI data={data.content} />
+      <ListAPIs data={data.content} />
       <Pagination
         page={page}
         limit={limit}
-        totalPages={pagination.totalPages}
+        totalPages={data.pagination.totalPages}
         onPageChange={setPage}
         onLimitChange={handleLimitChange}
       />
