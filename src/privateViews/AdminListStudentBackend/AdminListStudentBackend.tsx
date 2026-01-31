@@ -99,7 +99,7 @@ export default function AdminListStudentsBackend() {
           <div className="flex gap-2 w-full lg:w-auto">
             <button
               type="button"
-              onClick={() => { navigate('/admin/students/add'); }}
+              onClick={() => { navigate('/admin/users/insert'); }}
               className={btnStyleGreen}
             >
               <FaUserPlus className="mr-2 inline-block" />

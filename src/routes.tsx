@@ -19,9 +19,7 @@ import UserDashboard from './layouts/UserLayout'
 import PaymentValidation from './privateViews/payment/paymentValidation'  // ✅ Nueva vista agregada
 import ClassSchedule from './privateViews/Schedule/ClassSchedule'
 import ManualBalance from './privateViews/balance/ManualBalance'
-import InsertTeacher from './privateViews/teacher/Teacher'
 import AdminListUsersBackend from './privateViews/userList/UserList'
-import ScheduleView from './privateViews/Schedule/ClassSchedule'
 import AdminListSubjectsBackend from './privateViews/ListSubject/AdminLIstSubjectBackend'
 import AdminListStudentsBackend from './privateViews/AdminListStudentBackend/AdminListStudentBackend'
 import AdminListTeachersBackend from './privateViews/TeacherList/AdminTeacherListBackend'
@@ -57,8 +55,6 @@ function ListRoutes() {
             <Route index element={<UserDashboard />} />
             <Route path="insert" element={<InsertUser />} />
             <Route path="list" element={<AdminListUsersBackend />} />
-            <Route path="teacher" element={<InsertTeacher />} />
-            <Route path="Schedule" element={<ScheduleView />} />
           </Route>
           <Route path="Balance" element={<ManualBalance />} />
           <Route path="ListSubjects" element={<AdminListSubjectsBackend />} />

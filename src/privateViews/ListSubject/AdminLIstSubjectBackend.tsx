@@ -120,7 +120,7 @@ export default function AdminListSubjectsBackend() {
           <div className="flex gap-2 w-full lg:w-auto">
             <button
               type="button"
-              onClick={() => { navigate('/admin/subjects/add'); }}
+              onClick={() => { navigate('/admin/users/Schedule'); }}
               className={btnStyleGreen}
             >
               <FaBookMedical className="mr-2 inline-block" />
