@@ -20,6 +20,7 @@ import PaymentValidation from './privateViews/payment/paymentValidation'  // ✅
 import ClassSchedule from './privateViews/Schedule/ClassSchedule'
 import ManualBalance from './privateViews/balance/ManualBalance'
 import AdminListUsersBackend from './privateViews/userList/UserList'
+import ScheduleView from './privateViews/Schedule/ClassSchedule'
 import AdminListSubjectsBackend from './privateViews/ListSubject/AdminLIstSubjectBackend'
 import AdminListStudentsBackend from './privateViews/AdminListStudentBackend/AdminListStudentBackend'
 import AdminListTeachersBackend from './privateViews/TeacherList/AdminTeacherListBackend'
@@ -56,10 +57,12 @@ function ListRoutes() {
             <Route path="insert" element={<InsertUser />} />
             <Route path="list" element={<AdminListUsersBackend />} />
           </Route>
+          <Route path="Schedule" element={<ScheduleView />} />
           <Route path="Balance" element={<ManualBalance />} />
           <Route path="ListSubjects" element={<AdminListSubjectsBackend />} />
           <Route path="listStudents" element={<AdminListStudentsBackend />} />
           <Route path="ListTeacher" element={<AdminListTeachersBackend />} />
+        
         </Route>
       </Route>
     </Routes>
