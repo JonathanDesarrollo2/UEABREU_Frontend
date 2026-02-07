@@ -11,8 +11,7 @@ import {
   FaUser,
   FaUserPlus,
   FaCalendar,
-  FaChalkboardTeacher,
-  FaList,
+  FaChalkboardTeacher
 } from 'react-icons/fa';
 
 interface SessionContext {
@@ -30,18 +29,13 @@ export default function AdminLayout() {
   const sessionContext = useOutletContext<SessionContext>();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [teachersDropdownOpen, setTeachersDropdownOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('tokcattleraising_inCattleRanchCloud');
     navigate('/login');
   };
 
-  const toggleTeachersDropdown = () => {
-    setTeachersDropdownOpen(!teachersDropdownOpen);
-  };
-
-  // Opciones del menú principal
+  // Solo estas opciones administrativas esenciales
   const menuItems = [
     { name: 'Dashboard', icon: FaHome, path: '/admin' },
     { name: 'Pagos', icon: FaMoneyCheck, path: '/admin/Balance' },
@@ -50,12 +44,7 @@ export default function AdminLayout() {
     { name: 'Horario', icon: FaCalendar, path: '/admin/Schedule' },
     { name: 'Materias', icon: FaGraduationCap, path: '/admin/ListSubjects' },
     { name: 'Estudiantes', icon: FaGraduationCap, path: '/admin/listStudents' },
-  ];
-
-  // Submenú de Profesores
-  const teacherSubmenu = [
-    { name: 'Lista de Profesores', icon: FaList, path: '/admin/teachers/list' },
-    { name: 'Nuevo Profesor', icon: FaUserPlus, path: '/admin/teachers/add' },
+    { name: 'Profesores', icon: FaChalkboardTeacher, path: '/admin/teachers/list' }, // Solo listado
   ];
 
   return (
@@ -108,37 +97,6 @@ export default function AdminLayout() {
                   {item.name}
                 </a>
               ))}
-              
-              {/* Submenú de Profesores para móvil */}
-              <div className="mt-4">
-                <button
-                  onClick={toggleTeachersDropdown}
-                  className="group w-full flex items-center justify-between px-4 py-4 text-base font-semibold rounded-lg text-gray-300 hover:bg-gray-700 hover:text-blue-300 transition-all duration-200"
-                >
-                  <div className="flex items-center">
-                    <FaChalkboardTeacher className="mr-4 h-6 w-6 text-gray-400 group-hover:text-blue-400" />
-                    <span>Profesores</span>
-                  </div>
-                  <span className={`transform transition-transform ${teachersDropdownOpen ? 'rotate-180' : ''}`}>
-                    ▼
-                  </span>
-                </button>
-                
-                {teachersDropdownOpen && (
-                  <div className="ml-8 mt-2 space-y-2">
-                    {teacherSubmenu.map((item) => (
-                      <a
-                        key={item.name}
-                        href={item.path}
-                        className="group flex items-center px-4 py-3 text-sm font-semibold rounded-lg text-gray-300 hover:bg-gray-700 hover:text-blue-300 transition-all duration-200"
-                      >
-                        <item.icon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-400" />
-                        {item.name}
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
             </nav>
           </div>
         </div>
@@ -183,36 +141,6 @@ export default function AdminLayout() {
                   {item.name}
                 </a>
               ))}
-              
-              {/* Submenú de Profesores para desktop */}
-              <div className="mt-4">
-                <div className="group flex items-center justify-between px-5 py-4 text-base font-semibold rounded-lg text-gray-300 hover:bg-gray-700 hover:text-blue-300 transition-all duration-200 cursor-pointer"
-                  onClick={toggleTeachersDropdown}
-                >
-                  <div className="flex items-center">
-                    <FaChalkboardTeacher className="mr-4 h-6 w-6 text-gray-400 group-hover:text-blue-400" />
-                    <span>Profesores</span>
-                  </div>
-                  <span className={`transform transition-transform ${teachersDropdownOpen ? 'rotate-180' : ''}`}>
-                    ▼
-                  </span>
-                </div>
-                
-                {teachersDropdownOpen && (
-                  <div className="ml-8 mt-2 space-y-2">
-                    {teacherSubmenu.map((item) => (
-                      <a
-                        key={item.name}
-                        href={item.path}
-                        className="group flex items-center px-5 py-3 text-sm font-semibold rounded-lg text-gray-300 hover:bg-gray-700 hover:text-blue-300 transition-all duration-200"
-                      >
-                        <item.icon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-400" />
-                        {item.name}
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
             </nav>
           </div>
         </div>
