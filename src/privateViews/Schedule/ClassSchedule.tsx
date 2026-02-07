@@ -14,7 +14,7 @@ type TabType = 'schedule' | 'subject' | 'teacher' | 'preview';
 
 export default function ClassSchedule() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabType>('schedule');
+  const [activeTab, setActiveTab] = useState<TabType>('teacher');
   const [previewParams, setPreviewParams] = useState<{ grade: string; section: string }>({
     grade: '1ro',
     section: 'A'
