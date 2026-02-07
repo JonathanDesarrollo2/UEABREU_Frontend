@@ -21,9 +21,9 @@ export default function ClassSchedule() {
   });
 
   const tabs = [
-    { id: 'schedule' as TabType, label: 'Agregar Horario', icon: <FaCalendarAlt /> },
-    { id: 'subject' as TabType, label: 'Agregar Materia', icon: <FaBook /> },
     { id: 'teacher' as TabType, label: 'Agregar Docente', icon: <FaChalkboardTeacher /> },
+    { id: 'subject' as TabType, label: 'Agregar Materia', icon: <FaBook /> },
+    { id: 'schedule' as TabType, label: 'Agregar Horario', icon: <FaCalendarAlt /> },
     { id: 'preview' as TabType, label: 'Vista Previa', icon: <FaEye /> },
   ];
 
