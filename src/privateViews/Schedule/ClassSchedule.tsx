@@ -41,12 +41,12 @@ export default function ClassSchedule() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'schedule':
-        return <AddScheduleForm onPreviewChange={handlePreviewChange} />;
-      case 'subject':
-        return <AddSubjectForm />;
       case 'teacher':
         return <AddTeacherForm />;
+      case 'subject':
+        return <AddSubjectForm />;
+      case 'schedule':
+        return <AddScheduleForm onPreviewChange={handlePreviewChange} />;
       case 'preview':
         return <SchedulePreview grade={previewParams.grade} section={previewParams.section} />;
       default:
