@@ -1,294 +1,302 @@
-// src/privateViews/TeacherList/EditTeacherView.tsx
-import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { toast } from 'react-toastify';
+// src/pages/teacher/EditTeacherPage.tsx
+import { useNavigate, useLocation } from "react-router-dom";
+import { ActionButtons } from "../../components/ActionButtons";
+import { FormField } from "../../components/FormField";
+import { useUpdateTeacher } from "./hooks/useUpdateTeacher";
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from "react-toastify";
 import { FaChalkboardTeacher } from 'react-icons/fa';
-import { FormField } from '../../components/FormField';
-import type { TypeTeacher } from '../../types/teacher';
-import { getTeacherByIdAPI, updateTeacherAPI } from '../../apis/teacher';
-import AnimatedPage from '../../components/AnimatedPage';
+import AnimatedPage from "../../components/AnimatedPage";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from "@hookform/resolvers/zod";
+import SpinnerGeneral from "../../layouts/components/spinnerGeneral";
+import { teacherUpdateSchema, type TypeTeacherUpdate } from "../../types/teacher";
 
-interface LocationState {
-  teacherData?: TypeTeacher;
-  teacherId?: string;
-}
+const useEditTeacherForm = (teacherData: TypeTeacherUpdate | null) => {
+  return useForm<TypeTeacherUpdate>({
+    resolver: zodResolver(teacherUpdateSchema),
+    mode: 'onChange',
+    defaultValues: teacherData || {
+      id: '',
+      fullName: '',
+      identityCard: '',
+      address: '',
+      phone: '',
+      email: '',
+      specialization: '',
+      degree: '',
+      status: true,
+      comments: '',
+      class: '',
+    },
+  });
+};
 
-export default function EditTeacherView() {
-  const location = useLocation();
+export default function EditTeacherPage() {
   const navigate = useNavigate();
-  const { register, handleSubmit, setValue } = useForm();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
-  const [teacher, setTeacher] = useState<TypeTeacher | null>(null);
-
-  const state = location.state as LocationState;
-  const teacherId = state?.teacherId || state?.teacherData?.id;
+  const location = useLocation();
+  const teacherData = location.state?.teacherData as TypeTeacherUpdate;
+  
+  const [formKey, setFormKey] = useState(0);
+  const { register, handleSubmit, reset, formState: { errors } } = useEditTeacherForm(teacherData);
+  const { mutate, reset: resetMutation, isPending } = useUpdateTeacher();
 
   useEffect(() => {
-    if (!teacherId) {
-      toast.error('No se proporcionó ID del profesor');
-      navigate('/admin/ListTeacher');
-      return;
-    }
-
-    // Si ya tenemos los datos en el estado, los cargamos
-    if (state?.teacherData) {
-      setTeacher(state.teacherData);
-      loadTeacherData(state.teacherData);
+    if (teacherData) {
+      reset(teacherData);
+      setFormKey(prev => prev + 1);
     } else {
-      // Si no, los cargamos desde la API
-      fetchTeacherData(teacherId);
+      toast.error("No se encontraron datos del profesor");
+      navigate('/admin/teachers/list');
     }
-  }, [teacherId, navigate, state]);
+  }, [teacherData, reset, navigate]);
 
-  const fetchTeacherData = async (id: string) => {
-    try {
-      setIsFetching(true);
-      const response = await getTeacherByIdAPI(id);
-      
-      if (response.result && response.content) {
-        setTeacher(response.content);
-        loadTeacherData(response.content);
-      } else {
-        toast.error('No se pudo cargar la información del profesor');
-        navigate('/admin/ListTeacher');
+  const onSubmit = useCallback(
+    (formdata: TypeTeacherUpdate) => {
+      if (!formdata.fullName?.trim()) {
+        toast.error("El nombre completo es requerido");
+        return;
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Error al cargar datos del profesor');
-      navigate('/admin/ListTeacher');
-    } finally {
-      setIsFetching(false);
-    }
-  };
-
-  const loadTeacherData = (teacherData: TypeTeacher) => {
-    // Establecer los valores en el formulario
-    setValue('id', teacherData.id);
-    setValue('fullName', teacherData.fullName || '');
-    setValue('identityCard', teacherData.identityCard || '');
-    setValue('email', teacherData.email || '');
-    setValue('phone', teacherData.phone || '');
-    setValue('address', teacherData.address || '');
-    setValue('specialization', teacherData.specialization || '');
-    setValue('degree', teacherData.degree || '');
-    setValue('status', teacherData.status ? 'true' : 'false');
-    setValue('class', teacherData.class || '');
-    setValue('comments', teacherData.comments || '');
-  };
-
-  const onSubmit = async (data: any) => {
-    if (!teacherId) return;
-
-    setIsLoading(true);
-    try {
-      const updateData = {
-        id: teacherId,
-        fullName: data.fullName,
-        identityCard: data.identityCard,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        specialization: data.specialization || '',
-        degree: data.degree || '',
-        status: data.status === 'true' || data.status === true,
-        class: data.class || '',
-        comments: data.comments || ''
-      };
-
-      const response = await updateTeacherAPI(updateData);
-
-      if (response.result) {
-        toast.success('Profesor actualizado exitosamente');
-        navigate('/admin/ListTeacher');
-      } else {
-        toast.error(response.error?.[0] || 'Error al actualizar profesor');
+      if (!formdata.identityCard?.trim()) {
+        toast.error("La cédula es requerida");
+        return;
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Error al actualizar profesor');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      if (!formdata.email?.trim()) {
+        toast.error("El email es requerido");
+        return;
+      }
+      if (!formdata.address?.trim()) {
+        toast.error("La dirección es requerida");
+        return;
+      }
+      if (!formdata.phone?.trim()) {
+        toast.error("El teléfono es requerido");
+        return;
+      }
 
-  const handleCancel = () => {
-    navigate('/admin/ListTeacher');
-  };
+      mutate(formdata, {
+        onSuccess: (dataAPI) => {
+          if (dataAPI.result) {
+            reset();
+            resetMutation();
+            setFormKey((prev) => prev + 1);
+            toast.success("Profesor actualizado exitosamente");
+            navigate('/admin/teachers/list');
+          }
+        },
+        onError: (error: Error) => {
+          toast.error(error.message || "Error al actualizar profesor");
+        }
+      });
+    },
+    [mutate, reset, resetMutation, navigate]
+  );
 
-  const handleClear = () => {
-    if (teacher) {
-      loadTeacherData(teacher);
-      toast.info('Formulario restablecido a valores originales');
-    }
-  };
+  const handleCancel = useCallback(() => navigate('/admin/teachers/list'), [navigate]);
 
-  if (isFetching) {
-    return (
-      <AnimatedPage>
-        <div className="flex justify-center items-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Cargando información del profesor...</p>
-          </div>
-        </div>
-      </AnimatedPage>
-    );
-  }
+  const handleClear = useCallback(() => {
+    reset(teacherData);
+    setFormKey(prev => prev + 1); 
+    toast.info("Formulario restablecido");
+  }, [reset, teacherData]);
 
-  if (!teacher) {
+  if (!teacherData) {
     return null;
   }
 
   return (
-    <AnimatedPage>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
-            <FaChalkboardTeacher className="mr-3 text-blue-600" />
-            Editar Docente
-          </h1>
-          <p className="text-gray-600">
-            Modifique los datos del docente {teacher.fullName}
-          </p>
-          <div className="mt-2 text-sm text-gray-500">
-            ID: {teacher.id} | Cédula: {teacher.identityCard}
+    <>
+      {isPending && <SpinnerGeneral />}
+      
+      <AnimatedPage className="flex justify-center">
+        <div className="w-full max-w-6xl mx-auto px-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
+              <FaChalkboardTeacher className="mr-3" />
+              Editar Profesor
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Actualice los datos del profesor. Los campos marcados con <span className="text-red-500">*</span> son obligatorios.
+            </p>
           </div>
-        </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <input type="hidden" {...register('id')} />
+          <ActionButtons 
+            onCancel={handleCancel} 
+            onClear={handleClear} 
+          />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Información Personal */}
-              <FormField
-                id="fullName"
-                label="Nombre Completo *"
-                type="text"
-                required={true}
-                register={register}
-                validation={{ required: "El nombre completo es requerido" }}
-              />
+          <form 
+            key={formKey}
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-8"
+          >
+            {/* Sección: Información Personal */}
+            <div className="bg-white rounded-xl shadow-md p-6 max-w-4xl mx-auto">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 text-center border-b pb-3">
+                Información Personal
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      id="fullName" 
+                      label="Nombre Completo *" 
+                      required={true} 
+                      register={register} 
+                      error={errors.fullName} 
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      id="identityCard" 
+                      label="Cédula de Identidad *" 
+                      required={true} 
+                      register={register} 
+                      error={errors.identityCard} 
+                    />
+                  </div>
+                </div>
 
-              <FormField
-                id="identityCard"
-                label="Cédula de Identidad *"
-                type="text"
-                required={true}
-                register={register}
-                validation={{ required: "La cédula es requerida" }}
-              />
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      id="email" 
+                      label="Email *" 
+                      required={true} 
+                      register={register} 
+                      error={errors.email} 
+                      type="email"
+                    />
+                  </div>
+                </div>
 
-              <FormField
-                id="email"
-                label="Email *"
-                type="email"
-                required={true}
-                register={register}
-                validation={{ 
-                  required: "El email es requerido",
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: "Email inválido"
-                  }
-                }}
-              />
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      id="phone" 
+                      label="Teléfono *" 
+                      required={true} 
+                      register={register} 
+                      error={errors.phone} 
+                    />
+                  </div>
+                </div>
 
-              <FormField
-                id="phone"
-                label="Teléfono *"
-                type="text"
-                required={true}
-                register={register}
-                validation={{ required: "El teléfono es requerido" }}
-              />
-
-              <div className="md:col-span-2">
-                <FormField
-                  id="address"
-                  label="Dirección *"
-                  type="text"
-                  required={true}
-                  register={register}
-                  validation={{ required: "La dirección es requerida" }}
-                />
+                <div className="md:col-span-2 flex justify-center">
+                  <div className="w-full max-w-2xl">
+                    <FormField 
+                      id="address" 
+                      label="Dirección *" 
+                      required={true} 
+                      register={register} 
+                      error={errors.address} 
+                    />
+                  </div>
+                </div>
               </div>
-
-              {/* Información Profesional */}
-              <FormField
-                id="specialization"
-                label="Especialización"
-                type="text"
-                required={false}
-                register={register}
-              />
-
-              <FormField
-                id="degree"
-                label="Título/Grado"
-                type="text"
-                required={false}
-                register={register}
-              />
-
-              {/* Estado */}
-              <FormField
-                id="status"
-                label="Estado"
-                type="boolean"
-                required={false}
-                register={register}
-              />
-
-              <FormField
-                id="class"
-                label="Clase/Grupo"
-                type="text"
-                required={false}
-                register={register}
-              />
             </div>
 
-            {/* Comentarios */}
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Comentarios
-              </label>
-              <textarea
-                {...register('comments')}
-                className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
-                rows={3}
-                placeholder="Observaciones sobre el docente..."
-              />
+            {/* Sección: Información Profesional */}
+            <div className="bg-white rounded-xl shadow-md p-6 max-w-4xl mx-auto">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 text-center border-b pb-3">
+                Información Profesional
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      id="specialization" 
+                      label="Especialización" 
+                      register={register} 
+                      error={errors.specialization} 
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      id="degree" 
+                      label="Título Académico" 
+                      register={register} 
+                      error={errors.degree} 
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      type="boolean"
+                      id="status" 
+                      label="Estado *" 
+                      required={true} 
+                      register={register} 
+                      error={errors.status}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <FormField 
+                      id="class" 
+                      label="Clase/Grupo" 
+                      register={register} 
+                      error={errors.class} 
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Botones de acción */}
-            <div className="flex justify-end space-x-4 pt-6">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-6 py-2 border-2 border-red-500 text-red-500 font-semibold rounded-lg hover:bg-red-50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleClear}
-                className="px-6 py-2 border-2 border-gray-500 text-gray-500 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Limpiar
-              </button>
+            {/* Sección: Información Adicional */}
+            <div className="bg-white rounded-xl shadow-md p-6 max-w-4xl mx-auto">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 text-center border-b pb-3">
+                Información Adicional
+              </h3>
+              <div className="grid grid-cols-1 gap-6">
+                <div className="flex justify-center">
+                  <div className="w-full max-w-2xl">
+                    <div className="flex flex-col">
+                      <label className="text-gray-700 font-bold mb-1">
+                        Comentarios
+                      </label>
+                      <textarea
+                        {...register('comments')}
+                        className={`w-full px-3 py-2 border-2 border-solid ${
+                          errors.comments ? "border-red-500" : "border-gray-300"
+                        } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+                        rows={4}
+                        placeholder="Notas adicionales sobre el profesor..."
+                      />
+                      {errors.comments && (
+                        <span className="text-red-500 text-sm mt-1">
+                          {errors.comments.message}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Botón de envío */}
+            <div className="flex justify-center pt-4">
               <button
                 type="submit"
-                disabled={isLoading}
-                className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={isPending}
+                className="px-10 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
               >
-                {isLoading ? 'Actualizando...' : 'Actualizar Docente'}
+                {isPending ? 'Actualizando...' : 'Actualizar Profesor'}
               </button>
             </div>
           </form>
         </div>
-      </div>
-    </AnimatedPage>
+      </AnimatedPage>
+    </>
   );
 }

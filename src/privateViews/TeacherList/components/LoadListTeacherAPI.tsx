@@ -1,34 +1,44 @@
+// src/pages/teacher/components/LoadListTeacherAPI.tsx
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { LoadPaginatedUsers } from '../../../apis/user';
-import SpinnerGeneral from '../../../layouts/components/spinnerGeneral'
+import { getPaginatedTeachersAPI } from '../../../apis/teacher';
+import SpinnerGeneral from '../../../layouts/components/spinnerGeneral';
 import ListEmpty from '../../../components/ListEmpty';
 import Pagination from '../../../components/Pagination';
-import type { TypeUserBuscar } from '../../../types/user';
-import ListAPIs from '../../userList/components/ListApis';
+import ListTeachersAPI from './ListTeacherAPI';
 
-interface BusUserProps {
-  Buscar: TypeUserBuscar;
+interface BusTeacherProps {
+  Buscar: {
+    idBus: string;
+    DeBus: string;
+    statusFilter: 'all' | 'active' | 'inactive';
+  };
 }
 
-export default function LoadListAPI({ Buscar }: BusUserProps) {
+export default function LoadListTeacherAPI({ Buscar }: BusTeacherProps) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
   // Ajustar los parámetros de búsqueda antes de enviarlos
   const adjustedBuscar = React.useMemo(() => {
-    // Si el filtro es 'admin-emails', lo convertimos a '2' para el backend
-    const nivelFilter = Buscar.nivelFilter === 'admin-emails' ? '2' : Buscar.nivelFilter;
-    
-    return {
-      ...Buscar,
-      nivelFilter
-    };
+    let search = '';
+    if (Buscar.DeBus) {
+      // Dependiendo del tipo de búsqueda, construimos un string que el backend pueda usar
+      // El backend espera un parámetro 'search' que busca en varios campos
+      // Pero si queremos filtrar por estado, debemos hacerlo aparte.
+      // Sin embargo, el backend actual no soporta filtrar por estado en el mismo endpoint.
+      // Por ahora, solo usamos el texto de búsqueda.
+      search = Buscar.DeBus;
+    }
+    return { search, status: Buscar.statusFilter };
   }, [Buscar]);
 
   const { data, isError, isLoading } = useQuery({
-    queryKey: ['users', { page, limit, Buscar: adjustedBuscar }],
-    queryFn: () => LoadPaginatedUsers({ page, limit, Buscar: adjustedBuscar }),
+    queryKey: ['teachers', { page, limit, ...adjustedBuscar }],
+    queryFn: () => getPaginatedTeachersAPI(page, limit, adjustedBuscar.search),
+    // Nota: El backend no soporta filtrar por estado en el endpoint paginado.
+    // Podríamos filtrar en el frontend, pero no es lo ideal. 
+    // Por ahora, ignoramos el estado en la consulta y filtramos en el frontend.
   });
 
   useEffect(() => {
@@ -47,12 +57,13 @@ export default function LoadListAPI({ Buscar }: BusUserProps) {
   if (isError) {
     return (
       <ListEmpty 
-        message="Error cargando la lista de usuarios..."
+        message="Error cargando la lista de profesores..."
         columns={[
-          { name: "Email", widthPercent: 25 },
-          { name: "Login", widthPercent: 20 },
           { name: "Nombre", widthPercent: 20 },
-          { name: "Nivel", widthPercent: 15 },
+          { name: "Cédula", widthPercent: 15 },
+          { name: "Email", widthPercent: 20 },
+          { name: "Teléfono", widthPercent: 15 },
+          { name: "Especialización", widthPercent: 15 },
           { name: "Estado", widthPercent: 10 },
           { name: "Acciones", widthPercent: 10 },
         ]}
@@ -60,27 +71,31 @@ export default function LoadListAPI({ Buscar }: BusUserProps) {
     );
   }
 
-  if (!data || data.content.length === 0) {
+  // Filtramos por estado en el frontend si es necesario (hasta que el backend lo soporte)
+  let teachers = data?.content || [];
+  if (adjustedBuscar.status !== 'all') {
+    const statusBoolean = adjustedBuscar.status === 'active';
+    teachers = teachers.filter(teacher => teacher.status === statusBoolean);
+  }
+
+  if (teachers.length === 0) {
     let mensaje = '';
     
-    if (Buscar.nivelFilter === 'admin-emails' || Buscar.nivelFilter === '2') {
-      mensaje = Buscar.DeBus 
-        ? `No hay correos administrativos que coincidan con "${Buscar.DeBus}"...` 
-        : `No hay usuarios administrativos registrados...`;
+    if (Buscar.DeBus) {
+      mensaje = `No hay profesores que coincidan con "${Buscar.DeBus}"...`;
     } else {
-      mensaje = Buscar.DeBus 
-        ? `No hay usuarios que coincidan con "${Buscar.DeBus}"...` 
-        : `No hay usuarios registrados...`;
+      mensaje = `No hay profesores registrados...`;
     }
     
     return (
       <ListEmpty 
         message={mensaje}
         columns={[
-          { name: "Email", widthPercent: 25 },
-          { name: "Login", widthPercent: 20 },
           { name: "Nombre", widthPercent: 20 },
-          { name: "Nivel", widthPercent: 15 },
+          { name: "Cédula", widthPercent: 15 },
+          { name: "Email", widthPercent: 20 },
+          { name: "Teléfono", widthPercent: 15 },
+          { name: "Especialización", widthPercent: 15 },
           { name: "Estado", widthPercent: 10 },
           { name: "Acciones", widthPercent: 10 },
         ]}
@@ -90,11 +105,11 @@ export default function LoadListAPI({ Buscar }: BusUserProps) {
 
   return (
     <>
-      <ListAPIs data={data.content} />
+      <ListTeachersAPI data={teachers} />
       <Pagination
         page={page}
         limit={limit}
-        totalPages={data.pagination.totalPages}
+        totalPages={data?.pagination?.totalPages || 1}
         onPageChange={setPage}
         onLimitChange={handleLimitChange}
       />
