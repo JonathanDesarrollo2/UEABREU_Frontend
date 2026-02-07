@@ -24,6 +24,7 @@ import ScheduleView from './privateViews/Schedule/ClassSchedule'
 import AdminListSubjectsBackend from './privateViews/ListSubject/AdminLIstSubjectBackend'
 import AdminListStudentsBackend from './privateViews/AdminListStudentBackend/AdminListStudentBackend'
 import AdminListTeachersBackend from './privateViews/TeacherList/AdminTeacherListBackend'
+import EditTeacherView from './privateViews/TeacherEdit/EditTeacherView'
 
 function ListRoutes() {
   return (
@@ -50,20 +51,21 @@ function ListRoutes() {
           <Route path="class-schedule" element={<ClassSchedule />} /> {/* Nueva ruta */}
         </Route>
           
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="users" element={<LayoutUsers />}>
-            <Route index element={<UserDashboard />} />
-            <Route path="insert" element={<InsertUser />} />
-            <Route path="list" element={<AdminListUsersBackend />} />
-          </Route>
-          <Route path="Schedule" element={<ScheduleView />} />
-          <Route path="Balance" element={<ManualBalance />} />
-          <Route path="ListSubjects" element={<AdminListSubjectsBackend />} />
-          <Route path="listStudents" element={<AdminListStudentsBackend />} />
-          <Route path="ListTeacher" element={<AdminListTeachersBackend />} />
-        
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="users" element={<LayoutUsers />}>
+          <Route index element={<UserDashboard />} />
+          <Route path="insert" element={<InsertUser />} />
+          <Route path="list" element={<AdminListUsersBackend />} />
         </Route>
+        <Route path="Schedule" element={<ScheduleView />} />
+        <Route path="Balance" element={<ManualBalance />} />
+        <Route path="ListSubjects" element={<AdminListSubjectsBackend />} />
+        <Route path="listStudents" element={<AdminListStudentsBackend />} />
+        <Route path="ListTeacher" element={<AdminListTeachersBackend />} />
+        {/* ✅ NUEVA RUTA PARA EDITAR PROFESOR */}
+        <Route path="teachers/edit" element={<EditTeacherView />} />
+      </Route>
       </Route>
     </Routes>
   )
