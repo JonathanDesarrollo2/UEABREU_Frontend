@@ -189,7 +189,7 @@ export const FormField = React.memo(
     );
   }
 
-  if (type === 'select') {
+if (type === 'select') {
   return (
     <div className="flex flex-col mb-2">
       <label htmlFor={id} className="text-gray-700 font-bold mb-1">
@@ -201,11 +201,8 @@ export const FormField = React.memo(
         {...register(id, {
           required: required ? "Este campo es requerido" : false,
           ...validation,
-          // ✅ CONVIERTE EL STRING A NÚMERO
-          setValueAs: (value) => {
-            if (value === "" || value === undefined || value === null) return undefined;
-            return Number(value);
-          }
+          // ✅ NO convertir a número, dejar el string original
+          setValueAs: (value) => value === "" ? undefined : value
         })}
         className={`w-full px-3 py-2 border-2 border-solid ${
           error ? "border-red-500" : "border-gray-300"
