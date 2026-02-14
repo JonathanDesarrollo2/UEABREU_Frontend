@@ -1,12 +1,12 @@
 // src/views/admin/users/components/LoadListAPI.tsx
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { LoadPaginatedUsers } from '../../../apis/user';
 import SpinnerGeneral from '../../../layouts/components/spinnerGeneral'
 import ListEmpty from '../../../components/ListEmpty';
 import Pagination from '../../../components/Pagination';
 import type { TypeUserBuscar } from '../../../types/user';
 import ListAPIs from './ListApis';
+import { LoadPaginatedUsers } from '../../../apis/user';
 
 interface BusUserProps {
   Buscar: TypeUserBuscar;
