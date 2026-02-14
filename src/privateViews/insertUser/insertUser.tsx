@@ -3,14 +3,14 @@ import { useCallback, useState } from 'react';
 import { toast } from "react-toastify";
 import { FaUserPlus, FaMoneyBillWave, FaGraduationCap } from 'react-icons/fa';
 import { useFieldArray } from 'react-hook-form';
-import type { TypeLogin_insert } from "./schema/schema";
 import { CollapsibleSection } from "../../components/CollapsibleSection";
 import { FormField } from "../../components/FormField";
-import { useInsertUserForm } from "./hook/useUserForm";
-import { useAddUser } from "./hook/useAddUser";
+import type { TypeLogin_insert } from "./schema/schema";               // ← importación correcta
 import SpinnerGeneral from "../../layouts/components/spinnerGeneral";
 import AnimatedPage from "../../components/AnimatedPage";
 import { ActionButtons } from "../../components/ActionButtons";
+import { useInsertUserForm } from "./hook/useUserForm";                 // ← hook corregido
+import { useAddUser } from "./hook/useAddUser";
 
 // Opciones para el estado del estudiante
 const studentStatusOptions = [

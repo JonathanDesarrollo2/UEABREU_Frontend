@@ -61,36 +61,3 @@ export const loginInsertSchema = z.object({
 
 // Tipo inferido del esquema
 export type TypeLogin_insert = z.infer<typeof loginInsertSchema>;
-
-// Tipos para respuestas de API (mantener los que ya tenías)
-export interface TypeApiResponseGeneric {
-  result: boolean;
-  content: string[];
-  error: string[];
-}
-
-export interface TypeApiResponseToken {
-  result: boolean;
-  content: string; // token
-  error: string[];
-}
-
-export interface TypeApiResponseLoginActive {
-  result: boolean;
-  content: {
-    sesionUser?: string;
-    sesionEmail?: string;
-    userStatus?: boolean;
-    nivel?: number;
-    studentInfo?: {
-      name?: string;
-      status?: boolean;
-    } | null;
-  };
-  error: string[];
-}
-
-export interface typeLogin_in {
-  usermail: string;
-  userpass: string;
-}
