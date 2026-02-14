@@ -1,8 +1,8 @@
-// src/hooks/user/useDeleteUser.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { RemoveUser } from "../../../apis/user";
 import type { TypeUser_delete } from "../../../types/user";
+import type { TypeApiResponseGeneric } from "../../../types/login";
 
 export const useDeleteUser = () => {
   const queryClient = useQueryClient();
@@ -12,7 +12,7 @@ export const useDeleteUser = () => {
     onError: (error: Error) => {
       toast.error(error.message || "Error al eliminar usuario");
     },
-    onSuccess: (dataAPI) => {
+    onSuccess: (dataAPI: TypeApiResponseGeneric) => {
       if (dataAPI.result) {
         toast.success(dataAPI.content[0]);
         queryClient.invalidateQueries({ queryKey: ['users'] });

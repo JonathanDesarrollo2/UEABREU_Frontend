@@ -7,6 +7,7 @@ import type {
   TypeApiResponseGeneric, 
   TypeLogin_insert 
 } from "../types/login";
+import type { TypeUser_delete } from "../types/user";
 
 export async function userActiveAPI(): Promise<TypeApiResponseLoginActive> {
     try {
@@ -57,4 +58,21 @@ export async function AddUser(formdata: TypeLogin_insert): Promise<TypeApiRespon
         }
         throw new Error(mensaje);
     }
+}
+
+export async function RemoveUser(formdata: TypeUser_delete): Promise<TypeApiResponseGeneric> {
+  try {
+    const { data } = await api.post<TypeApiResponseGeneric>('/private/user/removelogin', formdata);
+    return data;
+  } catch (error) {
+    let mensaje = 'Error Desconocido';
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) {
+        mensaje = errores.join(', ');
+      }
+      throw new Error(mensaje);
+    }
+    throw new Error(mensaje);
+  }
 }
