@@ -1,9 +1,8 @@
-// hooks/useUserForm.ts
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { loginInsertSchema, type TypeLogin_insert } from "../../../types/login";
+import { loginInsertSchema, type TypeLogin_insert } from "../schema/schema";
 
-export const useUserForm = () => {
+export const useInsertUserForm = () => {
   return useForm<TypeLogin_insert>({
     resolver: zodResolver(loginInsertSchema),
     mode: 'onChange',
@@ -15,6 +14,7 @@ export const useUserForm = () => {
       userrepass: '',
       nivel: 1,
       userstatus: true,
+      studentsData: [], // importante para useFieldArray
     },
   });
 };

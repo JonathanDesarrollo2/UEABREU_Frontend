@@ -1,18 +1,18 @@
 import { useNavigate } from "react-router-dom";
-import { ActionButtons } from "../../components/ActionButtons";
-import { CollapsibleSection } from "../../components/CollapsibleSection";
-import { FormField } from "../../components/FormField";
-import { useAddUser } from "./hook/useAddUser";
-import { useCallback, useState, useEffect } from 'react';
-import { loginInsertSchema, type TypeLogin_insert } from "../../types/login";
+import { useCallback, useState } from 'react';
 import { toast } from "react-toastify";
 import { FaUserPlus, FaMoneyBillWave, FaGraduationCap } from 'react-icons/fa';
-import AnimatedPage from "../../components/AnimatedPage";
-import { useFieldArray, useForm } from 'react-hook-form';
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useFieldArray } from 'react-hook-form';
+import type { TypeLogin_insert } from "./schema/schema";
+import { CollapsibleSection } from "../../components/CollapsibleSection";
+import { FormField } from "../../components/FormField";
+import { useInsertUserForm } from "./hook/useUserForm";
+import { useAddUser } from "./hook/useAddUser";
 import SpinnerGeneral from "../../layouts/components/spinnerGeneral";
+import AnimatedPage from "../../components/AnimatedPage";
+import { ActionButtons } from "../../components/ActionButtons";
 
-// Definir opciones para el estado del estudiante según el modelo - CORREGIDO para FormField
+// Opciones para el estado del estudiante
 const studentStatusOptions = [
   { value: 'pendiente', text: 'Pendiente' },
   { value: 'regular', text: 'Regular' },
@@ -21,56 +21,7 @@ const studentStatusOptions = [
   { value: 'inactivo', text: 'Inactivo' }
 ];
 
-// Tipo local extendido para el formulario
-type ExtendedUserInsert = TypeLogin_insert & {
-  representativeData?: {
-    fullName: string;
-    identityCard: string;
-    address: string;
-    phone: string;
-    relationship: string;
-    parentName?: string;
-    parentIdentityCard?: string;
-    parentAddress?: string;
-    parentPhone?: string;
-    initialBalance?: number;
-  };
-  studentsData?: Array<{
-    fullName: string;
-    identityCard: string;
-    birthDate: string;
-    state: string;
-    zone: string;
-    addressDescription: string;
-    phone?: string;
-    nationality: string;
-    birthCountry: string;
-    hasAllergies: boolean;
-    allergiesDescription?: string;
-    hasDiseases: boolean;
-    diseasesDescription?: string;
-    emergencyContact: string;
-    emergencyPhone: string;
-    status?: 'pendiente' | 'regular' | 'repitiente' | 'condicionado' | 'inactivo';
-  }>;
-};
-
-const useInsertUserForm = () => {
-  return useForm<ExtendedUserInsert>({
-    resolver: zodResolver(loginInsertSchema),
-    mode: 'onChange',
-    defaultValues: {
-      usermail: '',
-      userlogin: '',
-      username: '',
-      userpass: '',
-      userrepass: '',
-      nivel: 1,
-      userstatus: true,
-    },
-  });
-};
-
+// Componente para el formulario del representante
 const RepresentativeForm = ({ register, errors }: any) => {
   return (
     <CollapsibleSection title="Datos del Representante">
@@ -167,6 +118,7 @@ const RepresentativeForm = ({ register, errors }: any) => {
   );
 };
 
+// Componente para el listado de estudiantes
 const StudentsForm = ({ control, register, errors }: any) => {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -413,87 +365,16 @@ const StudentsForm = ({ control, register, errors }: any) => {
 export default function InsertUser() {
   const navigate = useNavigate();
   const [formKey, setFormKey] = useState(0);
-  const { register, handleSubmit, reset, control, setValue, watch, formState: { errors } } = useInsertUserForm();
+  const { register, handleSubmit, reset, control, watch, formState: { errors } } = useInsertUserForm();
   const { mutate, reset: resetMutation, isPending } = useAddUser();
 
   const nivel = watch('nivel');
   const isRepresentative = nivel === 1;
-
-  useEffect(() => {
-    if (!isRepresentative) {
-      setValue('representativeData' as any, undefined);
-      setValue('studentsData' as any, []);
-    }
-  }, [isRepresentative, setValue]);
+  const students = watch('studentsData') || [];
 
   const onSubmit = useCallback(
-    (formdata: ExtendedUserInsert) => {
-      if (!formdata.usermail?.trim()) {
-        toast.error("El email es requerido");
-        return;
-      }
-      if (!formdata.userlogin?.trim()) {
-        toast.error("El Nombre de Usuario es requerido.");
-        return;
-      }
-      if (!formdata.userpass?.trim()) {
-        toast.error("La contraseña es requerida.");
-        return;
-      }
-      if (!formdata.userrepass?.trim()) {
-        toast.error("La confirmación contraseña es requerida.");
-        return;
-      }
-      if (formdata.userpass?.trim() !== formdata.userrepass?.trim()) {
-        toast.error("Las contraseñas y Confirmación, no coinciden.");
-        return;
-      }
-
-      if (isRepresentative) {
-        if (!formdata.representativeData?.fullName?.trim() || 
-            !formdata.representativeData?.identityCard?.trim()) {
-          toast.error("Los datos del representante son requeridos para nivel 1");
-          return;
-        }
-        
-        if (!formdata.studentsData || formdata.studentsData.length === 0) {
-          toast.error("Debe agregar al menos un estudiante para el representante");
-          return;
-        }
-        
-        for (let i = 0; i < formdata.studentsData.length; i++) {
-          const student = formdata.studentsData[i];
-          if (!student.fullName?.trim() || !student.identityCard?.trim()) {
-            toast.error(`El estudiante #${i + 1} debe tener nombre y cédula`);
-            return;
-          }
-        }
-      }
-
-      const dataToSend: any = {
-        usermail: formdata.usermail,
-        userlogin: formdata.userlogin,
-        username: formdata.username,
-        userpass: formdata.userpass,
-        userrepass: formdata.userrepass,
-        nivel: formdata.nivel,
-        userstatus: formdata.userstatus,
-      };
-      if (isRepresentative && formdata.representativeData) {
-        dataToSend.representativeData = {
-          ...formdata.representativeData,
-          initialBalance: formdata.representativeData.initialBalance || 0,
-        };
-        // CORRECCIÓN: Usar optional chaining y verificar que studentsData existe
-        if (formdata.studentsData) {
-          dataToSend.studentsData = formdata.studentsData.map(student => ({
-            ...student,
-            status: student.status || 'pendiente' // Asegurar que siempre tenga estado
-          }));
-        }
-      }
-
-      mutate(dataToSend, {
+    (formdata: TypeLogin_insert) => {
+      mutate(formdata, {
         onSuccess: (dataAPI) => {
           if (dataAPI.result) {
             reset();
@@ -507,7 +388,7 @@ export default function InsertUser() {
         }
       });
     },
-    [mutate, reset, resetMutation, isRepresentative]
+    [mutate, reset, resetMutation]
   );
 
   const handleCancel = useCallback(() => navigate('/admin/users/list'), [navigate]);
@@ -658,12 +539,12 @@ export default function InsertUser() {
                   <div className="text-center">
                     <p className="text-gray-700">
                       Se registrará un <strong className="text-blue-600">representante</strong> con 
-                      <span className="font-bold mx-1">{(watch('studentsData' as any)?.length || 0)}</span>
+                      <span className="font-bold mx-1">{students.length}</span>
                       estudiante(s) asociado(s).
                     </p>
-                    {watch('representativeData.initialBalance' as any) !== 0 && (
+                    {watch('representativeData.initialBalance') !== 0 && (
                       <p className="text-gray-700 mt-2">
-                        <strong>Saldo inicial:</strong> ${watch('representativeData.initialBalance' as any) || 0}
+                        <strong>Saldo inicial:</strong> ${watch('representativeData.initialBalance') || 0}
                       </p>
                     )}
                   </div>

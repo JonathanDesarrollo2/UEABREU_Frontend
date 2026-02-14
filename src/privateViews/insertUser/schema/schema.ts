@@ -12,7 +12,7 @@ const representativeDataSchema = z.object({
   parentAddress: z.string().optional(),
   parentPhone: z.string().optional(),
   initialBalance: z.number().default(0).optional(),
-}).optional();
+});
 
 // Esquema para datos del estudiante
 const studentDataSchema = z.object({
@@ -31,31 +31,66 @@ const studentDataSchema = z.object({
   diseasesDescription: z.string().optional(),
   emergencyContact: z.string().min(1, "Contacto de emergencia es requerido"),
   emergencyPhone: z.string().min(1, "Teléfono de emergencia es requerido"),
+  status: z.enum(['pendiente', 'regular', 'repitiente', 'condicionado', 'inactivo']).default('pendiente').optional(),
 });
 
-// Esquema extendido para inserción de usuario
-export const loginInsertSchemaExtended = z.object({
-    usermail: z.string().email("Email inválido"),
-    userlogin: z.string().min(4, "El login debe tener al menos 4 caracteres"),
-    username: z.string().optional().or(z.literal('')),
-    userpass: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
-    userrepass: z.string().min(6, "La confirmación es requerida"),
-    nivel: z.number().min(1).default(1),
-    userstatus: z.boolean().default(true),
-    representativeData: representativeDataSchema,
-    studentsData: z.array(studentDataSchema).optional(),
+// Esquema principal para inserción de usuario
+export const loginInsertSchema = z.object({
+  usermail: z.string().email("Email inválido"),
+  userlogin: z.string().min(4, "El login debe tener al menos 4 caracteres"),
+  username: z.string().optional().or(z.literal('')),
+  userpass: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+  userrepass: z.string().min(6, "La confirmación es requerida"),
+  nivel: z.number().min(1).default(1),
+  userstatus: z.boolean().default(true),
+  representativeData: representativeDataSchema.optional(),
+  studentsData: z.array(studentDataSchema).default([]),
 }).refine((data) => data.userpass === data.userrepass, {
-    message: "Las contraseñas no coinciden",
-    path: ["userrepass"],
+  message: "Las contraseñas no coinciden",
+  path: ["userrepass"],
 }).refine((data) => {
-    // Si el nivel es 1 (representante), representativeData es requerido
-    if (data.nivel === 1) {
-        return data.representativeData !== undefined;
-    }
-    return true;
+  // Si el nivel es 1 (representante), representativeData es obligatorio
+  if (data.nivel === 1) {
+    return data.representativeData !== undefined;
+  }
+  return true;
 }, {
-    message: "Los datos del representante son requeridos para nivel 1",
-    path: ["representativeData"],
+  message: "Los datos del representante son requeridos para nivel 1",
+  path: ["representativeData"],
 });
 
-export type typeLogin_insertExtended = z.infer<typeof loginInsertSchemaExtended>;
+// Tipo inferido del esquema
+export type TypeLogin_insert = z.infer<typeof loginInsertSchema>;
+
+// Tipos para respuestas de API (mantener los que ya tenías)
+export interface TypeApiResponseGeneric {
+  result: boolean;
+  content: string[];
+  error: string[];
+}
+
+export interface TypeApiResponseToken {
+  result: boolean;
+  content: string; // token
+  error: string[];
+}
+
+export interface TypeApiResponseLoginActive {
+  result: boolean;
+  content: {
+    sesionUser?: string;
+    sesionEmail?: string;
+    userStatus?: boolean;
+    nivel?: number;
+    studentInfo?: {
+      name?: string;
+      status?: boolean;
+    } | null;
+  };
+  error: string[];
+}
+
+export interface typeLogin_in {
+  usermail: string;
+  userpass: string;
+}
