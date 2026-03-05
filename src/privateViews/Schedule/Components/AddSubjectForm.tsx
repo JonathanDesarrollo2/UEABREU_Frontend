@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { getActiveTeachersAPI } from '../../../apis/teacher';
 import { addSubjectAPI } from '../../../apis/schedule';
 
-// Opciones para el tipo de materia
+// Opciones para el tipo de materia (ahora PLAN DE ESTUDIO)
 const SUBJECT_TYPE_OPTIONS = [
   { value: 'ordinaria', text: 'Ordinaria' },
   { value: 'regular', text: 'Regular' },
@@ -191,10 +191,10 @@ export default function AddSubjectForm() {
             )}
           </div>
 
-          {/* Horas de Laboratorio */}
+          {/* Horas Prácticas (antes Horas de Laboratorio) */}
           <div className="flex flex-col">
             <label htmlFor="labHours" className="text-gray-700 font-bold mb-1">
-              Horas de Laboratorio
+              Horas Prácticas
             </label>
             <input
               id="labHours"
@@ -215,10 +215,10 @@ export default function AddSubjectForm() {
             )}
           </div>
 
-          {/* Tipo de Materia */}
+          {/* Plan de Estudio (antes Tipo de Materia) */}
           <div className="flex flex-col">
             <label htmlFor="subjectType" className="text-gray-700 font-bold mb-1">
-              Tipo de Materia
+              Plan de Estudio
             </label>
             <select
               id="subjectType"
@@ -261,17 +261,17 @@ export default function AddSubjectForm() {
             )}
           </div>
 
-          {/* Clase/Grupo */}
+          {/* Ambiente (antes Clase/Grupo) */}
           <div className="flex flex-col">
             <label htmlFor="class" className="text-gray-700 font-bold mb-1">
-              Clase/Grupo
+              Ambiente
             </label>
             <input
               id="class"
               type="text"
               {...register('class')}
               className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
-              placeholder="Ej: Actual, Regular, etc."
+              placeholder="Ej: A-101, Laboratorio 1, etc."
             />
           </div>
         </div>
