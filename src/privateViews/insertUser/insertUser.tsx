@@ -5,11 +5,11 @@ import { FaUserPlus, FaMoneyBillWave, FaGraduationCap } from 'react-icons/fa';
 import { useFieldArray } from 'react-hook-form';
 import { CollapsibleSection } from "../../components/CollapsibleSection";
 import { FormField } from "../../components/FormField";
-import type { TypeLogin_insert } from "./schema/schema";
+import type { TypeLogin_insert } from "./schema/schema";               // ← importación correcta
 import SpinnerGeneral from "../../layouts/components/spinnerGeneral";
 import AnimatedPage from "../../components/AnimatedPage";
 import { ActionButtons } from "../../components/ActionButtons";
-import { useInsertUserForm } from "./hook/useUserForm";
+import { useInsertUserForm } from "./hook/useUserForm";                 // ← hook corregido
 import { useAddUser } from "./hook/useAddUser";
 
 // Opciones para el estado del estudiante
@@ -19,15 +19,6 @@ const studentStatusOptions = [
   { value: 'repitiente', text: 'Repitiente' },
   { value: 'condicionado', text: 'Condicionado' },
   { value: 'inactivo', text: 'Inactivo' }
-];
-
-// ✅ Nuevas opciones para el campo "Ambiente" (antes Clase/Grupo)
-const ambienteOptions = [
-  { value: 'ordinario', text: 'Ordinario' },
-  { value: 'contratado', text: 'Contratado' },
-  { value: 'temporal', text: 'Temporal' },
-  { value: 'suplente', text: 'Suplente' },
-  { value: 'pasante', text: 'Pasante' }
 ];
 
 // Componente para el formulario del representante
@@ -151,9 +142,7 @@ const StudentsForm = ({ control, register, errors }: any) => {
       diseasesDescription: '',
       emergencyContact: '',
       emergencyPhone: '',
-      status: 'pendiente',
-      // ✅ Nuevo campo ambiente con valor por defecto
-      ambiente: 'ordinario'
+      status: 'pendiente'
     });
   };
 
@@ -227,17 +216,6 @@ const StudentsForm = ({ control, register, errors }: any) => {
                     error={errors?.studentsData?.[index]?.status}
                     options={studentStatusOptions}
                     defaultValue="pendiente"
-                  />
-                  {/* ✅ Nuevo campo Ambiente (antes Clase/Grupo) */}
-                  <FormField 
-                    type="select"
-                    id={`studentsData.${index}.ambiente`} 
-                    label="Ambiente *" 
-                    required={true}
-                    register={register} 
-                    error={errors?.studentsData?.[index]?.ambiente}
-                    options={ambienteOptions}
-                    defaultValue="ordinario"
                   />
                 </div>
 
