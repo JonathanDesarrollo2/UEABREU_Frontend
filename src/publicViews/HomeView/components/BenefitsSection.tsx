@@ -31,7 +31,7 @@ export const BenefitsSection: React.FC = () => {
   ];
 
   return (
-    <section className="w-screen relative left-1/2 right-1/2 -mx-[50vw] bg-gradient-to-br from-blue-800 to-blue-900 py-16">
+    <section id="ventajas" className="w-screen relative left-1/2 right-1/2 -mx-[50vw] bg-gradient-to-br from-blue-800 to-blue-900 py-16 scroll-mt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ y: 30, opacity: 0 }}

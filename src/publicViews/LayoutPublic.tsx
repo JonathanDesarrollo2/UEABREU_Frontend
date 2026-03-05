@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FiMenu, FiX, FiUser, FiLogIn, FiMail, FiPhone, FiMapPin, FiInstagram, FiArrowRight, FiInfo } from 'react-icons/fi';
@@ -10,7 +10,6 @@ const LayoutPublic = () => {
   const location = useLocation();
 
   useEffect(() => {
-    console.log(import.meta.env.VITE_PRU);
     const handleScroll = () => {
       const isScrolled = window.scrollY > 10;
       setScrolled(isScrolled);
@@ -37,16 +36,13 @@ const LayoutPublic = () => {
   const handleLinkClick = (path: string) => {
     setIsMenuOpen(false);
     
-    // Si es un hash link (ancla), no hacer scroll al top
-    if (path.startsWith('#')) {
-      return;
+    // Si es el enlace de Inicio y ya estamos en la página principal, hacer scroll al top
+    if (path === '/' && location.pathname === '/') {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
     }
-    
-    // Para rutas normales, hacer scroll al top
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
   };
 
   // Redes sociales con sus enlaces específicos
@@ -379,7 +375,7 @@ const LayoutPublic = () => {
         </div>
       </footer>
     </div>
-  )
-}
+  );
+};
 
 export default LayoutPublic;

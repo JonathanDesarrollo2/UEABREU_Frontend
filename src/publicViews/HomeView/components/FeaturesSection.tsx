@@ -9,7 +9,7 @@ export const FeaturesSection: React.FC = () => {
     {
       name: "Carlos Mescia",
       position: "Director",
-      subject: "Sociales", // Materia añadida
+      subject: "Sociales",
       image: "../../../../Eq1.png"
     },
     {
@@ -21,7 +21,7 @@ export const FeaturesSection: React.FC = () => {
     {
       name: "Leonardo Yépez",
       position: "Administrador",
-      subject: "Administración", // No aparece en Excel, se asigna por coherencia
+      subject: "Administración",
       image: "../../../../Eq3.png"
     },
     {
@@ -99,7 +99,7 @@ export const FeaturesSection: React.FC = () => {
   };
 
   return (
-    <section className="py-16 bg-white">
+    <section id="docentes" className="py-16 bg-white scroll-mt-24">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ y: 30, opacity: 0 }}
@@ -147,7 +147,6 @@ export const FeaturesSection: React.FC = () => {
                     <p className="text-blue-700 font-semibold">
                       {teachers[currentIndex].position}
                     </p>
-                    {/* Materia añadida debajo del nombre */}
                     <p className="text-sm text-slate-600 mt-1">
                       {teachers[currentIndex].subject}
                     </p>

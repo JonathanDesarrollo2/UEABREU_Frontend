@@ -27,7 +27,7 @@ export const ServicesSection: React.FC = () => {
   ];
 
   return (
-    <section className="py-16 bg-white">
+    <section id="servicios" className="py-16 bg-white scroll-mt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ y: 30, opacity: 0 }}

@@ -167,7 +167,7 @@ export const JoinUsView: React.FC = () => {
           className="text-center mb-16"
         >
           <h2 className="text-3xl font-bold text-slate-800 mb-4">
-            Comuníquese con Nosotros
+            Comunícate con Nosotros
           </h2>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
             Estamos aquí para responder todas sus preguntas y guiarle en el proceso de admisión.
