@@ -15,7 +15,7 @@ export const FAQSection: React.FC = () => {
     {
       id: 1,
       question: "¿Qué niveles educativos ofrecen?",
-      answer: "Ofrecemos educación desde primaria hasta bachillerato, con una formación integral basada en valores y excelencia académica."
+      answer: "Ofrecemos Educación Media, con una formación integral basada en valores y excelencia académica."
     },
     {
       id: 2,
@@ -124,7 +124,7 @@ export const FAQSection: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
             <div className="flex items-center text-slate-700">
               <FiPhone className="h-5 w-5 text-blue-700 mr-2" />
-              <span>+58 412-208.84.51</span>
+              <span>:0412314.87.73</span>
             </div>
             <div className="flex items-center text-slate-700">
               <FiMail className="h-5 w-5 text-blue-700 mr-2" />

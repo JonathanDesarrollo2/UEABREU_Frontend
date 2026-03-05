@@ -9,66 +9,79 @@ export const FeaturesSection: React.FC = () => {
     {
       name: "Carlos Mescia",
       position: "Director",
+      subject: "Sociales", // Materia añadida
       image: "../../../../Eq1.png"
     },
     {
       name: "Obed Barboza",
       position: "Evaluación",
+      subject: "Biologia",
       image: "../../../../Eq2.png"
     },
     {
       name: "Leonardo Yépez",
       position: "Administrador",
+      subject: "Administración", // No aparece en Excel, se asigna por coherencia
       image: "../../../../Eq3.png"
     },
     {
       name: "Minerba Pereira",
       position: "Profesora",
+      subject: "Sociales",
       image: "../../../../Eq4.png"
     },
     {
       name: "Obed Barboza",
       position: "Profesor",
+      subject: "Biologia",
       image: "../../../../Eq5.png"
     },
     {
       name: "Johely Gómez",
       position: "Profesora",
+      subject: "Ingles",
       image: "../../../../Eq6.png"
     },
     {
       name: "Javier Mejias",
       position: "Profesor",
+      subject: "Matematica",
       image: "../../../../Eq7.png"
     },
     {
       name: "Milagros Romero",
       position: "Profesora",
+      subject: "Literatura",
       image: "../../../../Eq8.png"
     },
     {
       name: "Leonardo Hidalgo",
       position: "Profesor",
+      subject: "Matematica",
       image: "../../../../Eq9.png"
     },
     {
       name: "Ylbis Solis",
       position: "Profesora",
+      subject: "Sociales",
       image: "../../../../Eq10.png"
     },
     {
       name: "Luis Jose Hernandez",
       position: "Profesor",
+      subject: "Biologia",
       image: "../../../../Eq11.png"
     },
     {
       name: "Wilmer Landaeta",
       position: "Profesor",
+      subject: "Educación Física",
       image: "../../../../Eq12.png"
     },
     {
       name: "Miguel J. Mescia",
       position: "Profesor",
+      subject: "Sociales",
       image: "../../../../Eq13.png"
     }
   ];
@@ -133,6 +146,10 @@ export const FeaturesSection: React.FC = () => {
                     </h3>
                     <p className="text-blue-700 font-semibold">
                       {teachers[currentIndex].position}
+                    </p>
+                    {/* Materia añadida debajo del nombre */}
+                    <p className="text-sm text-slate-600 mt-1">
+                      {teachers[currentIndex].subject}
                     </p>
                   </div>
                 </div>

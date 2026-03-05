@@ -257,7 +257,7 @@ const LayoutPublic = () => {
                   </div>
                   <div className="ml-4">
                     <p className="font-medium text-slate-200">Teléfono</p>
-                    <p className="text-slate-300">+58 412-208.84.51</p>
+                    <p className="text-slate-300">: 0412314.87.73</p>
                   </div>
                 </div>
                 <div className="flex items-start">

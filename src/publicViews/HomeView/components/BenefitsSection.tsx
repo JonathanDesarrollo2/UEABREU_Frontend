@@ -80,7 +80,7 @@ export const BenefitsSection: React.FC = () => {
           className="text-center mt-12"
         >
           <p className="text-blue-100 text-lg italic">
-            "Formando líderes del mañana con educación de calidad y valores cristianos"
+            "Formando lideres del mañana con pasión y creando valores"
           </p>
         </motion.div>
       </div>
