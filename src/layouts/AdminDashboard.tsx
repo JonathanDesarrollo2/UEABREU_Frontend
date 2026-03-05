@@ -17,9 +17,11 @@ import {
   FaDollarSign,
   FaUserCheck,
   FaClock,
-  FaBalanceScale
+  FaBalanceScale,
+  FaExchangeAlt  // Nuevo ícono para la tasa
 } from 'react-icons/fa';
 import { getDashboardStatsAPI, type DashboardStats } from '../apis/dashboard';
+import { getBCVRateAPI, type BCVRateResponse } from '../apis/bank'; // Importar API de tasa
 import { toast } from 'react-toastify';
 
 interface SessionContext {
@@ -36,6 +38,35 @@ export default function AdminDashboard() {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'academic'>('overview');
   const [retryCount, setRetryCount] = useState(0);
+
+  // Estados para la tasa BCV
+  const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
+  const [loadingRate, setLoadingRate] = useState(true);
+
+  // Cargar tasa BCV al montar el componente
+  useEffect(() => {
+    const fetchBCVRate = async () => {
+      try {
+        setLoadingRate(true);
+        const response = await getBCVRateAPI();
+        if (response.result && response.content) {
+          setBcvRate(response.content);
+          console.log('✅ Tasa BCV cargada:', response.content);
+        }
+      } catch (err: any) {
+        // Valor de respaldo en caso de error
+        setBcvRate({
+          PriceRateBCV: 36.6642,
+          dtRate: new Date().toLocaleDateString('es-VE').split('/').reverse().join('/') // formato dd/MM/yyyy
+        });
+        console.warn('⚠️ Usando tasa BCV de respaldo');
+      } finally {
+        setLoadingRate(false);
+      }
+    };
+
+    fetchBCVRate();
+  }, []);
 
   const loadDashboardData = async () => {
     try {
@@ -182,13 +213,21 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Función para formatear moneda
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-VE', {
+  // Función para convertir a dólares usando la tasa BCV
+  const convertToUSD = (amountInVES: number): number => {
+    if (!bcvRate || bcvRate.PriceRateBCV <= 0) return 0;
+    return amountInVES / bcvRate.PriceRateBCV;
+  };
+
+  // Función para formatear moneda (acepta 'VES' o 'USD')
+  const formatCurrency = (amount: number, currency: 'VES' | 'USD' = 'VES') => {
+    const formatter = new Intl.NumberFormat('es-VE', {
       style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(amount);
+      currency: currency === 'VES' ? 'VES' : 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    return formatter.format(amount);
   };
 
   // Función para calcular porcentaje
@@ -284,9 +323,9 @@ export default function AdminDashboard() {
       percentage: stats.representatives.paymentPercentage
     },
     {
-      title: "Recaudado",
-      value: formatCurrency(stats.financial.monthlyCollected),
-      change: `${formatCurrency(stats.financial.totalDebt)} por cobrar`,
+      title: "Recaudado (Bs)",
+      value: formatCurrency(stats.financial.monthlyCollected, 'VES'),
+      change: `${formatCurrency(stats.financial.totalDebt, 'VES')} por cobrar`,
       icon: FaDollarSign,
       color: "bg-gradient-to-r from-orange-500 to-yellow-500",
       trend: stats.financial.totalDebt === 0 ? "up" : stats.financial.monthlyCollected > 0 ? "up" : "down",
@@ -460,38 +499,81 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
+              {/* Indicador de tasa BCV */}
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <FaExchangeAlt className="text-blue-600" />
+                  <span className="text-sm text-blue-800 font-medium">Tasa BCV del día:</span>
+                </div>
+                {loadingRate ? (
+                  <div className="flex items-center space-x-1">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                    <span className="text-blue-700 text-sm">Cargando...</span>
+                  </div>
+                ) : bcvRate ? (
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-blue-800">
+                      {bcvRate.PriceRateBCV.toFixed(2)} Bs/USD
+                    </span>
+                    <span className="text-xs text-blue-600 ml-2">
+                      {bcvRate.dtRate}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-red-600 text-sm">No disponible</span>
+                )}
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-green-700">Recaudado</span>
+                    <span className="text-sm font-medium text-green-700">Recaudado (Bs)</span>
                     <FaArrowUp className="text-green-600" />
                   </div>
                   <p className="text-2xl font-bold text-green-800 mt-2">
-                    {formatCurrency(stats.financial.monthlyCollected)}
+                    {formatCurrency(stats.financial.monthlyCollected, 'VES')}
                   </p>
                   <p className="text-sm text-green-600 mt-1">Este mes</p>
+                  {/* Equivalente en USD */}
+                  {bcvRate && (
+                    <p className="text-xs text-green-600 mt-1">
+                      ≈ {formatCurrency(convertToUSD(stats.financial.monthlyCollected), 'USD')}
+                    </p>
+                  )}
                 </div>
 
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-red-700">Por Cobrar</span>
+                    <span className="text-sm font-medium text-red-700">Por Cobrar (Bs)</span>
                     <FaArrowDown className="text-red-600" />
                   </div>
                   <p className="text-2xl font-bold text-red-800 mt-2">
-                    {formatCurrency(stats.financial.totalDebt)}
+                    {formatCurrency(stats.financial.totalDebt, 'VES')}
                   </p>
                   <p className="text-sm text-red-600 mt-1">Deuda total</p>
+                  {/* Equivalente en USD */}
+                  {bcvRate && (
+                    <p className="text-xs text-red-600 mt-1">
+                      ≈ {formatCurrency(convertToUSD(stats.financial.totalDebt), 'USD')}
+                    </p>
+                  )}
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-blue-700">Saldo a Favor</span>
+                    <span className="text-sm font-medium text-blue-700">Saldo a Favor (Bs)</span>
                     <FaArrowUp className="text-blue-600" />
                   </div>
                   <p className="text-2xl font-bold text-blue-800 mt-2">
-                    {formatCurrency(stats.financial.totalCredit)}
+                    {formatCurrency(stats.financial.totalCredit, 'VES')}
                   </p>
                   <p className="text-sm text-blue-600 mt-1">Crédito disponible</p>
+                  {/* Equivalente en USD */}
+                  {bcvRate && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      ≈ {formatCurrency(convertToUSD(stats.financial.totalCredit), 'USD')}
+                    </p>
+                  )}
                 </div>
 
                 <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
@@ -619,7 +701,13 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-red-600">{formatCurrency(debtor.debtAmount)}</p>
+                        <p className="font-bold text-red-600">{formatCurrency(debtor.debtAmount, 'VES')}</p>
+                        {/* Equivalente en USD */}
+                        {bcvRate && (
+                          <p className="text-xs text-gray-500">
+                            ≈ {formatCurrency(convertToUSD(debtor.debtAmount), 'USD')}
+                          </p>
+                        )}
                         <p className="text-sm text-gray-500">{debtor.studentCount} estudiante(s)</p>
                       </div>
                     </div>
@@ -738,21 +826,64 @@ export default function AdminDashboard() {
           className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
         >
           <h2 className="text-xl font-bold text-gray-900 mb-6">Panel Financiero Detallado</h2>
+          
+          {/* Indicador de tasa BCV en el panel financiero */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <FaExchangeAlt className="text-blue-600 text-xl" />
+              <div>
+                <span className="text-sm font-medium text-blue-800">Tasa BCV del día:</span>
+                {loadingRate ? (
+                  <div className="flex items-center space-x-1 mt-1">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                    <span className="text-blue-700 text-sm">Cargando...</span>
+                  </div>
+                ) : bcvRate ? (
+                  <div className="mt-1">
+                    <span className="text-lg font-bold text-blue-800">
+                      {bcvRate.PriceRateBCV.toFixed(2)} Bs/USD
+                    </span>
+                    <span className="text-xs text-blue-600 ml-2">
+                      {bcvRate.dtRate}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-red-600 text-sm ml-2">No disponible</span>
+                )}
+              </div>
+            </div>
+          </div>
+          
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
-                <p className="text-sm font-medium text-green-700">Total Recaudado</p>
-                <p className="text-2xl font-bold text-green-800 mt-2">{formatCurrency(stats.financial.monthlyCollected)}</p>
+                <p className="text-sm font-medium text-green-700">Total Recaudado (Bs)</p>
+                <p className="text-2xl font-bold text-green-800 mt-2">{formatCurrency(stats.financial.monthlyCollected, 'VES')}</p>
+                {bcvRate && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ≈ {formatCurrency(convertToUSD(stats.financial.monthlyCollected), 'USD')}
+                  </p>
+                )}
                 <p className="text-sm text-green-600 mt-1">Mes actual</p>
               </div>
               <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-4">
-                <p className="text-sm font-medium text-red-700">Deuda Total</p>
-                <p className="text-2xl font-bold text-red-800 mt-2">{formatCurrency(stats.financial.totalDebt)}</p>
+                <p className="text-sm font-medium text-red-700">Deuda Total (Bs)</p>
+                <p className="text-2xl font-bold text-red-800 mt-2">{formatCurrency(stats.financial.totalDebt, 'VES')}</p>
+                {bcvRate && (
+                  <p className="text-xs text-red-600 mt-1">
+                    ≈ {formatCurrency(convertToUSD(stats.financial.totalDebt), 'USD')}
+                  </p>
+                )}
                 <p className="text-sm text-red-600 mt-1">Por cobrar</p>
               </div>
               <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4">
-                <p className="text-sm font-medium text-blue-700">Saldo a Favor</p>
-                <p className="text-2xl font-bold text-blue-800 mt-2">{formatCurrency(stats.financial.totalCredit)}</p>
+                <p className="text-sm font-medium text-blue-700">Saldo a Favor (Bs)</p>
+                <p className="text-2xl font-bold text-blue-800 mt-2">{formatCurrency(stats.financial.totalCredit, 'VES')}</p>
+                {bcvRate && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    ≈ {formatCurrency(convertToUSD(stats.financial.totalCredit), 'USD')}
+                  </p>
+                )}
                 <p className="text-sm text-blue-600 mt-1">Crédito disponible</p>
               </div>
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4">
@@ -778,7 +909,8 @@ export default function AdminDashboard() {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Representante</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto (Bs)</th>
+                        {bcvRate && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">USD</th>}
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                       </tr>
                     </thead>
@@ -797,8 +929,13 @@ export default function AdminDashboard() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                            {formatCurrency(transaction.amount)}
+                            {formatCurrency(transaction.amount, 'VES')}
                           </td>
+                          {bcvRate && (
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {formatCurrency(convertToUSD(transaction.amount), 'USD')}
+                            </td>
+                          )}
                           <td className="px-4 py-3 text-sm">
                             <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                               {transaction.status}
