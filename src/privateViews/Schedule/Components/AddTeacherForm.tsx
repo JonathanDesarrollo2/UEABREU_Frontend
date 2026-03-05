@@ -4,15 +4,6 @@ import { addTeacherAPI } from '../../../apis/teacher';
 import { FormField } from '../../../components/FormField';
 import { useState } from 'react';
 
-// Opciones para el campo Ambiente (antes Clase/Grupo)
-const ambienteOptions = [
-  { value: 'ordinario', text: 'Ordinario' },
-  { value: 'contratado', text: 'Contratado' },
-  { value: 'temporal', text: 'Temporal' },
-  { value: 'suplente', text: 'Suplente' },
-  { value: 'pasante', text: 'Pasante' },
-];
-
 export default function AddTeacherForm() {
   const { register, handleSubmit, reset } = useForm();
   const [isLoading, setIsLoading] = useState(false);
@@ -86,16 +77,16 @@ export default function AddTeacherForm() {
             />
           </div>
 
-          {/* Información Profesional - Orden cambiado: primero Título/Grado, luego Especialización */}
+          {/* Información Profesional */}
           <FormField
-            id="degree"
-            label="Título/Grado"
+            id="specialization"
+            label="Especialización"
             register={register}
           />
 
           <FormField
-            id="specialization"
-            label="Especialización"
+            id="degree"
+            label="Título/Grado"
             register={register}
           />
 
@@ -115,13 +106,10 @@ export default function AddTeacherForm() {
             </select>
           </div>
 
-          {/* Campo Ambiente (antes Clase/Grupo) convertido a select con opciones */}
           <FormField
             id="class"
-            label="Ambiente"
-            type="select"
+            label="Clase/Grupo"
             register={register}
-            options={ambienteOptions}
           />
         </div>
 

@@ -378,10 +378,10 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             </div>
           </div>
 
-          {/* Plan de Estudio (antes Materia) - Select manual */}
+          {/* Materia - Select manual */}
           <div className="flex flex-col">
             <label htmlFor="subjectId" className="text-gray-700 font-bold mb-1">
-              Plan de Estudio *
+              Materia *
             </label>
             <select
               id="subjectId"
@@ -430,17 +430,17 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             </select>
           </div>
 
-          {/* Ambiente (antes Aula) */}
+          {/* Aula */}
           <div className="flex flex-col">
             <label htmlFor="classroom" className="text-gray-700 font-bold mb-1">
-              Ambiente (opcional)
+              Aula (opcional)
             </label>
             <input
               id="classroom"
               type="text"
               {...register('classroom')}
               className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
-              placeholder="Ej: Ambiente 101"
+              placeholder="Ej: Aula 101"
             />
           </div>
 
