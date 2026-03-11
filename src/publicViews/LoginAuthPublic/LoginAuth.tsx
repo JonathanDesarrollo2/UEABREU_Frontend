@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { Link, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import type { typeLogin_in } from "../../types/login";
 import { userInLogin } from "./hooks/useInLogin";
 import { useInLoginForm } from "./hooks/useInLoginForm";
@@ -34,37 +33,10 @@ export default function LoginAuthPublic() {
 
   const onSubmit = useCallback(
     (formdata: typeLogin_in) => {
-      if (!formdata.usermail?.trim()) {
-        toast.error("El email es requerido");
-        return;
-      }
-      if (!formdata.userpass?.trim()) {
-        toast.error("La contraseña es requerida.");
-        return;
-      }
-
-      mutate(formdata, {
-        onSuccess: (dataAPI) => {
-          if (dataAPI.result) {
-            console.log('✅ Login exitoso, redirigiendo...');
-            toast.success('¡Bienvenido!', {
-              autoClose: 1000,
-            });
-            
-            setTimeout(() => {
-              console.log('🔄 Navegando a /app (ruta privada)');
-              navigate('/app');
-            }, 1200);
-          } else {
-            console.log('❌ Login fallido:', dataAPI.error);
-          }
-        },
-        onError: (error) => {
-          console.error('❌ Error en login:', error);
-        }
-      });
+      // Las validaciones ya están cubiertas por react-hook-form y el hook
+      mutate(formdata);
     },
-    [mutate, navigate]
+    [mutate]
   );
 
   const handleCancel = useCallback(() => navigate('/'), [navigate]);
