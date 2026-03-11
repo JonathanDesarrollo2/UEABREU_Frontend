@@ -12,7 +12,7 @@ export const useAddUser = () => {
     },
     onSuccess: (dataAPI: TypeApiResponseGeneric) => {
       if (dataAPI.result) {
-        toast.success(dataAPI.content[0]);
+        toast.success(dataAPI.content[0]); // Ej: "Usuario Creado Exitosamente"
         queryClient.invalidateQueries({ queryKey: ['users'] });
       } else {
         toast.error(dataAPI.error[0]);

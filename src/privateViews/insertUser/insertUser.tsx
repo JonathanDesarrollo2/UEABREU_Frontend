@@ -5,11 +5,11 @@ import { FaUserPlus, FaMoneyBillWave, FaGraduationCap } from 'react-icons/fa';
 import { useFieldArray } from 'react-hook-form';
 import { CollapsibleSection } from "../../components/CollapsibleSection";
 import { FormField } from "../../components/FormField";
-import type { TypeLogin_insert } from "./schema/schema";               // ← importación correcta
+import type { TypeLogin_insert } from "./schema/schema";
 import SpinnerGeneral from "../../layouts/components/spinnerGeneral";
 import AnimatedPage from "../../components/AnimatedPage";
 import { ActionButtons } from "../../components/ActionButtons";
-import { useInsertUserForm } from "./hook/useUserForm";                 // ← hook corregido
+import { useInsertUserForm } from "./hook/useUserForm";
 import { useAddUser } from "./hook/useAddUser";
 
 // Opciones para el estado del estudiante
@@ -380,11 +380,11 @@ export default function InsertUser() {
             reset();
             resetMutation();
             setFormKey((prev) => prev + 1);
-            toast.success("Usuario registrado exitosamente");
+            // ✅ El toast de éxito ya lo muestra useAddUser
           }
         },
-        onError: (error: Error) => {
-          toast.error(error.message || "Error al registrar usuario");
+        onError: () => {
+          // ✅ El toast de error ya lo muestra useAddUser
         }
       });
     },

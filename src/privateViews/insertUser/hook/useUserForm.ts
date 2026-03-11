@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { loginInsertSchema, type TypeLogin_insert } from "../schema/schema"; // ← ruta correcta
+import { loginInsertSchema, type TypeLogin_insert } from "../schema/schema";
 
 export const useInsertUserForm = () => {
   return useForm<TypeLogin_insert>({
@@ -14,8 +14,8 @@ export const useInsertUserForm = () => {
       userrepass: '',
       nivel: 1,
       userstatus: true,
-      representativeData: {},      // objeto vacío (se llenará al registrar campos)
-      studentsData: [],            // array vacío para useFieldArray
+      representativeData: {},
+      studentsData: [],
     },
   });
 };
