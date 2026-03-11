@@ -1,4 +1,3 @@
-// hooks/useInLogin.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AuthUser } from "../../../apis/login";
 import type { TypeApiResponseToken } from "../../../types/login";
@@ -13,7 +12,6 @@ export const userInLogin = () => {
     mutationFn: AuthUser,
     onSuccess: (dataAPI: TypeApiResponseToken) => {
       if (dataAPI.result && dataAPI.content) {
-        // ✅ Login exitoso: guardar token y redirigir
         localStorage.setItem('tokcattleraising_inCattleRanchCloud', dataAPI.content);
         toast.success('¡Bienvenido!', { autoClose: 1000 });
         queryClient.invalidateQueries({ queryKey: ['userActive'] });
@@ -21,13 +19,11 @@ export const userInLogin = () => {
           navigate('/app');
         }, 1200);
       } else {
-        // ⚠️ Respuesta con result: false (poco probable, pero se maneja)
         const errorMsg = dataAPI.error?.[0] || "Error en el login";
         toast.error(errorMsg);
       }
     },
     onError: (error: Error) => {
-      // ❌ Error de red o respuesta HTTP no exitosa (ej. 429)
       toast.error(error.message || "Error desconocido");
     },
   });
