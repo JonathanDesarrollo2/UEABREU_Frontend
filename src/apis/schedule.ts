@@ -201,3 +201,18 @@ export async function assignStudentToScheduleAPI(formdata: {
     throw new Error(mensaje);
   }
 }
+export async function getChildrenSchedulesAPI(): Promise<any> {
+  try {
+    const { data } = await api.get('/private/academic/schedule/children');
+    return data;
+  } catch (error) {
+    let mensaje = 'Error al obtener horarios de los hijos';
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) {
+        mensaje = errores.join(', ');
+      }
+    }
+    throw new Error(mensaje);
+  }
+}

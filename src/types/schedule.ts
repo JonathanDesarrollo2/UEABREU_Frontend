@@ -81,3 +81,30 @@ export interface TypeApiResponseGeneric {
   content: any;
   error: string[];
 }
+export interface ChildrenScheduleResponse {
+  result: boolean;
+  content: Array<{
+    studentId: string;
+    studentName: string;
+    grade: string;
+    section: string;
+    schedules: Array<{
+      scheduleId: string;
+      code: string;
+      day: string;
+      startBlock: number;
+      endBlock: number;
+      timeRange: string;
+      subject: string;
+      subjectCode: string;
+      teacher: string;
+      classroom: string;
+      scheduleType: string;
+      comment1?: string;
+      comment2?: string;
+      comment3?: string;
+      assignedAt: string;
+    }>;
+  }>;
+  error: string[];
+}

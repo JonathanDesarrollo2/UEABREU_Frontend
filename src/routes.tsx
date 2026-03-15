@@ -26,6 +26,7 @@ import AdminListStudentsBackend from './privateViews/AdminListStudentBackend/Adm
 import AdminListTeachersBackend from './privateViews/TeacherList/AdminTeacherListBackend'
 import TeacherListPage from './privateViews/TeacherList/AdminTeacherListBackend'
 import EditTeacherPage from './privateViews/TeacherEdit/EditTeacherView'
+import ChildrenScheduleView from './privateViews/ChildrenSchedule/ChildrenSchedule'
 
 function ListRoutes() {
   return (
@@ -48,7 +49,7 @@ function ListRoutes() {
         <Route path="/representante" element={<RepresLayout />}>
           <Route index element={<RepresDashboard />} />
           <Route path="payment-validation" element={<PaymentValidation />} />
-          <Route path="class-schedule" element={<ClassSchedule />} />
+          <Route path="ChildrenSchedule" element={<ChildrenScheduleView />} />
         </Route>
           
         <Route path="/admin" element={<AdminLayout />}>

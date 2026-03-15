@@ -35,7 +35,7 @@ export default function RepresLayout() {
   const menuItems = [
     { name: 'Dashboard', icon: FaHome, path: '/representante' },
     { name: 'Pagos', icon: FaMoneyCheck, path: '/representante/payment-validation' },
-    { name: 'Horario', icon: FaClock, path: '/representante/class-schedule' },
+    { name: 'Horario', icon: FaClock, path: '/representante/ChildrenSchedule' },
     { name: 'Perfil', icon: FaUserGraduate, path: '/representante/profile' },
   ];
 
