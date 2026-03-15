@@ -102,6 +102,23 @@ export async function getSchedulesByGradeSectionAPI(grade: string, section: stri
   }
 }
 
+// 🎯 **NUEVA FUNCIÓN: Obtener horarios de los hijos del representante**
+export async function getChildrenSchedulesAPI(): Promise<any> {
+  try {
+    const { data } = await api.get('/private/academic/schedule/my-children');
+    return data;
+  } catch (error) {
+    let mensaje = 'Error al obtener horarios de los hijos';
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) {
+        mensaje = errores.join(', ');
+      }
+    }
+    throw new Error(mensaje);
+  }
+}
+
 // ========== API PARA MATERIAS ==========
 export async function addSubjectAPI(formdata: TypeSubjectCreate): Promise<TypeApiResponseGeneric> {
   try {
@@ -192,21 +209,6 @@ export async function assignStudentToScheduleAPI(formdata: {
     return data;
   } catch (error) {
     let mensaje = 'Error al asignar estudiante';
-    if (isAxiosError(error) && error.response) {
-      const errores = error.response.data.error;
-      if (errores && errores.length > 0) {
-        mensaje = errores.join(', ');
-      }
-    }
-    throw new Error(mensaje);
-  }
-}
-export async function getChildrenSchedulesAPI(): Promise<any> {
-  try {
-    const { data } = await api.get('/private/academic/schedule/children');
-    return data;
-  } catch (error) {
-    let mensaje = 'Error al obtener horarios de los hijos';
     if (isAxiosError(error) && error.response) {
       const errores = error.response.data.error;
       if (errores && errores.length > 0) {
