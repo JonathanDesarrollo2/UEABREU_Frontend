@@ -21,6 +21,10 @@ const studentStatusOptions = [
   { value: 'inactivo', text: 'Inactivo' }
 ];
 
+// Opciones para grado y sección
+const gradeOptions = ['1ro', '2do', '3ro', '4to', '5to', '6to'];
+const sectionOptions = ['A', 'B', 'C', 'D'];
+
 // Componente para el formulario del representante
 const RepresentativeForm = ({ register, errors }: any) => {
   return (
@@ -142,7 +146,9 @@ const StudentsForm = ({ control, register, errors }: any) => {
       diseasesDescription: '',
       emergencyContact: '',
       emergencyPhone: '',
-      status: 'pendiente'
+      status: 'pendiente',
+      currentGrade: '1ro',  // valor por defecto
+      section: 'A'          // valor por defecto
     });
   };
 
@@ -216,6 +222,27 @@ const StudentsForm = ({ control, register, errors }: any) => {
                     error={errors?.studentsData?.[index]?.status}
                     options={studentStatusOptions}
                     defaultValue="pendiente"
+                  />
+                  {/* Grado y Sección */}
+                  <FormField 
+                    type="select"
+                    id={`studentsData.${index}.currentGrade`} 
+                    label="Grado *" 
+                    required={true}
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.currentGrade}
+                    options={gradeOptions.map(g => ({ value: g, text: g }))}
+                    defaultValue="1ro"
+                  />
+                  <FormField 
+                    type="select"
+                    id={`studentsData.${index}.section`} 
+                    label="Sección *" 
+                    required={true}
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.section}
+                    options={sectionOptions.map(s => ({ value: s, text: s }))}
+                    defaultValue="A"
                   />
                 </div>
 
@@ -380,12 +407,9 @@ export default function InsertUser() {
             reset();
             resetMutation();
             setFormKey((prev) => prev + 1);
-            // ✅ El toast de éxito ya lo muestra useAddUser
           }
         },
-        onError: () => {
-          // ✅ El toast de error ya lo muestra useAddUser
-        }
+        onError: () => {}
       });
     },
     [mutate, reset, resetMutation]

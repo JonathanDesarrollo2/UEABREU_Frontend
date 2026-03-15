@@ -5,7 +5,6 @@ import {
   FaHome, 
   FaMoneyCheck, 
   FaClock,
-  FaUserGraduate,
   FaSignOutAlt,
   FaBars,
   FaTimes
@@ -36,7 +35,6 @@ export default function RepresLayout() {
     { name: 'Dashboard', icon: FaHome, path: '/representante' },
     { name: 'Pagos', icon: FaMoneyCheck, path: '/representante/payment-validation' },
     { name: 'Horario', icon: FaClock, path: '/representante/ChildrenSchedule' },
-    { name: 'Perfil', icon: FaUserGraduate, path: '/representante/profile' },
   ];
 
   return (
