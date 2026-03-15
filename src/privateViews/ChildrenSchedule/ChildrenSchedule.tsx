@@ -1,40 +1,48 @@
+// src/privateViews/ChildrenSchedule/ChildrenSchedule.tsx
 import { useEffect, useState } from 'react';
 import { getChildrenSchedulesAPI } from '../../apis/schedule';
 import AnimatedPage from '../../components/AnimatedPage';
-import { FaCalendarAlt, FaUserGraduate } from 'react-icons/fa';
+import { FaCalendarAlt, FaUserGraduate, FaExclamationTriangle } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import type { ChildrenScheduleResponse } from '../../types/schedule';
 
 export default function ChildrenScheduleView() {
   const [data, setData] = useState<ChildrenScheduleResponse['content']>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string>('');
   const [selectedStudentIndex, setSelectedStudentIndex] = useState(0);
+  const navigate = useNavigate();
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setErrorDetails('');
+      const response = await getChildrenSchedulesAPI();
+      if (response.result) {
+        setData(response.content);
+        setSelectedStudentIndex(0);
+      } else {
+        setError(response.error?.[0] || 'Error al cargar horarios');
+        if (response.error) {
+          setErrorDetails(JSON.stringify(response.error));
+        }
+      }
+    } catch (err: any) {
+      console.error('Error en fetchData:', err);
+      setError(err.message || 'Error de conexión');
+      setErrorDetails(err.stack || '');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await getChildrenSchedulesAPI();
-        if (response.result) {
-          setData(response.content);
-          setSelectedStudentIndex(0);
-        } else {
-          setError(response.error?.[0] || 'Error al cargar horarios');
-        }
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
   const selectedStudent = data[selectedStudentIndex];
-
-  const handleStudentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedStudentIndex(Number(e.target.value));
-  };
 
   const sortSchedules = (schedules: any[]) => {
     const dayOrder: Record<string, number> = {
@@ -51,6 +59,14 @@ export default function ChildrenScheduleView() {
     });
   };
 
+  const handleStudentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedStudentIndex(Number(e.target.value));
+  };
+
+  const goToDashboard = () => {
+    navigate('/representante');
+  };
+
   if (loading) {
     return (
       <AnimatedPage className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -65,14 +81,28 @@ export default function ChildrenScheduleView() {
   if (error) {
     return (
       <AnimatedPage className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Reintentar
-          </button>
+        <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
+          <FaExclamationTriangle className="text-red-500 text-5xl mx-auto mb-4" />
+          <p className="text-red-600 mb-2 font-semibold">{error}</p>
+          {errorDetails && (
+            <pre className="text-xs bg-gray-100 p-2 rounded mb-4 overflow-auto max-h-32 text-left">
+              {errorDetails}
+            </pre>
+          )}
+          <div className="flex flex-col space-y-2">
+            <button
+              onClick={fetchData}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={goToDashboard}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Volver al Dashboard
+            </button>
+          </div>
         </div>
       </AnimatedPage>
     );
@@ -82,7 +112,13 @@ export default function ChildrenScheduleView() {
     return (
       <AnimatedPage className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md text-center">
-          <p className="text-gray-600">No tienes hijos inscritos o no tienen horarios asignados.</p>
+          <p className="text-gray-600 mb-4">No tienes hijos inscritos o no tienen horarios asignados.</p>
+          <button
+            onClick={goToDashboard}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Volver al Dashboard
+          </button>
         </div>
       </AnimatedPage>
     );
