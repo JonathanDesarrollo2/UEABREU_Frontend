@@ -98,6 +98,7 @@ const RepresentativeForm = ({ register, errors }: any) => {
           </div>
         </div>
 
+        {/* NOTA: El campo initialBalance del representante se mantiene, pero ahora es opcional y puede usarse como saldo global si no se especifica por estudiante */}
         <div className="md:col-span-2">
           <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Información Financiera</h3>
         </div>
@@ -107,7 +108,7 @@ const RepresentativeForm = ({ register, errors }: any) => {
             <FormField 
               type="number"
               id="representativeData.initialBalance" 
-              label="Saldo Inicial" 
+              label="Saldo Inicial (Global)" 
               register={register} 
               error={errors?.representativeData?.initialBalance} 
               validation={{
@@ -115,6 +116,7 @@ const RepresentativeForm = ({ register, errors }: any) => {
                 validate: (value) => !isNaN(value) || "Debe ser un número válido"
               }}
             />
+            <p className="text-xs text-gray-500 mt-1">Si no se asigna saldo por estudiante, este monto se distribuirá equitativamente.</p>
           </div>
         </div>
       </div>
@@ -122,7 +124,7 @@ const RepresentativeForm = ({ register, errors }: any) => {
   );
 };
 
-// Componente para el listado de estudiantes
+// Componente para el listado de estudiantes (con balance individual)
 const StudentsForm = ({ control, register, errors }: any) => {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -147,8 +149,9 @@ const StudentsForm = ({ control, register, errors }: any) => {
       emergencyContact: '',
       emergencyPhone: '',
       status: 'pendiente',
-      currentGrade: '1ro',  // valor por defecto
-      section: 'A'          // valor por defecto
+      currentGrade: '1ro',
+      section: 'A',
+      balance: 0 // Valor por defecto para el saldo individual
     });
   };
 
@@ -243,6 +246,18 @@ const StudentsForm = ({ control, register, errors }: any) => {
                     error={errors?.studentsData?.[index]?.section}
                     options={sectionOptions.map(s => ({ value: s, text: s }))}
                     defaultValue="A"
+                  />
+                  {/* NUEVO CAMPO: Saldo inicial del estudiante */}
+                  <FormField 
+                    type="number"
+                    id={`studentsData.${index}.balance`} 
+                    label="Saldo Inicial" 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.balance}
+                    validation={{
+                      valueAsNumber: true,
+                      validate: (value) => !isNaN(value) || "Debe ser un número válido"
+                    }}
                   />
                 </div>
 
@@ -423,6 +438,10 @@ export default function InsertUser() {
     toast.info("Formulario limpiado");
   }, [reset]);
 
+  // Calcular total de saldos de estudiantes para mostrar en el resumen (opcional)
+  const totalStudentBalance = students.reduce((sum: number, student: any) => sum + (Number(student.balance) || 0), 0);
+  const globalBalance = watch('representativeData.initialBalance') || 0;
+
   return (
     <>
       {isPending && <SpinnerGeneral />}
@@ -554,7 +573,7 @@ export default function InsertUser() {
                 <RepresentativeForm register={register} errors={errors} />
                 <StudentsForm control={control} register={register} errors={errors} />
                 
-                {/* Resumen */}
+                {/* Resumen con saldos individuales */}
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 max-w-4xl mx-auto">
                   <div className="flex items-center justify-center mb-4">
                     <FaMoneyBillWave className="text-blue-500 text-xl mr-2" />
@@ -566,10 +585,25 @@ export default function InsertUser() {
                       <span className="font-bold mx-1">{students.length}</span>
                       estudiante(s) asociado(s).
                     </p>
-                    {watch('representativeData.initialBalance') !== 0 && (
-                      <p className="text-gray-700 mt-2">
-                        <strong>Saldo inicial:</strong> ${watch('representativeData.initialBalance') || 0}
-                      </p>
+                    {students.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-sm font-medium text-gray-600">Saldos individuales:</p>
+                        <ul className="text-sm">
+                          {students.map((student: any, idx: number) => (
+                            <li key={idx} className="text-gray-700">
+                              {student.fullName || `Estudiante ${idx+1}`}: ${Number(student.balance || 0).toFixed(2)}
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="text-sm font-semibold text-blue-700 mt-2">
+                          Total saldos: ${totalStudentBalance.toFixed(2)}
+                        </p>
+                        {globalBalance !== 0 && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            (Saldo global ingresado: ${globalBalance})
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

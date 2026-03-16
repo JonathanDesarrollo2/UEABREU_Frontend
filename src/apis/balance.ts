@@ -1,4 +1,3 @@
-// src/apis/balance.ts
 import api from '../library/axios';
 
 export interface BalanceResponse {
@@ -37,7 +36,7 @@ export async function manualDeposit(
   data: {
     amount: number;
     description: string;
-    paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check'; // Actualizado
+    paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
     reference?: string;
     createdBy?: string;
   }
@@ -51,7 +50,7 @@ export async function manualWithdrawal(
   data: {
     amount: number;
     description: string;
-    paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check'; // Actualizado
+    paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
     reference?: string;
     createdBy?: string;
   }
@@ -78,7 +77,6 @@ export async function getTransactionHistory(representativeId: string, params?: a
   return response.data;
 }
 
-// Nuevas funciones para manejar mejor los errores
 export async function checkPaymentExists(reference: string, representativeId: string) {
   const response = await api.get('/private/balance/check-payment', {
     params: { reference, representativeId }

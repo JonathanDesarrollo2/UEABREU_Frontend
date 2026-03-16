@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { AddUser } from "../../../apis/login";
+import { AddUser } from "../../../apis/user";
 import type { TypeApiResponseGeneric } from "../../../types/login";
 
 export const useAddUser = () => {
@@ -12,7 +12,7 @@ export const useAddUser = () => {
     },
     onSuccess: (dataAPI: TypeApiResponseGeneric) => {
       if (dataAPI.result) {
-        toast.success(dataAPI.content[0]); // Ej: "Usuario Creado Exitosamente"
+        toast.success(dataAPI.content[0]);
         queryClient.invalidateQueries({ queryKey: ['users'] });
       } else {
         toast.error(dataAPI.error[0]);

@@ -15,7 +15,7 @@ export const useInsertUserForm = () => {
       nivel: 1,
       userstatus: true,
       representativeData: {},
-      studentsData: [],
+      studentsData: [], // Los estudiantes se agregarán dinámicamente con balance por defecto 0
     },
   });
 };
