@@ -7,7 +7,7 @@ export interface TypeScheduleCreate {
   endBlock: number;
   classroom?: string;
   building?: string;
-  subjectId: string;
+  subjectId?: string | null;   // Permite null para recesos
   teacherId?: string;
 }
 
@@ -81,6 +81,7 @@ export interface TypeApiResponseGeneric {
   content: any;
   error: string[];
 }
+
 export interface ChildrenScheduleResponse {
   result: boolean;
   content: Array<{

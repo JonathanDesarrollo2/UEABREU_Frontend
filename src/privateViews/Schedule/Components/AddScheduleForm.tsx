@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAddSchedule } from '../hooks/useAddSchedule';
-import { useScheduleForm } from '../hooks/useScheduleForm';
+import { useScheduleForm, type ScheduleFormValues } from '../hooks/useScheduleForm';
 import { toast } from 'react-toastify';
 import { getActiveTeachersAPI, getSchedulesByGradeSectionAPI, getSubjectsAPI } from '../../../apis/schedule';
+import type { TypeScheduleCreate } from '../../../types/schedule';
 import type { TypeApiResponseGeneric } from '../../../types/schedule';
 
 // Opciones para los select
@@ -55,6 +56,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const [occupiedBlocks, setOccupiedBlocks] = useState<Set<string>>(new Set());
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [isRecess, setIsRecess] = useState(false);
   
   const grade = watch('grade');
   const section = watch('section');
@@ -62,16 +64,14 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const startBlock = watch('startBlock');
   const subjectId = watch('subjectId');
 
-  // Cargar TODAS las materias (sin filtrar por grado)
+  // Cargar materias
   useEffect(() => {
     setLoadingSubjects(true);
     getSubjectsAPI()
       .then(response => {
-        console.log('Respuesta de materias:', response);
         if (response.result && response.content) {
           setSubjects(response.content);
         } else {
-          console.warn('No se encontraron materias');
           setSubjects([]);
         }
       })
@@ -93,7 +93,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
         if (response.result && response.content) {
           setTeachers(response.content);
         } else {
-          console.warn('No se encontraron docentes activos');
           setTeachers([]);
         }
       })
@@ -138,7 +137,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     }
   }, [grade, section, onPreviewChange]);
 
-  // Actualizar docente cuando se selecciona materia
+  // Si se selecciona una materia, autocompletar docente (si tiene asignado)
   useEffect(() => {
     if (subjectId) {
       const selectedSubject = subjects.find(s => s.id === subjectId);
@@ -148,36 +147,50 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     }
   }, [subjectId, subjects, setValue]);
 
-  const onSubmit = (data: any) => {
-    // Verificar si el bloque está ocupado
-    const startBlockNum = parseInt(data.startBlock);
+  // Manejar cambio del checkbox "Receso"
+  const handleRecessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setIsRecess(checked);
+    if (checked) {
+      setValue('subjectId', ''); // Limpiar materia
+      setValue('teacherId', ''); // Limpiar docente
+    }
+  };
+
+  const onSubmit = (formData: ScheduleFormValues) => {
+    const startBlockNum = parseInt(formData.startBlock);
     
     if (occupiedBlocks.has(startBlockNum.toString())) {
       toast.error('Este bloque ya está ocupado para este día');
       return;
     }
 
-    // Validar que se haya seleccionado una materia
-    if (!data.subjectId) {
-      toast.error('Debe seleccionar una materia');
+    if (!isRecess && !formData.subjectId) {
+      toast.error('Debe seleccionar una materia o marcar como receso');
       return;
     }
 
-    // Calcular bloque final y preparar datos
-    const formData = {
-      ...data,
+    // Convertir a TypeScheduleCreate para la API
+    const payload: TypeScheduleCreate = {
+      code: formData.code,
+      grade: formData.grade,
+      section: formData.section,
+      day: formData.day,
       startBlock: startBlockNum,
       endBlock: startBlockNum + 1,
+      classroom: formData.classroom || undefined,
+      building: formData.building || undefined,
+      subjectId: isRecess ? null : (formData.subjectId || null),
+      teacherId: formData.teacherId || undefined,
     };
 
-    console.log('Datos a enviar:', formData);
-
-    mutate(formData, {
+    mutate(payload, {
       onSuccess: (response: TypeApiResponseGeneric) => {
         if (response.result) {
           toast.success('Horario creado exitosamente');
           reset();
-          // Actualizar bloques ocupados
+          setIsRecess(false);
+          // Actualizar bloques ocupados localmente
           const newOccupied = new Set(occupiedBlocks);
           newOccupied.add(startBlockNum.toString());
           newOccupied.add((startBlockNum + 1).toString());
@@ -208,7 +221,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       8: '12:00',
       9: '12:40'
     };
-    
     return {
       start: blockTimes[blockNumber] || '',
       end: blockTimes[blockNumber + 1] || '13:20'
@@ -227,7 +239,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Código - 7 DÍGITOS como dice el backend */}
+          {/* Código */}
           <div className="md:col-span-2">
             <div className="flex flex-col">
               <label htmlFor="code" className="text-gray-700 font-bold mb-1">
@@ -255,16 +267,14 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             </div>
           </div>
 
-          {/* Grado - Select manual */}
+          {/* Grado */}
           <div className="flex flex-col">
             <label htmlFor="grade" className="text-gray-700 font-bold mb-1">
               Grado *
             </label>
             <select
               id="grade"
-              {...register('grade', { 
-                required: 'El grado es requerido',
-              })}
+              {...register('grade', { required: 'El grado es requerido' })}
               className={`w-full px-3 py-2 border-2 border-solid ${
                 errors.grade ? "border-red-500" : "border-gray-300"
               } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
@@ -277,20 +287,18 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               ))}
             </select>
             {errors.grade && (
-              <span className="text-red-500 text-sm mt-1">{errors.grade?.message as string}</span>
+              <span className="text-red-500 text-sm mt-1">{errors.grade.message as string}</span>
             )}
           </div>
 
-          {/* Sección - Select manual */}
+          {/* Sección */}
           <div className="flex flex-col">
             <label htmlFor="section" className="text-gray-700 font-bold mb-1">
               Sección *
             </label>
             <select
               id="section"
-              {...register('section', { 
-                required: 'La sección es requerida',
-              })}
+              {...register('section', { required: 'La sección es requerida' })}
               className={`w-full px-3 py-2 border-2 border-solid ${
                 errors.section ? "border-red-500" : "border-gray-300"
               } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
@@ -303,20 +311,18 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               ))}
             </select>
             {errors.section && (
-              <span className="text-red-500 text-sm mt-1">{errors.section?.message as string}</span>
+              <span className="text-red-500 text-sm mt-1">{errors.section.message as string}</span>
             )}
           </div>
 
-          {/* Día - Select manual */}
+          {/* Día */}
           <div className="flex flex-col">
             <label htmlFor="day" className="text-gray-700 font-bold mb-1">
               Día de la Semana *
             </label>
             <select
               id="day"
-              {...register('day', { 
-                required: 'El día es requerido',
-              })}
+              {...register('day', { required: 'El día es requerido' })}
               className={`w-full px-3 py-2 border-2 border-solid ${
                 errors.day ? "border-red-500" : "border-gray-300"
               } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
@@ -329,11 +335,11 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               ))}
             </select>
             {errors.day && (
-              <span className="text-red-500 text-sm mt-1">{errors.day?.message as string}</span>
+              <span className="text-red-500 text-sm mt-1">{errors.day.message as string}</span>
             )}
           </div>
 
-          {/* Bloque Inicial - Select manual */}
+          {/* Bloque Inicial */}
           <div className="space-y-2">
             <div className="flex flex-col">
               <label htmlFor="startBlock" className="text-gray-700 font-bold mb-1">
@@ -341,9 +347,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               </label>
               <select
                 id="startBlock"
-                {...register('startBlock', { 
-                  required: 'El bloque inicial es requerido',
-                })}
+                {...register('startBlock', { required: 'El bloque inicial es requerido' })}
                 className={`w-full px-3 py-2 border-2 border-solid ${
                   errors.startBlock ? "border-red-500" : "border-gray-300"
                 } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
@@ -356,11 +360,10 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
                 ))}
               </select>
               {errors.startBlock && (
-                <span className="text-red-500 text-sm mt-1">{errors.startBlock?.message as string}</span>
+                <span className="text-red-500 text-sm mt-1">{errors.startBlock.message as string}</span>
               )}
             </div>
             
-            {/* Indicador visual del bloque final */}
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-700">
                 <span className="font-semibold">Bloque Final:</span> {currentBlock + 1}
@@ -368,8 +371,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
                   (Horario: {timeRange.start} - {timeRange.end})
                 </span>
               </p>
-              
-              {/* Advertencia si el bloque está ocupado */}
               {isBlockOccupied(currentBlock) && (
                 <p className="text-red-600 text-sm mt-1 font-semibold">
                   ⚠️ Este bloque está ocupado. No puede asignar materia aquí.
@@ -378,20 +379,32 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             </div>
           </div>
 
-          {/* Materia - Select manual */}
+          {/* Checkbox para Receso */}
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isRecess"
+              checked={isRecess}
+              onChange={handleRecessChange}
+              className="h-5 w-5 text-blue-600"
+            />
+            <label htmlFor="isRecess" className="text-gray-700 font-medium">
+              Es un receso
+            </label>
+          </div>
+
+          {/* Materia */}
           <div className="flex flex-col">
             <label htmlFor="subjectId" className="text-gray-700 font-bold mb-1">
-              Materia *
+              Materia {!isRecess && '*'}
             </label>
             <select
               id="subjectId"
-              {...register('subjectId', { 
-                required: 'La materia es requerida',
-              })}
+              {...register('subjectId')}
               className={`w-full px-3 py-2 border-2 border-solid ${
                 errors.subjectId ? "border-red-500" : "border-gray-300"
               } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
-              disabled={loadingSubjects}
+              disabled={loadingSubjects || isRecess}
             >
               <option value="">{loadingSubjects ? 'Cargando materias...' : 'Seleccione una materia'}</option>
               {!loadingSubjects && subjects.map(subject => (
@@ -401,16 +414,16 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               ))}
             </select>
             {errors.subjectId && (
-              <span className="text-red-500 text-sm mt-1">{errors.subjectId?.message as string}</span>
+              <span className="text-red-500 text-sm mt-1">{errors.subjectId.message as string}</span>
             )}
-            {subjects.length === 0 && !loadingSubjects && (
+            {!isRecess && subjects.length === 0 && !loadingSubjects && (
               <span className="text-yellow-600 text-sm mt-1">
                 No hay materias registradas. Primero agregue materias en la pestaña "Agregar Materia".
               </span>
             )}
           </div>
 
-          {/* Docente - Select manual */}
+          {/* Docente */}
           <div className="flex flex-col">
             <label htmlFor="teacherId" className="text-gray-700 font-bold mb-1">
               Docente (opcional)
@@ -419,7 +432,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               id="teacherId"
               {...register('teacherId')}
               className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
-              disabled={loadingTeachers}
+              disabled={loadingTeachers || isRecess}
             >
               <option value="">{loadingTeachers ? 'Cargando docentes...' : 'Seleccione un docente'}</option>
               {!loadingTeachers && teachers.map(teacher => (
@@ -459,7 +472,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           </div>
         </div>
 
-        {/* Resumen del horario */}
+        {/* Resumen */}
         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
           <h3 className="font-semibold text-gray-700 mb-2">Resumen del Horario</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -490,7 +503,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           </div>
         </div>
 
-        {/* Información de ayuda */}
+        {/* Notas */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h4 className="font-semibold text-blue-800 mb-2">📝 Notas importantes:</h4>
           <ul className="text-sm text-gray-700 space-y-1">
@@ -498,6 +511,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             <li>• Cada materia ocupa <strong>2 bloques consecutivos</strong></li>
             <li>• Las materias se pueden asignar a cualquier grado/sección</li>
             <li>• Verifique que el bloque no esté ocupado antes de guardar</li>
+            <li>• <strong>Recesos:</strong> Marque la casilla "Es un receso" para crear un bloque sin materia.</li>
           </ul>
         </div>
 
@@ -505,7 +519,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
         <div className="flex justify-center pt-4">
           <button
             type="submit"
-            disabled={isPending || !grade || !section || !day || !startBlock || !subjectId}
+            disabled={isPending || !grade || !section || !day || !startBlock || (!isRecess && !subjectId)}
             className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md flex items-center"
           >
             {isPending ? (

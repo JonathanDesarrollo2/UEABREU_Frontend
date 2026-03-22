@@ -3,7 +3,6 @@ import api from "../library/axios";
 import type { TypeApiResponseGeneric, TypeScheduleCreate, TypeScheduleUpdate, TypeSubjectCreate } from "../types/schedule";
 import type { TypeTeacher } from "../types/teacher";
 
-// Tipos para las respuestas
 export interface ScheduleResponse {
   result: boolean;
   content: any;
@@ -102,7 +101,6 @@ export async function getSchedulesByGradeSectionAPI(grade: string, section: stri
   }
 }
 
-// 🎯 **NUEVA FUNCIÓN: Obtener horarios de los hijos del representante**
 export async function getChildrenSchedulesAPI(): Promise<any> {
   try {
     const { data } = await api.get('/private/academic/schedule/my-children');

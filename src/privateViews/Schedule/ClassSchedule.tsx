@@ -3,13 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FaCalendarAlt, FaChalkboardTeacher, FaBook, FaEye } from 'react-icons/fa';
 import AddScheduleForm from './Components/AddScheduleForm';
-import AddSubjectForm from './Components/AddSubjectForm'; // <-- CORREGIDO: 'A' mayúscula
+import AddSubjectForm from './Components/AddSubjectForm';
 import AddTeacherForm from './Components/AddTeacherForm';
 import SchedulePreview from './Components/SchedulePreview';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ActionButtons } from '../../components/ActionButtons';
 
-// Tabs disponibles
 type TabType = 'schedule' | 'subject' | 'teacher' | 'preview';
 
 export default function ClassSchedule() {
@@ -57,7 +56,6 @@ export default function ClassSchedule() {
   return (
     <AnimatedPage className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
             <FaCalendarAlt className="mr-3 text-blue-600" />
@@ -68,7 +66,6 @@ export default function ClassSchedule() {
           </p>
         </div>
 
-        {/* Tabs Navigation */}
         <div className="mb-8">
           <div className="border-b border-gray-200">
             <nav className="flex flex-wrap -mb-px">
@@ -93,12 +90,10 @@ export default function ClassSchedule() {
           </div>
         </div>
 
-        {/* Content */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           {renderTabContent()}
         </div>
 
-        {/* Action Buttons */}
         {activeTab !== 'preview' && (
           <div className="mt-6">
             <ActionButtons 
