@@ -154,6 +154,8 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     if (checked) {
       setValue('subjectId', ''); // Limpiar materia
       setValue('teacherId', ''); // Limpiar docente
+      setValue('classroom', ''); // Limpiar aula
+      setValue('building', '');  // Limpiar edificio
     }
   };
 
@@ -178,10 +180,10 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       day: formData.day,
       startBlock: startBlockNum,
       endBlock: startBlockNum + 1,
-      classroom: formData.classroom || undefined,
-      building: formData.building || undefined,
+      classroom: isRecess ? undefined : (formData.classroom || undefined),
+      building: isRecess ? undefined : (formData.building || undefined),
       subjectId: isRecess ? null : (formData.subjectId || null),
-      teacherId: formData.teacherId || undefined,
+      teacherId: isRecess ? undefined : (formData.teacherId || undefined),
     };
 
     mutate(payload, {
@@ -393,83 +395,88 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             </label>
           </div>
 
-          {/* Materia */}
-          <div className="flex flex-col">
-            <label htmlFor="subjectId" className="text-gray-700 font-bold mb-1">
-              Materia {!isRecess && '*'}
-            </label>
-            <select
-              id="subjectId"
-              {...register('subjectId')}
-              className={`w-full px-3 py-2 border-2 border-solid ${
-                errors.subjectId ? "border-red-500" : "border-gray-300"
-              } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
-              disabled={loadingSubjects || isRecess}
-            >
-              <option value="">{loadingSubjects ? 'Cargando materias...' : 'Seleccione una materia'}</option>
-              {!loadingSubjects && subjects.map(subject => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.name} ({subject.code})
-                </option>
-              ))}
-            </select>
-            {errors.subjectId && (
-              <span className="text-red-500 text-sm mt-1">{errors.subjectId.message as string}</span>
-            )}
-            {!isRecess && subjects.length === 0 && !loadingSubjects && (
-              <span className="text-yellow-600 text-sm mt-1">
-                No hay materias registradas. Primero agregue materias en la pestaña "Agregar Materia".
-              </span>
-            )}
-          </div>
+          {/* Campos visibles solo si NO es receso */}
+          {!isRecess && (
+            <>
+              {/* Materia */}
+              <div className="flex flex-col">
+                <label htmlFor="subjectId" className="text-gray-700 font-bold mb-1">
+                  Materia *
+                </label>
+                <select
+                  id="subjectId"
+                  {...register('subjectId')}
+                  className={`w-full px-3 py-2 border-2 border-solid ${
+                    errors.subjectId ? "border-red-500" : "border-gray-300"
+                  } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+                  disabled={loadingSubjects}
+                >
+                  <option value="">{loadingSubjects ? 'Cargando materias...' : 'Seleccione una materia'}</option>
+                  {!loadingSubjects && subjects.map(subject => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name} ({subject.code})
+                    </option>
+                  ))}
+                </select>
+                {errors.subjectId && (
+                  <span className="text-red-500 text-sm mt-1">{errors.subjectId.message as string}</span>
+                )}
+                {subjects.length === 0 && !loadingSubjects && (
+                  <span className="text-yellow-600 text-sm mt-1">
+                    No hay materias registradas. Primero agregue materias en la pestaña "Agregar Materia".
+                  </span>
+                )}
+              </div>
 
-          {/* Docente */}
-          <div className="flex flex-col">
-            <label htmlFor="teacherId" className="text-gray-700 font-bold mb-1">
-              Docente (opcional)
-            </label>
-            <select
-              id="teacherId"
-              {...register('teacherId')}
-              className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
-              disabled={loadingTeachers || isRecess}
-            >
-              <option value="">{loadingTeachers ? 'Cargando docentes...' : 'Seleccione un docente'}</option>
-              {!loadingTeachers && teachers.map(teacher => (
-                <option key={teacher.id} value={teacher.id}>
-                  {teacher.fullName} - {teacher.specialization || 'Sin especialización'}
-                </option>
-              ))}
-            </select>
-          </div>
+              {/* Docente */}
+              <div className="flex flex-col">
+                <label htmlFor="teacherId" className="text-gray-700 font-bold mb-1">
+                  Docente (opcional)
+                </label>
+                <select
+                  id="teacherId"
+                  {...register('teacherId')}
+                  className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
+                  disabled={loadingTeachers}
+                >
+                  <option value="">{loadingTeachers ? 'Cargando docentes...' : 'Seleccione un docente'}</option>
+                  {!loadingTeachers && teachers.map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.fullName} - {teacher.specialization || 'Sin especialización'}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Aula */}
-          <div className="flex flex-col">
-            <label htmlFor="classroom" className="text-gray-700 font-bold mb-1">
-              Aula (opcional)
-            </label>
-            <input
-              id="classroom"
-              type="text"
-              {...register('classroom')}
-              className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
-              placeholder="Ej: Aula 101"
-            />
-          </div>
+              {/* Aula */}
+              <div className="flex flex-col">
+                <label htmlFor="classroom" className="text-gray-700 font-bold mb-1">
+                  Aula (opcional)
+                </label>
+                <input
+                  id="classroom"
+                  type="text"
+                  {...register('classroom')}
+                  className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
+                  placeholder="Ej: Aula 101"
+                />
+              </div>
 
-          {/* Edificio */}
-          <div className="flex flex-col">
-            <label htmlFor="building" className="text-gray-700 font-bold mb-1">
-              Edificio (opcional)
-            </label>
-            <input
-              id="building"
-              type="text"
-              {...register('building')}
-              className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
-              placeholder="Ej: Edificio Principal"
-            />
-          </div>
+              {/* Edificio */}
+              <div className="flex flex-col">
+                <label htmlFor="building" className="text-gray-700 font-bold mb-1">
+                  Edificio (opcional)
+                </label>
+                <input
+                  id="building"
+                  type="text"
+                  {...register('building')}
+                  className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
+                  placeholder="Ej: Edificio Principal"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Resumen */}
@@ -501,6 +508,11 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               </span>
             </div>
           </div>
+          {isRecess && (
+            <div className="mt-3 text-sm text-blue-600 font-medium">
+              ✓ Este horario se creará como RECESO (sin materia asignada)
+            </div>
+          )}
         </div>
 
         {/* Notas */}
