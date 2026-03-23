@@ -47,8 +47,18 @@ interface AddScheduleFormProps {
   onPreviewChange?: (grade: string, section: string) => void;
 }
 
+// Función para generar un código único de 7 caracteres que comienza con 'R'
+const generateRecessCode = (): string => {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = 'R';
+  for (let i = 0; i < 6; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+};
+
 export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProps) {
-  const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useScheduleForm();
+  const { register, handleSubmit, formState: { errors }, watch, setValue, reset, getValues } = useScheduleForm();
   const { mutate, isPending } = useAddSchedule();
   
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -57,6 +67,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
   const [isRecess, setIsRecess] = useState(false);
+  const [recessCode, setRecessCode] = useState('');
   
   const grade = watch('grade');
   const section = watch('section');
@@ -152,10 +163,19 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     const checked = e.target.checked;
     setIsRecess(checked);
     if (checked) {
-      setValue('subjectId', ''); // Limpiar materia
-      setValue('teacherId', ''); // Limpiar docente
-      setValue('classroom', ''); // Limpiar aula
-      setValue('building', '');  // Limpiar edificio
+      // Generar un código único para el receso
+      const newCode = generateRecessCode();
+      setRecessCode(newCode);
+      setValue('code', newCode);
+      // Limpiar campos no necesarios
+      setValue('subjectId', '');
+      setValue('teacherId', '');
+      setValue('classroom', '');
+      setValue('building', '');
+    } else {
+      // Si se desmarca, limpiar el código generado
+      setRecessCode('');
+      setValue('code', '');
     }
   };
 
@@ -172,9 +192,16 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       return;
     }
 
+    // Asegurar que el código esté presente (si es receso, ya lo generamos)
+    const finalCode = isRecess ? recessCode : formData.code;
+    if (!finalCode) {
+      toast.error('El código del horario es requerido');
+      return;
+    }
+
     // Convertir a TypeScheduleCreate para la API
     const payload: TypeScheduleCreate = {
-      code: formData.code,
+      code: finalCode,
       grade: formData.grade,
       section: formData.section,
       day: formData.day,
@@ -192,6 +219,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           toast.success('Horario creado exitosamente');
           reset();
           setIsRecess(false);
+          setRecessCode('');
           // Actualizar bloques ocupados localmente
           const newOccupied = new Set(occupiedBlocks);
           newOccupied.add(startBlockNum.toString());
@@ -241,33 +269,44 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Código */}
-          <div className="md:col-span-2">
-            <div className="flex flex-col">
-              <label htmlFor="code" className="text-gray-700 font-bold mb-1">
-                Código del Horario (7 dígitos, ejemplo: 1V2526) *
-              </label>
-              <input
-                id="code"
-                type="text"
-                {...register('code', { 
-                  required: 'El código es requerido',
-                  pattern: {
-                    value: /^[0-9A-Z]{7}$/,
-                    message: 'Debe tener exactamente 7 dígitos/letras'
-                  }
-                })}
-                className={`w-full px-3 py-2 border-2 border-solid ${
-                  errors.code ? "border-red-500" : "border-gray-300"
-                } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
-                placeholder="Ej: 1V2526"
-              />
-              {errors.code && (
-                <span className="text-red-500 text-sm mt-1">{errors.code.message as string}</span>
-              )}
-              <p className="text-xs text-gray-500 mt-1">Formato: 1V2526 (7 caracteres exactos)</p>
+          {/* Código - solo visible cuando NO es receso */}
+          {!isRecess && (
+            <div className="md:col-span-2">
+              <div className="flex flex-col">
+                <label htmlFor="code" className="text-gray-700 font-bold mb-1">
+                  Código del Horario (7 dígitos, ejemplo: 1V2526) *
+                </label>
+                <input
+                  id="code"
+                  type="text"
+                  {...register('code', { 
+                    required: 'El código es requerido',
+                    pattern: {
+                      value: /^[0-9A-Z]{7}$/,
+                      message: 'Debe tener exactamente 7 dígitos/letras'
+                    }
+                  })}
+                  className={`w-full px-3 py-2 border-2 border-solid ${
+                    errors.code ? "border-red-500" : "border-gray-300"
+                  } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+                  placeholder="Ej: 1V2526"
+                />
+                {errors.code && (
+                  <span className="text-red-500 text-sm mt-1">{errors.code.message as string}</span>
+                )}
+                <p className="text-xs text-gray-500 mt-1">Formato: 1V2526 (7 caracteres exactos)</p>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Si es receso, mostrar mensaje informativo */}
+          {isRecess && (
+            <div className="md:col-span-2 bg-gray-100 p-3 rounded-md">
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold">Código generado automáticamente:</span> {recessCode}
+              </p>
+            </div>
+          )}
 
           {/* Grado */}
           <div className="flex flex-col">
@@ -510,7 +549,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           </div>
           {isRecess && (
             <div className="mt-3 text-sm text-blue-600 font-medium">
-              ✓ Este horario se creará como RECESO (sin materia asignada)
+              ✓ Este horario se creará como RECESO (sin materia asignada) con código: {recessCode}
             </div>
           )}
         </div>
@@ -519,7 +558,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h4 className="font-semibold text-blue-800 mb-2">📝 Notas importantes:</h4>
           <ul className="text-sm text-gray-700 space-y-1">
-            <li>• <strong>Código:</strong> 7 dígitos/letras (ej: 1V2526)</li>
+            <li>• <strong>Código:</strong> Para materias, ingrese 7 dígitos/letras (ej: 1V2526). Para recesos, se genera automáticamente.</li>
             <li>• Cada materia ocupa <strong>2 bloques consecutivos</strong></li>
             <li>• Las materias se pueden asignar a cualquier grado/sección</li>
             <li>• Verifique que el bloque no esté ocupado antes de guardar</li>
