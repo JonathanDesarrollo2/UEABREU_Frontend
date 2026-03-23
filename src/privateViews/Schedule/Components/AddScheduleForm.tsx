@@ -58,7 +58,7 @@ const generateRecessCode = (): string => {
 };
 
 export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProps) {
-  const { register, handleSubmit, formState: { errors }, watch, setValue, reset, getValues } = useScheduleForm();
+  const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useScheduleForm();
   const { mutate, isPending } = useAddSchedule();
   
   const [subjects, setSubjects] = useState<any[]>([]);
