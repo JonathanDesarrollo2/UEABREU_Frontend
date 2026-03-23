@@ -51,7 +51,6 @@ interface AddScheduleFormProps {
 const generateRecessCode = (): string => {
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  // Combinar timestamp y random, tomar 6 caracteres y preceder con 'R'
   const combined = (timestamp + random).replace(/[^A-Z0-9]/g, '').slice(0, 6);
   const padded = combined.padEnd(6, '0');
   return `R${padded}`;
@@ -165,17 +164,14 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     setIsRecess(checked);
     setRetryCount(0);
     if (checked) {
-      // Generar un código único para el receso
       const newCode = generateRecessCode();
       setRecessCode(newCode);
       setValue('code', newCode);
-      // Limpiar campos no necesarios
       setValue('subjectId', '');
       setValue('teacherId', '');
       setValue('classroom', '');
       setValue('building', '');
     } else {
-      // Si se desmarca, limpiar el código generado
       setRecessCode('');
       setValue('code', '');
     }
@@ -183,10 +179,23 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
 
   const onSubmit = (formData: ScheduleFormValues) => {
     const startBlockNum = parseInt(formData.startBlock);
-    
-    if (occupiedBlocks.has(startBlockNum.toString())) {
-      toast.error('Este bloque ya está ocupado para este día');
-      return;
+    // Determinar bloque final según si es receso
+    const endBlockNum = isRecess ? startBlockNum : startBlockNum + 1;
+
+    // Validación de bloques ocupados
+    if (isRecess) {
+      // Receso: solo verificar que el bloque no esté ocupado
+      if (occupiedBlocks.has(startBlockNum.toString())) {
+        toast.error('Este bloque ya está ocupado para este día');
+        return;
+      }
+    } else {
+      // Materia normal: verificar que ninguno de los dos bloques esté ocupado
+      if (occupiedBlocks.has(startBlockNum.toString()) || 
+          occupiedBlocks.has((startBlockNum + 1).toString())) {
+        toast.error('Uno de los bloques ya está ocupado para este día');
+        return;
+      }
     }
 
     if (!isRecess && !formData.subjectId) {
@@ -194,27 +203,24 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       return;
     }
 
-    // Asegurar que el código esté presente (si es receso, ya lo generamos)
     let finalCode = isRecess ? recessCode : formData.code;
     if (!finalCode) {
       toast.error('El código del horario es requerido');
       return;
     }
 
-    // Validar que el código tenga exactamente 7 caracteres y solo letras mayúsculas y números
     if (!/^[A-Z0-9]{7}$/.test(finalCode)) {
       toast.error('El código debe tener 7 caracteres alfanuméricos mayúsculas');
       return;
     }
 
-    // Convertir a TypeScheduleCreate para la API
     const payload: TypeScheduleCreate = {
       code: finalCode,
       grade: formData.grade,
       section: formData.section,
       day: formData.day,
       startBlock: startBlockNum,
-      endBlock: startBlockNum + 1,
+      endBlock: endBlockNum,
       classroom: isRecess ? undefined : (formData.classroom || undefined),
       building: isRecess ? undefined : (formData.building || undefined),
       subjectId: isRecess ? null : (formData.subjectId || null),
@@ -231,12 +237,15 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           setRetryCount(0);
           // Actualizar bloques ocupados localmente
           const newOccupied = new Set(occupiedBlocks);
-          newOccupied.add(startBlockNum.toString());
-          newOccupied.add((startBlockNum + 1).toString());
+          if (isRecess) {
+            newOccupied.add(startBlockNum.toString());
+          } else {
+            newOccupied.add(startBlockNum.toString());
+            newOccupied.add((startBlockNum + 1).toString());
+          }
           setOccupiedBlocks(newOccupied);
         } else {
           toast.error(response.error?.[0] || 'Error al crear horario');
-          // Si el error es por código duplicado y estamos en modo receso, reintentar
           const errorMsg = response.error?.[0] || '';
           if (isRecess && errorMsg.includes('código') && retryCount < 3) {
             setRetryCount(prev => prev + 1);
@@ -427,14 +436,20 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-700">
-                <span className="font-semibold">Bloque Final:</span> {currentBlock + 1}
+                <span className="font-semibold">Bloque Final:</span> 
+                {isRecess ? currentBlock : `${currentBlock + 1}`}
                 <span className="ml-2 text-gray-600">
-                  (Horario: {timeRange.start} - {timeRange.end})
+                  (Horario: {timeRange.start} - {isRecess ? timeRange.end : getBlockTimes(currentBlock + 1).end})
                 </span>
               </p>
-              {isBlockOccupied(currentBlock) && (
+              {isRecess && isBlockOccupied(currentBlock) && (
                 <p className="text-red-600 text-sm mt-1 font-semibold">
-                  ⚠️ Este bloque está ocupado. No puede asignar materia aquí.
+                  ⚠️ Este bloque está ocupado. No puede asignar un receso aquí.
+                </p>
+              )}
+              {!isRecess && (isBlockOccupied(currentBlock) || isBlockOccupied(currentBlock + 1)) && (
+                <p className="text-red-600 text-sm mt-1 font-semibold">
+                  ⚠️ Uno de los bloques está ocupado. No puede asignar materia aquí.
                 </p>
               )}
             </div>
@@ -563,7 +578,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             <div>
               <span className="text-gray-500">Bloques:</span>
               <span className="ml-2 font-medium">
-                {startBlock ? `${currentBlock} - ${currentBlock + 1}` : 'No seleccionado'}
+                {startBlock ? (isRecess ? currentBlock : `${currentBlock} - ${currentBlock + 1}`) : 'No seleccionado'}
               </span>
             </div>
           </div>
@@ -579,10 +594,10 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           <h4 className="font-semibold text-blue-800 mb-2">📝 Notas importantes:</h4>
           <ul className="text-sm text-gray-700 space-y-1">
             <li>• <strong>Código:</strong> Para materias, ingrese 7 caracteres alfanuméricos mayúsculas (ej: 1V2526). Para recesos, se genera automáticamente.</li>
-            <li>• Cada materia ocupa <strong>2 bloques consecutivos</strong></li>
-            <li>• Las materias se pueden asignar a cualquier grado/sección</li>
-            <li>• Verifique que el bloque no esté ocupado antes de guardar</li>
-            <li>• <strong>Recesos:</strong> Marque la casilla "Es un receso" para crear un bloque sin materia.</li>
+            <li>• <strong>Materias:</strong> Ocupan <strong>2 bloques consecutivos</strong>.</li>
+            <li>• <strong>Recesos:</strong> Ocupan <strong>1 solo bloque</strong>. Puede colocarlos en cualquier bloque disponible.</li>
+            <li>• Las materias se pueden asignar a cualquier grado/sección.</li>
+            <li>• Verifique que el bloque no esté ocupado antes de guardar.</li>
           </ul>
         </div>
 
