@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAddSchedule } from '../hooks/useAddSchedule';
 import { useScheduleForm, type ScheduleFormValues } from '../hooks/useScheduleForm';
 import { toast } from 'react-toastify';
@@ -49,16 +49,16 @@ interface AddScheduleFormProps {
 
 // Función para generar un código único de 7 caracteres que comienza con 'R'
 const generateRecessCode = (): string => {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = 'R';
-  for (let i = 0; i < 6; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return result;
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  // Combinar timestamp y random, tomar 6 caracteres y preceder con 'R'
+  const combined = (timestamp + random).replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  const padded = combined.padEnd(6, '0');
+  return `R${padded}`;
 };
 
 export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProps) {
-  const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useScheduleForm();
+  const { register, handleSubmit, formState: { errors }, watch, setValue, reset, getValues } = useScheduleForm();
   const { mutate, isPending } = useAddSchedule();
   
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -68,6 +68,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const [loadingTeachers, setLoadingTeachers] = useState(false);
   const [isRecess, setIsRecess] = useState(false);
   const [recessCode, setRecessCode] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
   
   const grade = watch('grade');
   const section = watch('section');
@@ -162,6 +163,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const handleRecessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
     setIsRecess(checked);
+    setRetryCount(0);
     if (checked) {
       // Generar un código único para el receso
       const newCode = generateRecessCode();
@@ -193,9 +195,15 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     }
 
     // Asegurar que el código esté presente (si es receso, ya lo generamos)
-    const finalCode = isRecess ? recessCode : formData.code;
+    let finalCode = isRecess ? recessCode : formData.code;
     if (!finalCode) {
       toast.error('El código del horario es requerido');
+      return;
+    }
+
+    // Validar que el código tenga exactamente 7 caracteres y solo letras mayúsculas y números
+    if (!/^[A-Z0-9]{7}$/.test(finalCode)) {
+      toast.error('El código debe tener 7 caracteres alfanuméricos mayúsculas');
       return;
     }
 
@@ -220,6 +228,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           reset();
           setIsRecess(false);
           setRecessCode('');
+          setRetryCount(0);
           // Actualizar bloques ocupados localmente
           const newOccupied = new Set(occupiedBlocks);
           newOccupied.add(startBlockNum.toString());
@@ -227,9 +236,19 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           setOccupiedBlocks(newOccupied);
         } else {
           toast.error(response.error?.[0] || 'Error al crear horario');
+          // Si el error es por código duplicado y estamos en modo receso, reintentar
+          const errorMsg = response.error?.[0] || '';
+          if (isRecess && errorMsg.includes('código') && retryCount < 3) {
+            setRetryCount(prev => prev + 1);
+            const newCode = generateRecessCode();
+            setRecessCode(newCode);
+            setValue('code', newCode);
+            toast.info(`Reintentando con nuevo código: ${newCode}`);
+          }
         }
       },
       onError: (error: Error) => {
+        console.error('Error al crear horario:', error);
         toast.error(error.message || 'Error al crear horario');
       },
     });
@@ -282,8 +301,8 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
                   {...register('code', { 
                     required: 'El código es requerido',
                     pattern: {
-                      value: /^[0-9A-Z]{7}$/,
-                      message: 'Debe tener exactamente 7 dígitos/letras'
+                      value: /^[A-Z0-9]{7}$/,
+                      message: 'Debe tener exactamente 7 caracteres alfanuméricos mayúsculas'
                     }
                   })}
                   className={`w-full px-3 py-2 border-2 border-solid ${
@@ -294,7 +313,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
                 {errors.code && (
                   <span className="text-red-500 text-sm mt-1">{errors.code.message as string}</span>
                 )}
-                <p className="text-xs text-gray-500 mt-1">Formato: 1V2526 (7 caracteres exactos)</p>
+                <p className="text-xs text-gray-500 mt-1">Formato: 1V2526 (7 caracteres alfanuméricos mayúsculas)</p>
               </div>
             </div>
           )}
@@ -304,6 +323,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             <div className="md:col-span-2 bg-gray-100 p-3 rounded-md">
               <p className="text-sm text-gray-600">
                 <span className="font-semibold">Código generado automáticamente:</span> {recessCode}
+                {retryCount > 0 && <span className="ml-2 text-yellow-600">(Reintento {retryCount}/3)</span>}
               </p>
             </div>
           )}
@@ -558,7 +578,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h4 className="font-semibold text-blue-800 mb-2">📝 Notas importantes:</h4>
           <ul className="text-sm text-gray-700 space-y-1">
-            <li>• <strong>Código:</strong> Para materias, ingrese 7 dígitos/letras (ej: 1V2526). Para recesos, se genera automáticamente.</li>
+            <li>• <strong>Código:</strong> Para materias, ingrese 7 caracteres alfanuméricos mayúsculas (ej: 1V2526). Para recesos, se genera automáticamente.</li>
             <li>• Cada materia ocupa <strong>2 bloques consecutivos</strong></li>
             <li>• Las materias se pueden asignar a cualquier grado/sección</li>
             <li>• Verifique que el bloque no esté ocupado antes de guardar</li>
