@@ -13,7 +13,7 @@ import {
   formatCurrency, getBalanceColor, getBalanceBgColor, mapPaymentMethodToDisplay 
 } from './utils/BalanceUtils';
 
-// Interfaz para representante (usada en hooks y componente)
+// Interfaz para representante (usada en hooks y componente= 
 export interface Representative {
   id: string;
   fullName: string;
