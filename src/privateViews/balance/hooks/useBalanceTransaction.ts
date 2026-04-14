@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../../library/axios';
-import { isValidUUID } from '../utils/BalanceUtils'
+import { isValidUUID } from '../utils/balanceUtils'
 
 export interface TransactionForm {
   amount: number;

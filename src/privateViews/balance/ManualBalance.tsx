@@ -11,7 +11,7 @@ import { useBalanceTransaction } from './hooks/useBalanceTransaction';
 import { useTransactionHistory } from './hooks/useTransactionHistory';
 import { 
   formatCurrency, getBalanceColor, getBalanceBgColor, mapPaymentMethodToDisplay 
-} from './utils/BalanceUtils';
+} from './utils/balanceUtils';
 
 // Interfaz para representante (usada en hooks y componente= 
 export interface Representative {
