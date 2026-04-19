@@ -65,7 +65,8 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     code?: string; 
     subject?: string; 
     day: string; 
-    blockId: number 
+    blockId: number;
+    isBreak?: boolean; // para distinguir receso de materia
   } | null>(null);
 
   const loadSchedule = async () => {
@@ -102,14 +103,15 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
 
   const getCellContent = (day: string, blockId: number): BlockData | null => {
     if (!scheduleData?.schedulesByDay?.[day]) {
-      // Si es el bloque 5 (receso), devolver bloque de receso
+      // Si es el bloque 5 (receso por defecto), devolver bloque de receso
       if (blockId === 5) {
         return {
           blockId,
           time: BLOCK_TIMES.find(b => b.id === blockId)?.time || '',
           period: BLOCK_TIMES.find(b => b.id === blockId)?.period || '',
           isBreak: true,
-          subject: 'RECESO'
+          subject: 'RECESO',
+          scheduleId: undefined, // no tiene id porque no está guardado en BD
         };
       }
       return null;
@@ -117,18 +119,27 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     
     const block = scheduleData.schedulesByDay[day].find((b: any) => b.blockId === blockId);
     
-    // Si no se encuentra el bloque pero es el bloque 5 (receso), devolver bloque de receso
+    // Si no se encuentra el bloque pero es el bloque 5 (receso por defecto), devolver bloque de receso
     if (!block && blockId === 5) {
       return {
         blockId,
         time: BLOCK_TIMES.find(b => b.id === blockId)?.time || '',
         period: BLOCK_TIMES.find(b => b.id === blockId)?.period || '',
         isBreak: true,
-        subject: 'RECESO'
+        subject: 'RECESO',
+        scheduleId: undefined,
       };
     }
     
-    return block || null;
+    // Si hay un bloque, asegurarnos de incluir scheduleId (viene del backend)
+    if (block) {
+      return {
+        ...block,
+        scheduleId: block.scheduleId, // ya debería venir del backend
+      };
+    }
+    
+    return null;
   };
 
   const getCellClass = (block: BlockData | null) => {
@@ -152,7 +163,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     return false;
   };
 
-  // Nueva función para calcular el rango de tiempo de 2 bloques
   const getTwoBlockTimeRange = (startBlockId: number): string => {
     const startBlock = BLOCK_TIMES.find(b => b.id === startBlockId);
     const endBlock = BLOCK_TIMES.find(b => b.id === startBlockId + 1);
@@ -165,33 +175,32 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     return BLOCK_TIMES.find(b => b.id === startBlockId)?.time || '';
   };
 
-  // Función para manejar el clic en una celda con materia
   const handleCellClick = (day: string, blockId: number) => {
     const cellData = getCellContent(day, blockId);
     
-    if (cellData?.subject && cellData.subject !== 'RECESO' && cellData.scheduleId) {
+    // Permitir eliminar si es materia o receso (que tenga scheduleId)
+    if (cellData?.scheduleId) {
       // Mostrar modal de confirmación para borrar
       setScheduleToDelete({
         id: cellData.scheduleId,
         code: cellData.subjectCode,
         subject: cellData.subject,
         day,
-        blockId
+        blockId,
+        isBreak: cellData.isBreak || false,
       });
       setShowDeleteModal(true);
     } else {
-      // Solo seleccionar para mostrar detalles
+      // Solo seleccionar para mostrar detalles (si no tiene ID no se puede eliminar)
       setSelectedCell({ day, blockId });
     }
   };
 
-  // Función para cerrar el modal de eliminación
   const closeDeleteModal = () => {
     setShowDeleteModal(false);
     setScheduleToDelete(null);
   };
 
-  // Función para borrar el horario
   const handleDeleteSchedule = async () => {
     if (!scheduleToDelete?.id) return;
     
@@ -201,9 +210,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
       
       if (response.result) {
         toast.success('Horario eliminado exitosamente');
-        // Recargar el horario
         await loadSchedule();
-        // Cerrar modal
         closeDeleteModal();
       } else {
         toast.error(response.error?.[0] || 'Error al eliminar horario');
@@ -229,7 +236,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {/* Selectores de Grado y Sección */}
             <div className="flex items-center space-x-2">
               <select
                 value={grade}
@@ -263,7 +269,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
               </button>
             </div>
 
-            {/* Botones de acción */}
             <div className="flex space-x-2">
               <button
                 onClick={loadSchedule}
@@ -324,20 +329,16 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
           <tbody className="bg-white divide-y divide-gray-200">
             {BLOCK_TIMES.map(blockTime => (
               <tr key={blockTime.id} className="hover:bg-gray-50">
-                {/* Celda de bloque/hora */}
                 <td className="px-4 py-3 whitespace-nowrap text-sm border-r border-gray-200 bg-gray-50">
                   <div className="font-medium text-gray-900">Bloque {blockTime.id}</div>
                   <div className="text-gray-500 text-xs">{blockTime.time}</div>
                   <div className="text-gray-400 text-xs">{blockTime.period}</div>
                 </td>
 
-                {/* Celdas por día */}
                 {DAYS.map(day => {
-                  // Verificar si este bloque está siendo ocupado por un rowspan
                   const isSpanned = isBlockSpanned(day, blockTime.id);
                   
                   if (isSpanned) {
-                    // Si está ocupado por rowspan, no renderizar celda
                     return null;
                   }
                   
@@ -355,27 +356,48 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                       rowSpan={cellData?.spans === 2 ? 2 : 1}
                     >
                       {cellData?.isBreak ? (
-                        <div className="text-center text-yellow-700 font-medium py-2">
+                        <div className="text-center text-yellow-700 font-medium py-2 relative group">
+                          {cellData.scheduleId && (
+                            <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <FaTrash className="text-red-500 hover:text-red-700 cursor-pointer" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setScheduleToDelete({
+                                    id: cellData.scheduleId,
+                                    code: cellData.subjectCode,
+                                    subject: cellData.subject,
+                                    day,
+                                    blockId: blockTime.id,
+                                    isBreak: true,
+                                  });
+                                  setShowDeleteModal(true);
+                                }} 
+                              />
+                            </div>
+                          )}
                           RECESO
                           <div className="text-xs text-yellow-600 mt-1">{blockTime.time}</div>
                         </div>
                       ) : cellData?.subject && cellData.subject !== 'RECESO' ? (
                         <div className="space-y-1 group relative">
-                          <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <FaTrash className="text-red-500 hover:text-red-700 cursor-pointer" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setScheduleToDelete({
-                                  id: cellData.scheduleId,
-                                  code: cellData.subjectCode,
-                                  subject: cellData.subject,
-                                  day,
-                                  blockId: blockTime.id
-                                });
-                                setShowDeleteModal(true);
-                              }} 
-                            />
-                          </div>
+                          {cellData.scheduleId && (
+                            <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <FaTrash className="text-red-500 hover:text-red-700 cursor-pointer" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setScheduleToDelete({
+                                    id: cellData.scheduleId,
+                                    code: cellData.subjectCode,
+                                    subject: cellData.subject,
+                                    day,
+                                    blockId: blockTime.id,
+                                    isBreak: false,
+                                  });
+                                  setShowDeleteModal(true);
+                                }} 
+                              />
+                            </div>
+                          )}
                           <div className="font-medium text-gray-900">{cellData.subject}</div>
                           {cellData.subjectCode && (
                             <div className="text-xs text-gray-500">({cellData.subjectCode})</div>
@@ -386,7 +408,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                           {cellData.classroom && (
                             <div className="text-xs text-gray-500">Aula: {cellData.classroom}</div>
                           )}
-                          {/* Mostrar rango de tiempo de 2 bloques */}
                           <div className="text-xs text-gray-400 mt-2">
                             {cellData.spans === 2 
                               ? getTwoBlockTimeRange(blockTime.id)
@@ -479,7 +500,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
           </div>
         </div>
         
-        {/* Información adicional */}
         <div className="mt-4 text-sm text-gray-600">
           <p>Grado: <span className="font-medium">{grade}</span> | Sección: <span className="font-medium">{section}</span></p>
           <p className="mt-1">Total de bloques: 9 (8 disponibles + 1 receso)</p>
@@ -489,48 +509,54 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
       {/* Modal de confirmación para borrar */}
       {showDeleteModal && scheduleToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Fondo con blur muy sutil */}
           <div 
             className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" 
             onClick={closeDeleteModal}
           ></div>
           
-          {/* Modal clean */}
           <div className="relative bg-white rounded-xl shadow-xl border border-gray-200 max-w-md w-full animate-in zoom-in-95">
-            {/* Encabezado */}
             <div className="p-6 border-b border-gray-100">
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                   <FaExclamationTriangle className="h-6 w-6 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900">Eliminar materia</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Eliminar {scheduleToDelete.isBreak ? 'receso' : 'materia'}
+                  </h3>
                   <p className="text-gray-600 text-sm mt-1">¿Estás seguro de continuar?</p>
                 </div>
               </div>
             </div>
 
-            {/* Información */}
             <div className="p-6">
               <div className="space-y-4">
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">Detalles de la materia:</h4>
+                  <h4 className="font-medium text-gray-900 mb-2">Detalles:</h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <span className="text-gray-500">Materia:</span>
-                      <p className="font-medium text-gray-900">{scheduleToDelete.subject}</p>
+                      <span className="text-gray-500">{scheduleToDelete.isBreak ? 'Tipo:' : 'Materia:'}</span>
+                      <p className="font-medium text-gray-900">
+                        {scheduleToDelete.isBreak ? 'RECESO' : scheduleToDelete.subject}
+                      </p>
                     </div>
-                    <div>
-                      <span className="text-gray-500">Código:</span>
-                      <p className="font-medium text-blue-600">{scheduleToDelete.code}</p>
-                    </div>
+                    {!scheduleToDelete.isBreak && scheduleToDelete.code && (
+                      <div>
+                        <span className="text-gray-500">Código:</span>
+                        <p className="font-medium text-blue-600">{scheduleToDelete.code}</p>
+                      </div>
+                    )}
                     <div>
                       <span className="text-gray-500">Día:</span>
                       <p className="font-medium text-gray-900 capitalize">{scheduleToDelete.day}</p>
                     </div>
                     <div>
                       <span className="text-gray-500">Horario:</span>
-                      <p className="font-medium text-gray-900">{getTwoBlockTimeRange(scheduleToDelete.blockId)}</p>
+                      <p className="font-medium text-gray-900">
+                        {scheduleToDelete.isBreak 
+                          ? BLOCK_TIMES.find(b => b.id === scheduleToDelete.blockId)?.time 
+                          : getTwoBlockTimeRange(scheduleToDelete.blockId)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -539,14 +565,13 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                   <div className="flex items-center space-x-2 text-red-700">
                     <FaExclamationTriangle className="h-4 w-4 flex-shrink-0" />
                     <p className="text-sm font-medium">
-                      Esta acción no se puede deshacer. La materia será eliminada del horario.
+                      Esta acción no se puede deshacer.
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Botones */}
             <div className="p-6 pt-4 border-t border-gray-100">
               <div className="flex gap-3">
                 <button
