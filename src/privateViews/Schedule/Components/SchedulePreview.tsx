@@ -9,7 +9,7 @@ const BLOCK_TIMES = [
   { id: 2, time: '7:40 - 8:20', period: 'Segundo Horario' },
   { id: 3, time: '8:20 - 9:00', period: 'Tercer Horario' },
   { id: 4, time: '9:00 - 9:40', period: 'Cuarto Horario' },
-  { id: 5, time: '10:00 - 10:20', period: 'Receso' },
+  { id: 5, time: '9:40 - 10:20', period: 'Receso' },
   { id: 6, time: '10:20 - 10:40', period: 'Sexto Horario' },
   { id: 7, time: '10:40 - 11:20', period: 'Séptimo Horario' },
   { id: 8, time: '11:20 - 12:00', period: 'Octavo Horario' },
