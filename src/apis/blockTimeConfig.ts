@@ -6,7 +6,7 @@ import type { BlockTimeConfigResponse, AllBlockTimeConfigsResponse, TypeApiRespo
 export async function getBlockTimesAPI(grade: string, section: string): Promise<BlockTimeConfigResponse> {
   try {
     const { data } = await api.get<{ result: boolean; content: BlockTimeConfigResponse; error: string[] }>(
-      '/private/config/block-times',
+      '/private/block/block-times',
       { params: { grade, section } }
     );
     if (!data.result) throw new Error(data.error?.[0] || 'Error al obtener configuración');
@@ -27,7 +27,7 @@ export async function saveBlockTimesAPI(
   blocks: BlockTimeConfig[]
 ): Promise<TypeApiResponseGeneric> {
   try {
-    const { data } = await api.post<TypeApiResponseGeneric>('/private/config/block-times', {
+    const { data } = await api.post<TypeApiResponseGeneric>('/private/block/block-times', {
       grade,
       section,
       blocks
@@ -45,7 +45,7 @@ export async function saveBlockTimesAPI(
 // Restablecer a valores por defecto
 export async function resetBlockTimesAPI(grade: string, section: string): Promise<TypeApiResponseGeneric> {
   try {
-    const { data } = await api.post<TypeApiResponseGeneric>('/private/config/block-times/reset', {
+    const { data } = await api.post<TypeApiResponseGeneric>('/private/block/block-times/reset', {
       grade,
       section
     });
@@ -63,7 +63,7 @@ export async function resetBlockTimesAPI(grade: string, section: string): Promis
 export async function getAllBlockTimeConfigsAPI(): Promise<AllBlockTimeConfigsResponse[]> {
   try {
     const { data } = await api.get<{ result: boolean; content: AllBlockTimeConfigsResponse[]; error: string[] }>(
-      '/private/config/block-times/all'
+      '/private/block/block-times/all'
     );
     if (!data.result) throw new Error(data.error?.[0] || 'Error al obtener configuraciones');
     return data.content;
