@@ -512,19 +512,24 @@ export default function InsertUser() {
 
                 <div className="flex justify-center">
                   <div className="w-full max-w-sm">
-                    <FormField 
-                      type="select"
-                      id="nivel" 
-                      label="Nivel de Acceso *" 
-                      required={true} 
-                      register={register} 
-                      error={errors.nivel}
-                      defaultValue="1"
-                      options={[
-                        { value: "1", text: "Representante" },
-                        { value: "2", text: "Administrador" }
-                      ]}
-                    />
+                      <div className="w-full max-w-sm">
+                        <FormField 
+                          type="select"
+                          id="nivel" 
+                          label="Nivel de Acceso *" 
+                          required={true} 
+                          register={register} 
+                          error={errors.nivel}
+                          defaultValue="1"                     // ← String
+                          options={[
+                            { value: "1", text: "Representante" },   // ← Strings
+                            { value: "2", text: "Administrador" }
+                          ]}
+                          validation={{
+                            setValueAs: (value: string) => parseInt(value, 10)  // Conversión a número
+                          }}
+                        />
+                  </div>
                   </div>
                 </div>
 
