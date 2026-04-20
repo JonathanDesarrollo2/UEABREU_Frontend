@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react';
 import { getSchedulesByGradeSectionAPI, deleteScheduleAPI } from '../../../apis/schedule';
+import { getBlockTimesAPI } from '../../../apis/blockTimeConfig';
+import type { BlockTimeConfig } from '../../../types/blockTimeConfig';
 import { FaSync, FaPrint, FaSearch, FaTrash, FaExclamationTriangle } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 const DAYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
-const BLOCK_TIMES = [
-  { id: 1, time: '7:00 - 7:40', period: 'Primer Horario' },
-  { id: 2, time: '7:40 - 8:20', period: 'Segundo Horario' },
-  { id: 3, time: '8:20 - 9:00', period: 'Tercer Horario' },
-  { id: 4, time: '9:00 - 9:40', period: 'Cuarto Horario' },
-  { id: 5, time: '9:40 - 10:00', period: 'Receso' },
-  { id: 6, time: '10:00 - 10:40', period: 'Sexto Horario' },
-  { id: 7, time: '10:40 - 11:20', period: 'Séptimo Horario' },
-  { id: 8, time: '11:20 - 12:00', period: 'Octavo Horario' },
-  { id: 9, time: '12:20 - 12:40', period: 'Noveno Horario' }
+
+// Valores por defecto en caso de fallo de la API
+const DEFAULT_BLOCKS: BlockTimeConfig[] = [
+  { blockNumber: 1, startTime: '07:00', endTime: '07:40', isActive: true },
+  { blockNumber: 2, startTime: '07:40', endTime: '08:20', isActive: true },
+  { blockNumber: 3, startTime: '08:20', endTime: '09:00', isActive: true },
+  { blockNumber: 4, startTime: '09:00', endTime: '09:40', isActive: true },
+  { blockNumber: 5, startTime: '09:40', endTime: '10:00', isActive: true },
+  { blockNumber: 6, startTime: '10:00', endTime: '10:40', isActive: true },
+  { blockNumber: 7, startTime: '10:40', endTime: '11:20', isActive: true },
+  { blockNumber: 8, startTime: '11:20', endTime: '12:00', isActive: true },
+  { blockNumber: 9, startTime: '12:20', endTime: '12:40', isActive: true },
 ];
 
 const GRADE_OPTIONS = [
@@ -66,18 +70,21 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     subject?: string; 
     day: string; 
     blockId: number;
-    isBreak?: boolean; // para distinguir receso de materia
+    isBreak?: boolean;
   } | null>(null);
 
+  // Estado para los tiempos de bloques desde la BD
+  const [blockTimes, setBlockTimes] = useState<BlockTimeConfig[]>([]);
+  const [loadingBlockTimes, setLoadingBlockTimes] = useState(false);
+
+  // Cargar horarios
   const loadSchedule = async () => {
     setIsLoading(true);
     try {
       const response = await getSchedulesByGradeSectionAPI(grade, section);
       if (response.result && response.content) {
         setScheduleData(response.content);
-        console.log('Horario cargado:', response.content);
       } else {
-        console.warn('No se encontraron horarios para:', grade, section);
         setScheduleData({ schedulesByDay: {} });
       }
     } catch (error) {
@@ -89,29 +96,74 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     }
   };
 
+  // Cargar configuración de tiempos de bloques desde la BD
+  const loadBlockTimes = async () => {
+    setLoadingBlockTimes(true);
+    try {
+      const data = await getBlockTimesAPI(grade, section);
+      // Filtrar solo bloques activos y ordenar
+      const activeBlocks = data.blocks
+        .filter(b => b.isActive)
+        .sort((a, b) => a.blockNumber - b.blockNumber);
+      setBlockTimes(activeBlocks);
+    } catch (error) {
+      console.error('Error cargando configuración de bloques:', error);
+      toast.error('Usando configuración de horarios por defecto');
+      setBlockTimes(DEFAULT_BLOCKS.filter(b => b.isActive));
+    } finally {
+      setLoadingBlockTimes(false);
+    }
+  };
+
+  // Efecto inicial y al cambiar grado/sección
   useEffect(() => {
     loadSchedule();
+    loadBlockTimes();
   }, [grade, section]);
 
   const handleSearch = () => {
     loadSchedule();
+    loadBlockTimes();
   };
 
   const handlePrint = () => {
     window.print();
   };
 
+  // Obtener el string de tiempo para un bloque (desde blockTimes)
+  const getBlockTimeString = (blockNumber: number): string => {
+    const block = blockTimes.find(b => b.blockNumber === blockNumber);
+    return block ? `${block.startTime} - ${block.endTime}` : '';
+  };
+
+  // Obtener el nombre del período (genérico)
+  const getPeriodName = (blockNumber: number): string => {
+    const periodNames: Record<number, string> = {
+      1: 'Primer Horario',
+      2: 'Segundo Horario',
+      3: 'Tercer Horario',
+      4: 'Cuarto Horario',
+      5: 'Receso',
+      6: 'Sexto Horario',
+      7: 'Séptimo Horario',
+      8: 'Octavo Horario',
+      9: 'Noveno Horario',
+    };
+    return periodNames[blockNumber] || `Bloque ${blockNumber}`;
+  };
+
   const getCellContent = (day: string, blockId: number): BlockData | null => {
+    // Primero revisamos si hay datos reales del backend
     if (!scheduleData?.schedulesByDay?.[day]) {
-      // Si es el bloque 5 (receso por defecto), devolver bloque de receso
+      // Si es el bloque 5 (receso por defecto) y no hay datos, devolver bloque de receso
       if (blockId === 5) {
         return {
           blockId,
-          time: BLOCK_TIMES.find(b => b.id === blockId)?.time || '',
-          period: BLOCK_TIMES.find(b => b.id === blockId)?.period || '',
+          time: getBlockTimeString(blockId),
+          period: getPeriodName(blockId),
           isBreak: true,
           subject: 'RECESO',
-          scheduleId: undefined, // no tiene id porque no está guardado en BD
+          scheduleId: undefined,
         };
       }
       return null;
@@ -119,23 +171,24 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     
     const block = scheduleData.schedulesByDay[day].find((b: any) => b.blockId === blockId);
     
-    // Si no se encuentra el bloque pero es el bloque 5 (receso por defecto), devolver bloque de receso
+    // Si no se encuentra el bloque pero es el bloque 5 (receso por defecto)
     if (!block && blockId === 5) {
       return {
         blockId,
-        time: BLOCK_TIMES.find(b => b.id === blockId)?.time || '',
-        period: BLOCK_TIMES.find(b => b.id === blockId)?.period || '',
+        time: getBlockTimeString(blockId),
+        period: getPeriodName(blockId),
         isBreak: true,
         subject: 'RECESO',
         scheduleId: undefined,
       };
     }
     
-    // Si hay un bloque, asegurarnos de incluir scheduleId (viene del backend)
     if (block) {
       return {
         ...block,
-        scheduleId: block.scheduleId, // ya debería venir del backend
+        time: getBlockTimeString(blockId),
+        period: getPeriodName(blockId),
+        scheduleId: block.scheduleId,
       };
     }
     
@@ -153,7 +206,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
   const isBlockSpanned = (day: string, blockId: number): boolean => {
     if (!scheduleData?.schedulesByDay?.[day]) return false;
     
-    // Buscar si algún bloque anterior tiene rowspan que incluya este bloque
     for (let i = 1; i < blockId; i++) {
       const previousBlock = getCellContent(day, i);
       if (previousBlock?.spans === 2 && i + 1 === blockId) {
@@ -164,23 +216,18 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
   };
 
   const getTwoBlockTimeRange = (startBlockId: number): string => {
-    const startBlock = BLOCK_TIMES.find(b => b.id === startBlockId);
-    const endBlock = BLOCK_TIMES.find(b => b.id === startBlockId + 1);
-    
+    const startBlock = blockTimes.find(b => b.blockNumber === startBlockId);
+    const endBlock = blockTimes.find(b => b.blockNumber === startBlockId + 1);
     if (startBlock && endBlock) {
-      const startTime = startBlock.time.split(' - ')[0];
-      const endTime = endBlock.time.split(' - ')[1];
-      return `${startTime} - ${endTime}`;
+      return `${startBlock.startTime} - ${endBlock.endTime}`;
     }
-    return BLOCK_TIMES.find(b => b.id === startBlockId)?.time || '';
+    return getBlockTimeString(startBlockId);
   };
 
   const handleCellClick = (day: string, blockId: number) => {
     const cellData = getCellContent(day, blockId);
     
-    // Permitir eliminar si es materia o receso (que tenga scheduleId)
     if (cellData?.scheduleId) {
-      // Mostrar modal de confirmación para borrar
       setScheduleToDelete({
         id: cellData.scheduleId,
         code: cellData.subjectCode,
@@ -191,7 +238,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
       });
       setShowDeleteModal(true);
     } else {
-      // Solo seleccionar para mostrar detalles (si no tiene ID no se puede eliminar)
       setSelectedCell({ day, blockId });
     }
   };
@@ -222,6 +268,15 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
       setIsLoading(false);
     }
   };
+
+  if (loadingBlockTimes || blockTimes.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <FaSync className="animate-spin text-3xl text-blue-600" />
+        <span className="ml-3 text-gray-600">Cargando configuración de horarios...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -271,7 +326,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
 
             <div className="flex space-x-2">
               <button
-                onClick={loadSchedule}
+                onClick={() => { loadSchedule(); loadBlockTimes(); }}
                 disabled={isLoading}
                 className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 flex items-center"
               >
@@ -327,32 +382,32 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {BLOCK_TIMES.map(blockTime => (
-              <tr key={blockTime.id} className="hover:bg-gray-50">
+            {blockTimes.map(blockTime => (
+              <tr key={blockTime.blockNumber} className="hover:bg-gray-50">
                 <td className="px-4 py-3 whitespace-nowrap text-sm border-r border-gray-200 bg-gray-50">
-                  <div className="font-medium text-gray-900">Bloque {blockTime.id}</div>
-                  <div className="text-gray-500 text-xs">{blockTime.time}</div>
-                  <div className="text-gray-400 text-xs">{blockTime.period}</div>
+                  <div className="font-medium text-gray-900">Bloque {blockTime.blockNumber}</div>
+                  <div className="text-gray-500 text-xs">{getBlockTimeString(blockTime.blockNumber)}</div>
+                  <div className="text-gray-400 text-xs">{getPeriodName(blockTime.blockNumber)}</div>
                 </td>
 
                 {DAYS.map(day => {
-                  const isSpanned = isBlockSpanned(day, blockTime.id);
+                  const isSpanned = isBlockSpanned(day, blockTime.blockNumber);
                   
                   if (isSpanned) {
                     return null;
                   }
                   
-                  const cellData = getCellContent(day, blockTime.id);
-                  const isSelected = selectedCell?.day === day && selectedCell?.blockId === blockTime.id;
+                  const cellData = getCellContent(day, blockTime.blockNumber);
+                  const isSelected = selectedCell?.day === day && selectedCell?.blockId === blockTime.blockNumber;
                   const cellClass = getCellClass(cellData);
                   
                   return (
                     <td
-                      key={`${day}-${blockTime.id}`}
+                      key={`${day}-${blockTime.blockNumber}`}
                       className={`px-4 py-3 text-sm border border-gray-200 ${cellClass} 
                         ${isSelected ? 'ring-2 ring-blue-500' : ''}
                         ${cellData?.spans === 2 ? 'align-top' : ''}`}
-                      onClick={() => handleCellClick(day, blockTime.id)}
+                      onClick={() => handleCellClick(day, blockTime.blockNumber)}
                       rowSpan={cellData?.spans === 2 ? 2 : 1}
                     >
                       {cellData?.isBreak ? (
@@ -367,7 +422,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                                     code: cellData.subjectCode,
                                     subject: cellData.subject,
                                     day,
-                                    blockId: blockTime.id,
+                                    blockId: blockTime.blockNumber,
                                     isBreak: true,
                                   });
                                   setShowDeleteModal(true);
@@ -376,7 +431,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                             </div>
                           )}
                           RECESO
-                          <div className="text-xs text-yellow-600 mt-1">{blockTime.time}</div>
+                          <div className="text-xs text-yellow-600 mt-1">{getBlockTimeString(blockTime.blockNumber)}</div>
                         </div>
                       ) : cellData?.subject && cellData.subject !== 'RECESO' ? (
                         <div className="space-y-1 group relative">
@@ -390,7 +445,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                                     code: cellData.subjectCode,
                                     subject: cellData.subject,
                                     day,
-                                    blockId: blockTime.id,
+                                    blockId: blockTime.blockNumber,
                                     isBreak: false,
                                   });
                                   setShowDeleteModal(true);
@@ -410,8 +465,8 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                           )}
                           <div className="text-xs text-gray-400 mt-2">
                             {cellData.spans === 2 
-                              ? getTwoBlockTimeRange(blockTime.id)
-                              : blockTime.time}
+                              ? getTwoBlockTimeRange(blockTime.blockNumber)
+                              : getBlockTimeString(blockTime.blockNumber)}
                           </div>
                         </div>
                       ) : cellData?.isOccupied ? (
@@ -421,7 +476,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                       ) : (
                         <div className="text-center text-gray-400 py-2">
                           Disponible
-                          <div className="text-xs text-gray-300 mt-1">{blockTime.time}</div>
+                          <div className="text-xs text-gray-300 mt-1">{getBlockTimeString(blockTime.blockNumber)}</div>
                         </div>
                       )}
                     </td>
@@ -449,7 +504,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
             <div>
               <span className="text-gray-600">Hora:</span>
               <span className="ml-2 font-medium">
-                {BLOCK_TIMES.find(b => b.id === selectedCell.blockId)?.time}
+                {getBlockTimeString(selectedCell.blockId)}
               </span>
             </div>
             <div>
@@ -502,7 +557,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         
         <div className="mt-4 text-sm text-gray-600">
           <p>Grado: <span className="font-medium">{grade}</span> | Sección: <span className="font-medium">{section}</span></p>
-          <p className="mt-1">Total de bloques: 9 (8 disponibles + 1 receso)</p>
+          <p className="mt-1">Total de bloques activos: {blockTimes.length}</p>
         </div>
       </div>
 
@@ -554,7 +609,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                       <span className="text-gray-500">Horario:</span>
                       <p className="font-medium text-gray-900">
                         {scheduleToDelete.isBreak 
-                          ? BLOCK_TIMES.find(b => b.id === scheduleToDelete.blockId)?.time 
+                          ? getBlockTimeString(scheduleToDelete.blockId)
                           : getTwoBlockTimeRange(scheduleToDelete.blockId)}
                       </p>
                     </div>

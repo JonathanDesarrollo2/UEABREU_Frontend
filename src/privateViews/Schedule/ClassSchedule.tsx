@@ -1,15 +1,16 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { FaCalendarAlt, FaChalkboardTeacher, FaBook, FaEye } from 'react-icons/fa';
+import { FaCalendarAlt, FaChalkboardTeacher, FaBook, FaEye, FaClock } from 'react-icons/fa';
 import AddScheduleForm from './Components/AddScheduleForm';
 import AddSubjectForm from './Components/AddSubjectForm';
 import AddTeacherForm from './Components/AddTeacherForm';
 import SchedulePreview from './Components/SchedulePreview';
+import BlockTimeConfigPanel from './Components/BlockTimeConfigPanel';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ActionButtons } from '../../components/ActionButtons';
 
-type TabType = 'schedule' | 'subject' | 'teacher' | 'preview';
+type TabType = 'schedule' | 'subject' | 'teacher' | 'preview' | 'blockconfig';
 
 export default function ClassSchedule() {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export default function ClassSchedule() {
     { id: 'subject' as TabType, label: 'Agregar Materia', icon: <FaBook /> },
     { id: 'schedule' as TabType, label: 'Agregar Horario', icon: <FaCalendarAlt /> },
     { id: 'preview' as TabType, label: 'Vista Previa', icon: <FaEye /> },
+    { id: 'blockconfig' as TabType, label: 'Configurar Bloques', icon: <FaClock /> },
   ];
 
   const handleCancel = useCallback(() => {
@@ -48,6 +50,8 @@ export default function ClassSchedule() {
         return <AddScheduleForm onPreviewChange={handlePreviewChange} />;
       case 'preview':
         return <SchedulePreview grade={previewParams.grade} section={previewParams.section} />;
+      case 'blockconfig':
+        return <BlockTimeConfigPanel />;
       default:
         return <AddScheduleForm onPreviewChange={handlePreviewChange} />;
     }
@@ -62,7 +66,7 @@ export default function ClassSchedule() {
             Gestión Académica - Horarios
           </h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Administra horarios, materias, docentes y visualiza el horario completo por grado y sección
+            Administra horarios, materias, docentes, configuración de bloques y visualiza el horario completo por grado y sección
           </p>
         </div>
 
@@ -94,7 +98,7 @@ export default function ClassSchedule() {
           {renderTabContent()}
         </div>
 
-        {activeTab !== 'preview' && (
+        {activeTab !== 'preview' && activeTab !== 'blockconfig' && (
           <div className="mt-6">
             <ActionButtons 
               onCancel={handleCancel} 
