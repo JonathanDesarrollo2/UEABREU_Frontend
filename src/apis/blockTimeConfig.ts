@@ -20,7 +20,7 @@ export async function getBlockTimesAPI(grade: string, section: string): Promise<
   }
 }
 
-// Guardar configuración de bloques (reemplaza)
+// Guardar configuración de bloques (reemplaza) 
 export async function saveBlockTimesAPI(
   grade: string,
   section: string,
