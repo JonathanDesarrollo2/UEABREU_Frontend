@@ -88,3 +88,10 @@ export async function getFinancialStatistics() {
   const response = await api.get('/private/balance/statistics/financial');
   return response.data;
 }
+
+export async function getRepresentativeByEmail(email: string): Promise<any> {
+  const response = await api.get('/private/balance/representative-by-email', {
+    params: { email }
+  });
+  return response.data;
+}

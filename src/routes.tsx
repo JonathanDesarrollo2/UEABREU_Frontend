@@ -16,7 +16,6 @@ import AuthRedirector from './publicViews/Components/Redirector'
 import LayoutUsers from './layouts/UserLayout'
 import InsertUser from './privateViews/insertUser/insertUser'
 import UserDashboard from './layouts/UserLayout'
-import PaymentValidation from './privateViews/payment/paymentValidation'
 import ManualBalance from './privateViews/balance/ManualBalance'
 import AdminListUsersBackend from './privateViews/userList/UserList'
 import ScheduleView from './privateViews/Schedule/ClassSchedule'
@@ -26,6 +25,7 @@ import AdminListTeachersBackend from './privateViews/TeacherList/AdminTeacherLis
 import TeacherListPage from './privateViews/TeacherList/AdminTeacherListBackend'
 import EditTeacherPage from './privateViews/TeacherEdit/EditTeacherView'
 import ChildrenScheduleView from './privateViews/ChildrenSchedule/ChildrenSchedule'
+import PaymentValidationPage from './privateViews/PaymentValidation/PaymentValidationPage'
 
 function ListRoutes() {
   return (
@@ -47,7 +47,7 @@ function ListRoutes() {
         {/* Rutas específicas por rol */}
         <Route path="/representante" element={<RepresLayout />}>
           <Route index element={<RepresDashboard />} />
-          <Route path="payment-validation" element={<PaymentValidation />} />
+          <Route path="validar-pago/:representativeId" element={<PaymentValidationPage />} />
           <Route path="ChildrenSchedule" element={<ChildrenScheduleView />} />
         </Route>
           

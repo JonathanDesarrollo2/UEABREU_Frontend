@@ -1,26 +1,36 @@
+// src/components/representante/PaymentValidation.tsx
 import { useState, useEffect } from 'react';
-import { 
-  cascadedValidationAPI, 
+import {
+  cascadedValidationAPI,
   type BankValidationRequest,
   getBCVRateAPI,
   type BCVRateResponse
 } from '../../apis/bank';
-import { 
-  FaUniversity, 
-  FaSearch, 
-  FaCheckCircle, 
-  FaExclamationTriangle, 
-  FaTimesCircle, 
-  FaMoneyBillWave, 
+import {
+  getRepresentativeBalance,
+  manualDeposit
+} from '../../apis/balance';
+import {
+  FaUniversity,
+  FaSearch,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaTimesCircle,
+  FaMoneyBillWave,
   FaDollarSign,
   FaExchangeAlt,
   FaInfoCircle,
   FaCreditCard,
   FaCalendarDay,
-  FaFileInvoiceDollar
+  FaFileInvoiceDollar,
+  FaUserGraduate
 } from 'react-icons/fa';
 
-export default function PaymentValidation() {
+interface PaymentValidationProps {
+  representativeId: string;
+}
+
+export default function PaymentValidation({ representativeId }: PaymentValidationProps) {
   const [formData, setFormData] = useState<BankValidationRequest>({
     AccountNumber: '',
     BankCode: 191,
@@ -38,6 +48,14 @@ export default function PaymentValidation() {
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const [usdAmount, setUsdAmount] = useState<number>(0);
 
+  // Estados para el representante y sus alumnos
+  const [students, setStudents] = useState<any[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [loadingStudents, setLoadingStudents] = useState(true);
+  const [depositResult, setDepositResult] = useState<any>(null);
+  const [depositLoading, setDepositLoading] = useState(false);
+
+  // Cargar tasa BCV
   useEffect(() => {
     const fetchBCVRate = async () => {
       try {
@@ -55,10 +73,32 @@ export default function PaymentValidation() {
         setLoadingRate(false);
       }
     };
-
     fetchBCVRate();
   }, []);
 
+  // Cargar hijos del representante
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (!representativeId) return;
+      try {
+        setLoadingStudents(true);
+        const res = await getRepresentativeBalance(representativeId);
+              if (res.result && res.content.students) {                    // <-- Cambiado
+        setStudents(res.content.students);                         // <-- Cambiado
+        if (res.content.students.length === 1) {                   // <-- Cambiado
+          setSelectedStudentId(res.content.students[0].id);        // <-- Cambiado
+          }
+        }
+      } catch (err: any) {
+        console.error('Error al cargar alumnos:', err);
+      } finally {
+        setLoadingStudents(false);
+      }
+    };
+    fetchStudents();
+  }, [representativeId]);
+
+  // Cálculo USD
   useEffect(() => {
     if (bcvRate && formData.Amount > 0) {
       const usd = formData.Amount / bcvRate.PriceRateBCV;
@@ -73,10 +113,34 @@ export default function PaymentValidation() {
     setLoading(true);
     setError('');
     setResult(null);
+    setDepositResult(null);
 
     try {
       const response = await cascadedValidationAPI(formData);
       setResult(response.content);
+
+      // Si la validación bancaria fue exitosa, registrar el depósito
+      if (
+        response.content.overallResult === 'success' &&
+        response.content.message.includes('Pago verificado exitosamente')
+      ) {
+        setDepositLoading(true);
+        try {
+          const depositPayload = {
+            amount: formData.Amount,
+            description: `Pago validado - Ref: ${formData.Reference}`,
+            paymentMethod: 'pago_movil' as const,
+            reference: formData.Reference,
+            studentId: selectedStudentId || undefined, // si está vacío, se reparte entre todos
+          };
+          const depositRes = await manualDeposit(representativeId, depositPayload);
+          setDepositResult(depositRes);
+        } catch (depErr: any) {
+          setError(`Validación bancaria exitosa, pero error al registrar depósito: ${depErr.message}`);
+        } finally {
+          setDepositLoading(false);
+        }
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -135,6 +199,7 @@ export default function PaymentValidation() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Encabezado */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div className="flex items-center space-x-4">
@@ -146,7 +211,7 @@ export default function PaymentValidation() {
                 <p className="text-gray-600">Sistema de verificación en cascada - BNC</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4 bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-3 shadow-md">
               <div className="bg-white/20 p-2 rounded-lg">
                 <FaMoneyBillWave className="text-xl text-white" />
@@ -160,6 +225,7 @@ export default function PaymentValidation() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Formulario */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg">
               <div className="flex items-center justify-between mb-6">
@@ -169,7 +235,7 @@ export default function PaymentValidation() {
                   </div>
                   <h2 className="text-xl font-bold text-gray-800">Consulta de Transacción</h2>
                 </div>
-                
+
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-2">
                   <div className="flex items-center space-x-2">
                     <FaExchangeAlt className="text-blue-600 text-sm" />
@@ -197,6 +263,47 @@ export default function PaymentValidation() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Selector de estudiante (si hay más de uno) */}
+               // Dentro del return, justo antes de mostrar el selector:
+                      {students.length > 1 && (
+                        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <FaUserGraduate className="text-indigo-600" />
+                            <label className="block text-sm font-semibold text-indigo-700">
+                              Selecciona el estudiante al que se aplicará el pago
+                            </label>
+                          </div>
+                          {/* 👇 Añade esta comprobación */}
+                          {loadingStudents ? (
+                            <div className="flex items-center justify-center py-4">
+                              <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-600 border-t-transparent"></div>
+                              <span className="ml-2 text-sm text-indigo-700">Cargando estudiantes...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <select
+                                value={selectedStudentId}
+                                onChange={(e) => setSelectedStudentId(e.target.value)}
+                                className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              >
+                                <option value="">Repartir entre todos los hijos</option>
+                                {students.map((student: any) => (
+                                  <option key={student.id} value={student.id}>
+                                    {student.fullName} – Saldo: ${student.balance?.toFixed(2) ?? '0.00'}
+                                  </option>
+                                ))}
+                              </select>
+                              {selectedStudentId === '' && (
+                                <p className="text-xs text-indigo-600 mt-2">
+                                  El monto se dividirá equitativamente entre los {students.length} hijos.
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                {/* Campos del formulario */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -224,10 +331,10 @@ export default function PaymentValidation() {
                       required
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
-                      <option value={191} className="text-gray-800">BNC (0191)</option>
-                      <option value={101} className="text-gray-800">Bancaribe (0101)</option>
-                      <option value={104} className="text-gray-800">BdV (0104)</option>
-                      <option value={105} className="text-gray-800">Mercantil (0105)</option>
+                      <option value={191}>BNC (0191)</option>
+                      <option value={101}>Bancaribe (0101)</option>
+                      <option value={104}>BdV (0104)</option>
+                      <option value={105}>Mercantil (0105)</option>
                     </select>
                   </div>
 
@@ -351,10 +458,10 @@ export default function PaymentValidation() {
                 <div className="flex justify-end pt-2">
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || depositLoading}
                     className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-blue-400 disabled:to-blue-500 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 disabled:scale-100 shadow-md flex items-center space-x-2"
                   >
-                    {loading ? (
+                    {loading || depositLoading ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                         <span>Procesando...</span>
@@ -371,6 +478,7 @@ export default function PaymentValidation() {
             </div>
           </div>
 
+          {/* Panel de resultados */}
           <div className="lg:col-span-1">
             <div className="bg-gradient-to-b from-gray-50 to-white rounded-2xl p-5 border border-gray-200 shadow-lg h-full">
               <div className="flex items-center space-x-3 mb-5 pb-4 border-b border-gray-200">
@@ -395,6 +503,26 @@ export default function PaymentValidation() {
                 </div>
               )}
 
+              {depositResult && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-5">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <FaCheckCircle className="text-lg text-green-600" />
+                    <h4 className="text-base font-semibold text-green-800">Depósito registrado</h4>
+                  </div>
+                  <p className="text-green-700 text-xs">
+                    {depositResult.content.message}
+                    {depositResult.content.appliedToStudent && (
+                      <span className="block mt-1 font-semibold">
+                        Aplicado a: {students.find(s => s.id === depositResult.content.appliedToStudent)?.fullName}
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-green-700 text-xs mt-1">
+                    Nuevo saldo: ${depositResult.content.newBalance?.toFixed(2)}
+                  </p>
+                </div>
+              )}
+
               {result ? (
                 <div className={`${getStatusColor(result.overallResult)} rounded-xl p-4 border-2 transition-all duration-300`}>
                   <div className="flex items-center space-x-3 mb-3">
@@ -414,6 +542,7 @@ export default function PaymentValidation() {
                   </div>
 
                   <div className="space-y-3 mt-4">
+                    {/* P2P */}
                     <div className={`flex justify-between items-center p-3 rounded-lg border ${
                       result.details.validateP2P.movementExists 
                         ? 'bg-green-50 border-green-200' 
@@ -422,35 +551,19 @@ export default function PaymentValidation() {
                         : 'bg-gray-100 border-gray-200'
                     }`}>
                       <div className="flex items-center space-x-2">
-                        <div className={`p-1.5 rounded ${
-                          result.details.validateP2P.movementExists 
-                            ? 'bg-green-100' 
-                            : result.details.validateP2P.executed
-                            ? 'bg-red-100'
-                            : 'bg-gray-200'
-                        }`}>
-                          <FaCreditCard className={
-                            result.details.validateP2P.movementExists 
-                              ? 'text-green-600' 
-                              : result.details.validateP2P.executed
-                              ? 'text-red-600'
-                              : 'text-gray-600'
-                          } size={14} />
-                        </div>
+                        <FaCreditCard className={
+                          result.details.validateP2P.movementExists ? 'text-green-600' : result.details.validateP2P.executed ? 'text-red-600' : 'text-gray-600'
+                        } size={14} />
                         <span className="text-gray-700 text-sm">P2P</span>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        result.details.validateP2P.movementExists 
-                          ? 'bg-green-500 text-white' 
-                          : result.details.validateP2P.executed
-                          ? 'bg-red-500 text-white'
-                          : 'bg-gray-500 text-white'
+                        result.details.validateP2P.movementExists ? 'bg-green-500 text-white' : result.details.validateP2P.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'
                       }`}>
-                        {result.details.validateP2P.executed ? 
-                         (result.details.validateP2P.movementExists ? '✓' : '✗') : '—'}
+                        {result.details.validateP2P.executed ? (result.details.validateP2P.movementExists ? '✓' : '✗') : '—'}
                       </span>
                     </div>
 
+                    {/* Referencia */}
                     <div className={`flex justify-between items-center p-3 rounded-lg border ${
                       result.details.validateReference.movementExists 
                         ? 'bg-green-50 border-green-200' 
@@ -459,35 +572,19 @@ export default function PaymentValidation() {
                         : 'bg-gray-100 border-gray-200'
                     }`}>
                       <div className="flex items-center space-x-2">
-                        <div className={`p-1.5 rounded ${
-                          result.details.validateReference.movementExists 
-                            ? 'bg-green-100' 
-                            : result.details.validateReference.executed
-                            ? 'bg-red-100'
-                            : 'bg-gray-200'
-                        }`}>
-                          <FaCalendarDay className={
-                            result.details.validateReference.movementExists 
-                              ? 'text-green-600' 
-                              : result.details.validateReference.executed
-                              ? 'text-red-600'
-                              : 'text-gray-600'
-                          } size={14} />
-                        </div>
+                        <FaCalendarDay className={
+                          result.details.validateReference.movementExists ? 'text-green-600' : result.details.validateReference.executed ? 'text-red-600' : 'text-gray-600'
+                        } size={14} />
                         <span className="text-gray-700 text-sm">Referencia</span>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        result.details.validateReference.movementExists 
-                          ? 'bg-green-500 text-white' 
-                          : result.details.validateReference.executed
-                          ? 'bg-red-500 text-white'
-                          : 'bg-gray-500 text-white'
+                        result.details.validateReference.movementExists ? 'bg-green-500 text-white' : result.details.validateReference.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'
                       }`}>
-                        {result.details.validateReference.executed ? 
-                         (result.details.validateReference.movementExists ? '✓' : '✗') : '—'}
+                        {result.details.validateReference.executed ? (result.details.validateReference.movementExists ? '✓' : '✗') : '—'}
                       </span>
                     </div>
 
+                    {/* Existencia */}
                     <div className={`flex justify-between items-center p-3 rounded-lg border ${
                       result.details.validateExistence.movementExists 
                         ? 'bg-green-50 border-green-200' 
@@ -496,32 +593,15 @@ export default function PaymentValidation() {
                         : 'bg-gray-100 border-gray-200'
                     }`}>
                       <div className="flex items-center space-x-2">
-                        <div className={`p-1.5 rounded ${
-                          result.details.validateExistence.movementExists 
-                            ? 'bg-green-100' 
-                            : result.details.validateExistence.executed
-                            ? 'bg-red-100'
-                            : 'bg-gray-200'
-                        }`}>
-                          <FaUniversity className={
-                            result.details.validateExistence.movementExists 
-                              ? 'text-green-600' 
-                              : result.details.validateExistence.executed
-                              ? 'text-red-600'
-                              : 'text-gray-600'
-                          } size={14} />
-                        </div>
+                        <FaUniversity className={
+                          result.details.validateExistence.movementExists ? 'text-green-600' : result.details.validateExistence.executed ? 'text-red-600' : 'text-gray-600'
+                        } size={14} />
                         <span className="text-gray-700 text-sm">Existencia</span>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        result.details.validateExistence.movementExists 
-                          ? 'bg-green-500 text-white' 
-                          : result.details.validateExistence.executed
-                          ? 'bg-red-500 text-white'
-                          : 'bg-gray-500 text-white'
+                        result.details.validateExistence.movementExists ? 'bg-green-500 text-white' : result.details.validateExistence.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'
                       }`}>
-                        {result.details.validateExistence.executed ? 
-                         (result.details.validateExistence.movementExists ? '✓' : '✗') : '—'}
+                        {result.details.validateExistence.executed ? (result.details.validateExistence.movementExists ? '✓' : '✗') : '—'}
                       </span>
                     </div>
                   </div>
