@@ -7,7 +7,7 @@ export const JoinUsView: React.FC = () => {
     {
       icon: <FiPhone className="w-6 h-6" />,
       title: "Teléfonos de Contacto",
-      details: ["+58 412-208.84.51"],
+      details: [" 0412-341.87.73, 0412-208.84.51"],
       description: "Líneas directas para información sobre admisiones"
     },
     {
@@ -19,7 +19,7 @@ export const JoinUsView: React.FC = () => {
     {
       icon: <FiMapPin className="w-6 h-6" />,
       title: "Ubicación",
-      details: ["Av. Principal de la Urb. Los Samanes", "Ciudad Bolívar, Estado Bolívar"],
+      details: ["Av. Universidad sector la Campiña # 192-50", "Municipio Naguanagua, Estado Carabobo"],
       description: "Visita nuestras instalaciones previa cita"
     },
     {
