@@ -5,7 +5,7 @@ import { FiCheck, FiUser, FiBook, FiHeart, FiAward, FiHome } from 'react-icons/f
 export const BenefitsSection: React.FC = () => {
   const advantages = [
     {
-      text: "Educación basada en valores cristianos",
+      text: "Educación basada en buenos valores ",
       icon: <FiHeart className="w-6 h-6" />
     },
     {
