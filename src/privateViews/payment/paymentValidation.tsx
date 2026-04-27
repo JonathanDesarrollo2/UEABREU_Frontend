@@ -267,42 +267,41 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                 {/* Selector de estudiante (si hay más de uno) */}
                // Dentro del return, justo antes de mostrar el selector:
                       {students.length > 1 && (
-                        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                          <div className="flex items-center space-x-2 mb-3">
-                            <FaUserGraduate className="text-indigo-600" />
-                            <label className="block text-sm font-semibold text-indigo-700">
-                              Selecciona el estudiante al que se aplicará el pago
-                            </label>
-                          </div>
-                          {/* 👇 Añade esta comprobación */}
-                          {loadingStudents ? (
-                            <div className="flex items-center justify-center py-4">
-                              <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-600 border-t-transparent"></div>
-                              <span className="ml-2 text-sm text-indigo-700">Cargando estudiantes...</span>
-                            </div>
-                          ) : (
-                            <>
-                              <select
-                                value={selectedStudentId}
-                                onChange={(e) => setSelectedStudentId(e.target.value)}
-                                className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                              >
-                                <option value="">Repartir entre todos los hijos</option>
-                                {students.map((student: any) => (
-                                  <option key={student.id} value={student.id}>
-                                    {student.fullName} – Saldo: ${student.balance?.toFixed(2) ?? '0.00'}
-                                  </option>
-                                ))}
-                              </select>
-                              {selectedStudentId === '' && (
-                                <p className="text-xs text-indigo-600 mt-2">
-                                  El monto se dividirá equitativamente entre los {students.length} hijos.
-                                </p>
+                            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                              <div className="flex items-center space-x-2 mb-3">
+                                <FaUserGraduate className="text-indigo-600" />
+                                <label className="block text-sm font-semibold text-indigo-700">
+                                  Selecciona el estudiante al que se aplicará el pago
+                                </label>
+                              </div>
+                              {loadingStudents ? (
+                                <div className="flex items-center justify-center py-4">
+                                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-600 border-t-transparent"></div>
+                                  <span className="ml-2 text-sm text-indigo-700">Cargando estudiantes...</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <select
+                                    value={selectedStudentId}
+                                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                                    className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  >
+                                    <option value="">Repartir entre todos los hijos</option>
+                                    {students.map((student: any) => (
+                                      <option key={student.id} value={student.id}>
+                                        {student.fullName} – Saldo: ${student.balance?.toFixed(2) ?? '0.00'}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {selectedStudentId === '' && (
+                                    <p className="text-xs text-indigo-600 mt-2">
+                                      El monto se dividirá equitativamente entre los {students.length} hijos.
+                                    </p>
+                                  )}
+                                </>
                               )}
-                            </>
+                            </div>
                           )}
-                        </div>
-                      )}
 
                 {/* Campos del formulario */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
