@@ -46,8 +46,8 @@ export default function RepresDashboard() {
             const balanceRes = await getRepresentativeBalance(repId);
             if (balanceRes.result) {
               setBalanceData(balanceRes.content);
-              // El número de hijos se obtiene del arreglo students
-              setChildrenCount(balanceRes.content.students?.length || 0);
+              // El número de hijos se obtiene del arreglo students dentro de representative
+              setChildrenCount(balanceRes.content.representative.students?.length || 0);
             }
           }
         }
@@ -61,11 +61,12 @@ export default function RepresDashboard() {
     fetchData();
   }, [sessionContext.sesionEmail]);
 
-  // Datos reales de deuda/saldo
-  const balance = balanceData?.balance ?? 0;
+  // Datos reales de deuda/saldo (ahora desde balanceData.representative)
+  const representative = balanceData?.representative;
+  const balance = representative?.balance ?? 0;
   const isDebt = balance < 0;
   const debtAmount = isDebt ? Math.abs(balance) : 0;
-  const fullName = balanceData?.fullName || sessionContext.sesionUser;
+  const fullName = representative?.fullName || sessionContext.sesionUser;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
