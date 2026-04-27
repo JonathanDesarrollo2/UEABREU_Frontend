@@ -3,24 +3,35 @@ import api from '../library/axios';
 export interface BalanceResponse {
   result: boolean;
   content: {
-    id: string;
-    fullName: string;
-    identityCard: string;
-    phone: string;
-    balance: number;
-    financialSummary: {
-      currentBalance: number;
-      debtAmount: number;
-      availableCredit: number;
-      activeStudents: number;
-      monthlyFee: number;
-      nextPaymentDue: string;
-      canEnrollNewStudent: boolean;
-    };
-    students?: Array<{
+    representative: {
       id: string;
       fullName: string;
+      identityCard: string;
+      phone: string;
+      balance: number;
+      balanceFormatted: string;
+      balanceStatus: 'debt' | 'credit' | 'zero';
+      debtAmount: number;
+      studentCount: number;
+      userEmail: string;
+      students: Array<{
+        id: string;
+        fullName: string;
+        status: string;
+        currentGrade: string;
+        balance: number;
+        balanceFormatted: string;
+      }>;
+    };
+    recentTransactions: Array<{
+      id: string;
+      type: string;
+      amount: number;
+      description: string;
+      paymentMethod: string;
+      reference: string;
       status: string;
+      createdAt: string;
     }>;
   };
   error: string[];

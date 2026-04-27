@@ -79,16 +79,17 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
   // Cargar hijos del representante
   useEffect(() => {
     const fetchStudents = async () => {
-      if (!representativeId) return;
-      try {
-        setLoadingStudents(true);
-        const res = await getRepresentativeBalance(representativeId);
-              if (res.result && res.content.students) {                    // <-- Cambiado
-        setStudents(res.content.students);                         // <-- Cambiado
-        if (res.content.students.length === 1) {                   // <-- Cambiado
-          setSelectedStudentId(res.content.students[0].id);        // <-- Cambiado
+        if (!representativeId) return;
+        try {
+          setLoadingStudents(true);
+          const res = await getRepresentativeBalance(representativeId);
+          if (res.result && res.content.representative.students) {      // ✅
+            const studentsList = res.content.representative.students;
+            setStudents(studentsList);
+            if (studentsList.length === 1) {
+              setSelectedStudentId(studentsList[0].id);
+            }
           }
-        }
       } catch (err: any) {
         console.error('Error al cargar alumnos:', err);
       } finally {
