@@ -1,14 +1,16 @@
 // layouts/RepresLayout.tsx
 import { Outlet, useOutletContext, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { 
-  FaHome, 
-  FaMoneyCheck, 
+import { useState, useCallback } from 'react';
+import {
+  FaHome,
+  FaMoneyCheck,
   FaClock,
   FaSignOutAlt,
   FaBars,
-  FaTimes
+  FaTimes,
+  FaSpinner
 } from 'react-icons/fa';
+import { getRepresentativeByEmail } from '../apis/balance'; // Ajusta la ruta si es necesario
 
 interface SessionContext {
   sesionUser?: string;
@@ -25,17 +27,77 @@ export default function RepresLayout() {
   const sessionContext = useOutletContext<SessionContext>();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [redirectingToPayment, setRedirectingToPayment] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('tokcattleraising_inCattleRanchCloud');
     navigate('/login');
   };
 
+  // Función para ir a la página de pagos con el ID del representante
+  const goToPaymentValidation = useCallback(async () => {
+    if (!sessionContext.sesionEmail) {
+      navigate('/login');
+      return;
+    }
+    setRedirectingToPayment(true);
+    try {
+      const res = await getRepresentativeByEmail(sessionContext.sesionEmail);
+      if (res.result && res.content.id) {
+        navigate(`/representante/validar-pago/${res.content.id}`);
+      } else {
+        alert('No se pudo obtener la información del representante. Intente de nuevo.');
+      }
+    } catch (error) {
+      alert('Error al cargar datos del representante.');
+    } finally {
+      setRedirectingToPayment(false);
+    }
+  }, [sessionContext.sesionEmail, navigate]);
+
+  // Definición de los items del menú
   const menuItems = [
-    { name: 'Dashboard', icon: FaHome, path: '/representante' },
-    { name: 'Pagos', icon: FaMoneyCheck, path: '/representante/payment-validation' },
-    { name: 'Horario', icon: FaClock, path: '/representante/ChildrenSchedule' },
+    { name: 'Dashboard', icon: FaHome, path: '/representante', isAction: false },
+    { 
+      name: 'Pagos', 
+      icon: redirectingToPayment ? FaSpinner : FaMoneyCheck, 
+      path: null, 
+      isAction: true, 
+      action: goToPaymentValidation 
+    },
+    { name: 'Horario', icon: FaClock, path: '/representante/ChildrenSchedule', isAction: false },
   ];
+
+  // Renderizado de un item del menú (funciona tanto en móvil como en desktop)
+  const renderMenuItem = (item: any) => {
+    const baseClasses = "group flex items-center px-4 py-4 text-base font-semibold rounded-lg text-gray-300 hover:bg-gray-700 hover:text-blue-500 transition-all duration-200";
+    const iconClasses = "mr-4 h-6 w-6 text-gray-400 group-hover:text-blue-600";
+
+    if (item.isAction) {
+      return (
+        <button
+          key={item.name}
+          onClick={item.action}
+          disabled={redirectingToPayment}
+          className={baseClasses}
+        >
+          <item.icon className={`${iconClasses} ${redirectingToPayment ? 'animate-spin' : ''}`} />
+          {item.name}
+        </button>
+      );
+    }
+
+    return (
+      <a
+        key={item.name}
+        href={item.path}
+        className={baseClasses}
+      >
+        <item.icon className={iconClasses} />
+        {item.name}
+      </a>
+    );
+  };
 
   return (
     <div className="flex h-screen bg-gray-900">
@@ -82,18 +144,9 @@ export default function RepresLayout() {
               </div>
             )}
             
-            {/* Menú */}
+            {/* Menú móvil */}
             <nav className="mt-6 px-3 space-y-2">
-              {menuItems.map((item) => (
-                <a
-                  key={item.name}
-                  href={item.path}
-                  className="group flex items-center px-4 py-4 text-base font-semibold rounded-lg text-gray-300 hover:bg-gray-700 hover:text-blue-500 transition-all duration-200"
-                >
-                  <item.icon className="mr-4 h-6 w-6 text-gray-400 group-hover:text-blue-600" />
-                  {item.name}
-                </a>
-              ))}
+              {menuItems.map(item => renderMenuItem(item))}
             </nav>
           </div>
         </div>
@@ -133,18 +186,9 @@ export default function RepresLayout() {
               </div>
             )}
             
-            {/* Menú */}
+            {/* Menú desktop */}
             <nav className="mt-6 flex-1 px-4 space-y-3">
-              {menuItems.map((item) => (
-                <a
-                  key={item.name}
-                  href={item.path}
-                  className="group flex items-center px-5 py-4 text-base font-semibold rounded-lg text-gray-300 hover:bg-gray-700 hover:text-blue-500 transition-all duration-200"
-                >
-                  <item.icon className="mr-4 h-6 w-6 text-gray-400 group-hover:text-blue-600" />
-                  {item.name}
-                </a>
-              ))}
+              {menuItems.map(item => renderMenuItem(item))}
             </nav>
           </div>
         </div>
