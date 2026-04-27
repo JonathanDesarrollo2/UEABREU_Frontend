@@ -265,7 +265,6 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Selector de estudiante (si hay más de uno) */}
-               // Dentro del return, justo antes de mostrar el selector:
                       {students.length > 1 && (
                             <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
                               <div className="flex items-center space-x-2 mb-3">
