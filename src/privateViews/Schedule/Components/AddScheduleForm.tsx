@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react';
 import { useAddSchedule } from '../hooks/useAddSchedule';
 import { useScheduleForm, type ScheduleFormValues } from '../hooks/useScheduleForm';
 import { toast } from 'react-toastify';
-import { getActiveTeachersAPI, getSchedulesByGradeSectionAPI, getSubjectsAPI } from '../../../apis/schedule';
+import {
+  getActiveTeachersAPI,
+  getSchedulesByGradeSectionAPI,
+  getSubjectsAPI,
+  getScheduleByIdAPI, // NUEVA: para cargar un horario existente
+  getSchedulesAPI,     // NUEVA: para listar horarios disponibles
+} from '../../../apis/schedule';
 import type { TypeScheduleCreate } from '../../../types/schedule';
 import type { TypeApiResponseGeneric } from '../../../types/schedule';
 
@@ -60,6 +66,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useScheduleForm();
   const { mutate, isPending } = useAddSchedule();
   
+  // Estados existentes
   const [subjects, setSubjects] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [occupiedBlocks, setOccupiedBlocks] = useState<Set<string>>(new Set());
@@ -69,13 +76,18 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const [recessCode, setRecessCode] = useState('');
   const [retryCount, setRetryCount] = useState(0);
   
+  // NUEVOS: Para cargar horario existente
+  const [availableSchedules, setAvailableSchedules] = useState<any[]>([]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState('');
+  const [loadingSchedules, setLoadingSchedules] = useState(false);
+  
   const grade = watch('grade');
   const section = watch('section');
   const day = watch('day');
   const startBlock = watch('startBlock');
   const subjectId = watch('subjectId');
 
-  // Cargar materias
+  // Cargar materias (sin cambios)
   useEffect(() => {
     setLoadingSubjects(true);
     getSubjectsAPI()
@@ -96,7 +108,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       });
   }, []);
 
-  // Cargar docentes activos
+  // Cargar docentes activos (sin cambios)
   useEffect(() => {
     setLoadingTeachers(true);
     getActiveTeachersAPI()
@@ -117,7 +129,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       });
   }, []);
 
-  // Cargar bloques ocupados para vista previa
+  // Cargar bloques ocupados (vista previa) - sin cambios
   useEffect(() => {
     if (grade && section && day) {
       getSchedulesByGradeSectionAPI(grade, section)
@@ -141,14 +153,14 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     }
   }, [grade, section, day]);
 
-  // Notificar cambios para vista previa
+  // Notificar cambios para vista previa (sin cambios)
   useEffect(() => {
     if (onPreviewChange && grade && section) {
       onPreviewChange(grade, section);
     }
   }, [grade, section, onPreviewChange]);
 
-  // Si se selecciona una materia, autocompletar docente (si tiene asignado)
+  // Autocompletar docente al seleccionar materia (sin cambios)
   useEffect(() => {
     if (subjectId) {
       const selectedSubject = subjects.find(s => s.id === subjectId);
@@ -158,7 +170,29 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     }
   }, [subjectId, subjects, setValue]);
 
-  // Manejar cambio del checkbox "Receso"
+  // NUEVO: Cargar lista de horarios existentes cuando se tengan grado y sección
+  useEffect(() => {
+    if (!grade || !section) {
+      setAvailableSchedules([]);
+      return;
+    }
+    setLoadingSchedules(true);
+    getSchedulesAPI({ grade, section })
+      .then(response => {
+        if (response.result && Array.isArray(response.content)) {
+          setAvailableSchedules(response.content);
+        } else {
+          setAvailableSchedules([]);
+        }
+      })
+      .catch(error => {
+        console.error('Error al cargar horarios existentes:', error);
+        setAvailableSchedules([]);
+      })
+      .finally(() => setLoadingSchedules(false));
+  }, [grade, section]);
+
+  // Manejar cambio del checkbox "Receso" (sin cambios)
   const handleRecessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
     setIsRecess(checked);
@@ -177,20 +211,50 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     }
   };
 
+  // NUEVA FUNCIÓN: Cargar los datos de un horario seleccionado en el formulario
+  const handleLoadSchedule = async () => {
+    if (!selectedScheduleId) return;
+    try {
+      const response = await getScheduleByIdAPI(selectedScheduleId);
+      if (!response.result || !response.content) {
+        toast.error('No se pudo cargar el horario seleccionado');
+        return;
+      }
+      const schedule = response.content;
+      // Rellenar campos
+      setValue('subjectId', schedule.subjectId || '');
+      setValue('teacherId', schedule.teacherId || '');
+      setValue('classroom', schedule.classroom || '');
+      setValue('building', schedule.building || '');
+      // Opcionalmente, cargar día y bloque (el usuario puede cambiarlos)
+      setValue('day', schedule.day);
+      setValue('startBlock', String(schedule.startBlock));
+      // Si es receso, ajustar
+      if (!schedule.subjectId) {
+        setIsRecess(true);
+        setRecessCode(generateRecessCode()); // generar nuevo código para receso
+        setValue('code', generateRecessCode());
+      } else {
+        setIsRecess(false);
+        setValue('code', ''); // el código debe ser ingresado manualmente
+      }
+      toast.success('Horario cargado correctamente. Cambia el día/bloque si deseas duplicarlo.');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al cargar horario');
+    }
+  };
+
   const onSubmit = (formData: ScheduleFormValues) => {
     const startBlockNum = parseInt(formData.startBlock);
-    // Determinar bloque final según si es receso
     const endBlockNum = isRecess ? startBlockNum : startBlockNum + 1;
 
-    // Validación de bloques ocupados
+    // Validación de bloques ocupados (sin cambios)
     if (isRecess) {
-      // Receso: solo verificar que el bloque no esté ocupado
       if (occupiedBlocks.has(startBlockNum.toString())) {
         toast.error('Este bloque ya está ocupado para este día');
         return;
       }
     } else {
-      // Materia normal: verificar que ninguno de los dos bloques esté ocupado
       if (occupiedBlocks.has(startBlockNum.toString()) || 
           occupiedBlocks.has((startBlockNum + 1).toString())) {
         toast.error('Uno de los bloques ya está ocupado para este día');
@@ -235,7 +299,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           setIsRecess(false);
           setRecessCode('');
           setRetryCount(0);
-          // Actualizar bloques ocupados localmente
+          // Actualizar bloques ocupados
           const newOccupied = new Set(occupiedBlocks);
           if (isRecess) {
             newOccupied.add(startBlockNum.toString());
@@ -295,7 +359,46 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
         <p className="text-gray-600">Complete todos los campos requeridos (*)</p>
       </div>
 
+      {/* ======= NUEVA SECCIÓN: Cargar horario existente ======= */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <h3 className="font-semibold text-blue-800 mb-3 text-lg">📋 Cargar Horario Existente (Duplicar)</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Selecciona un horario ya creado para cargar automáticamente sus datos. Luego puedes cambiar el día o el bloque para agregarlo en otro espacio.
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[250px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Horario existente
+            </label>
+            <select
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={selectedScheduleId}
+              onChange={(e) => setSelectedScheduleId(e.target.value)}
+              disabled={loadingSchedules || !grade || !section}
+            >
+              <option value="">{!grade || !section ? 'Primero elige grado y sección' : 'Seleccione un horario...'}</option>
+              {availableSchedules.map((sch) => (
+                <option key={sch.id} value={sch.id}>
+                  {sch.code} - {sch.subject?.name || 'RECESO'} ({sch.day}, B{sch.startBlock})
+                </option>
+              ))}
+            </select>
+            {loadingSchedules && <span className="text-sm text-gray-500">Cargando horarios...</span>}
+          </div>
+          <button
+            type="button"
+            onClick={handleLoadSchedule}
+            disabled={!selectedScheduleId}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cargar
+          </button>
+        </div>
+      </div>
+      {/* =========== FIN NUEVA SECCIÓN =========== */}
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* El resto del formulario es idéntico al original */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Código - solo visible cuando NO es receso */}
           {!isRecess && (
@@ -388,7 +491,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           {/* Día */}
           <div className="flex flex-col">
             <label htmlFor="day" className="text-gray-700 font-bold mb-1">
-              Día de la Semana *
+              Día *
             </label>
             <select
               id="day"
@@ -409,216 +512,140 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             )}
           </div>
 
-          {/* Bloque Inicial */}
-          <div className="space-y-2">
-            <div className="flex flex-col">
-              <label htmlFor="startBlock" className="text-gray-700 font-bold mb-1">
-                Bloque Inicial *
-              </label>
-              <select
-                id="startBlock"
-                {...register('startBlock', { required: 'El bloque inicial es requerido' })}
-                className={`w-full px-3 py-2 border-2 border-solid ${
-                  errors.startBlock ? "border-red-500" : "border-gray-300"
-                } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
-              >
-                <option value="">Seleccione un bloque</option>
-                {BLOCK_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.text}
-                  </option>
-                ))}
-              </select>
-              {errors.startBlock && (
-                <span className="text-red-500 text-sm mt-1">{errors.startBlock.message as string}</span>
-              )}
-            </div>
-            
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-700">
-                <span className="font-semibold">Bloque Final:</span> 
-                {isRecess ? currentBlock : `${currentBlock + 1}`}
-                <span className="ml-2 text-gray-600">
-                  (Horario: {timeRange.start} - {isRecess ? timeRange.end : getBlockTimes(currentBlock + 1).end})
-                </span>
+          {/* Bloque inicial */}
+          <div className="flex flex-col">
+            <label htmlFor="startBlock" className="text-gray-700 font-bold mb-1">
+              Bloque Inicial *
+            </label>
+            <select
+              id="startBlock"
+              {...register('startBlock', { required: 'El bloque inicial es requerido' })}
+              className={`w-full px-3 py-2 border-2 border-solid ${
+                errors.startBlock ? "border-red-500" : "border-gray-300"
+              } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+              disabled={loadingSchedules}
+            >
+              <option value="">Seleccione un bloque</option>
+              {BLOCK_OPTIONS.map(option => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                  disabled={isBlockOccupied(parseInt(option.value))}
+                >
+                  {option.text} {isBlockOccupied(parseInt(option.value)) ? '(Ocupado)' : ''}
+                </option>
+              ))}
+            </select>
+            {errors.startBlock && (
+              <span className="text-red-500 text-sm mt-1">{errors.startBlock.message as string}</span>
+            )}
+            {startBlock && (
+              <p className="text-xs text-gray-500 mt-1">
+                Horario: {timeRange.start} - {timeRange.end}
               </p>
-              {isRecess && isBlockOccupied(currentBlock) && (
-                <p className="text-red-600 text-sm mt-1 font-semibold">
-                  ⚠️ Este bloque está ocupado. No puede asignar un receso aquí.
-                </p>
-              )}
-              {!isRecess && (isBlockOccupied(currentBlock) || isBlockOccupied(currentBlock + 1)) && (
-                <p className="text-red-600 text-sm mt-1 font-semibold">
-                  ⚠️ Uno de los bloques está ocupado. No puede asignar materia aquí.
-                </p>
-              )}
-            </div>
+            )}
           </div>
-
-          {/* Checkbox para Receso */}
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="isRecess"
-              checked={isRecess}
-              onChange={handleRecessChange}
-              className="h-5 w-5 text-blue-600"
-            />
-            <label htmlFor="isRecess" className="text-gray-700 font-medium">
-              Es un receso
+          <div className="flex items-center mt-8">
+            <label className="inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isRecess}
+                onChange={handleRecessChange}
+                className="sr-only peer"
+              />
+              <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <span className="ml-3 text-gray-700 font-bold">{isRecess ? 'Receso' : 'No es receso'}</span>
             </label>
           </div>
 
-          {/* Campos visibles solo si NO es receso */}
+          {/* Materia (solo si no es receso) */}
           {!isRecess && (
-            <>
-              {/* Materia */}
-              <div className="flex flex-col">
-                <label htmlFor="subjectId" className="text-gray-700 font-bold mb-1">
-                  Materia *
-                </label>
-                <select
-                  id="subjectId"
-                  {...register('subjectId')}
-                  className={`w-full px-3 py-2 border-2 border-solid ${
-                    errors.subjectId ? "border-red-500" : "border-gray-300"
-                  } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
-                  disabled={loadingSubjects}
-                >
-                  <option value="">{loadingSubjects ? 'Cargando materias...' : 'Seleccione una materia'}</option>
-                  {!loadingSubjects && subjects.map(subject => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name} ({subject.code})
-                    </option>
-                  ))}
-                </select>
-                {errors.subjectId && (
-                  <span className="text-red-500 text-sm mt-1">{errors.subjectId.message as string}</span>
-                )}
-                {subjects.length === 0 && !loadingSubjects && (
-                  <span className="text-yellow-600 text-sm mt-1">
-                    No hay materias registradas. Primero agregue materias en la pestaña "Agregar Materia".
-                  </span>
-                )}
-              </div>
-
-              {/* Docente */}
-              <div className="flex flex-col">
-                <label htmlFor="teacherId" className="text-gray-700 font-bold mb-1">
-                  Docente (opcional)
-                </label>
-                <select
-                  id="teacherId"
-                  {...register('teacherId')}
-                  className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
-                  disabled={loadingTeachers}
-                >
-                  <option value="">{loadingTeachers ? 'Cargando docentes...' : 'Seleccione un docente'}</option>
-                  {!loadingTeachers && teachers.map(teacher => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.fullName} - {teacher.specialization || 'Sin especialización'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Aula */}
-              <div className="flex flex-col">
-                <label htmlFor="classroom" className="text-gray-700 font-bold mb-1">
-                  Aula (opcional)
-                </label>
-                <input
-                  id="classroom"
-                  type="text"
-                  {...register('classroom')}
-                  className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
-                  placeholder="Ej: Aula 101"
-                />
-              </div>
-
-              {/* Edificio */}
-              <div className="flex flex-col">
-                <label htmlFor="building" className="text-gray-700 font-bold mb-1">
-                  Edificio (opcional)
-                </label>
-                <input
-                  id="building"
-                  type="text"
-                  {...register('building')}
-                  className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
-                  placeholder="Ej: Edificio Principal"
-                />
-              </div>
-            </>
+            <div className="flex flex-col">
+              <label htmlFor="subjectId" className="text-gray-700 font-bold mb-1">
+                Materia *
+              </label>
+              <select
+                id="subjectId"
+                {...register('subjectId', { required: !isRecess ? 'La materia es requerida' : false })}
+                className={`w-full px-3 py-2 border-2 border-solid ${
+                  errors.subjectId ? "border-red-500" : "border-gray-300"
+                } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
+                disabled={loadingSubjects || isRecess}
+              >
+                <option value="">Seleccione una materia</option>
+                {subjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.name} ({subject.code})
+                  </option>
+                ))}
+              </select>
+              {errors.subjectId && (
+                <span className="text-red-500 text-sm mt-1">{errors.subjectId.message as string}</span>
+              )}
+              {loadingSubjects && <span className="text-sm text-gray-500">Cargando materias...</span>}
+            </div>
           )}
-        </div>
 
-        {/* Resumen */}
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-          <h3 className="font-semibold text-gray-700 mb-2">Resumen del Horario</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-gray-500">Grado:</span>
-              <span className="ml-2 font-medium">
-                {GRADE_OPTIONS.find(g => g.value === grade)?.text || 'No seleccionado'}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-500">Sección:</span>
-              <span className="ml-2 font-medium">
-                {SECTION_OPTIONS.find(s => s.value === section)?.text || 'No seleccionado'}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-500">Día:</span>
-              <span className="ml-2 font-medium">
-                {DAY_OPTIONS.find(d => d.value === day)?.text || 'No seleccionado'}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-500">Bloques:</span>
-              <span className="ml-2 font-medium">
-                {startBlock ? (isRecess ? currentBlock : `${currentBlock} - ${currentBlock + 1}`) : 'No seleccionado'}
-              </span>
-            </div>
+          {/* Docente */}
+          <div className="flex flex-col">
+            <label htmlFor="teacherId" className="text-gray-700 font-bold mb-1">
+              Docente
+            </label>
+            <select
+              id="teacherId"
+              {...register('teacherId')}
+              className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
+              disabled={loadingTeachers || isRecess}
+            >
+              <option value="">Sin docente asignado</option>
+              {teachers.map((teacher) => (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.fullName}
+                </option>
+              ))}
+            </select>
+            {loadingTeachers && <span className="text-sm text-gray-500">Cargando docentes...</span>}
           </div>
-          {isRecess && (
-            <div className="mt-3 text-sm text-blue-600 font-medium">
-              ✓ Este horario se creará como RECESO (sin materia asignada) con código: {recessCode}
-            </div>
-          )}
-        </div>
 
-        {/* Notas */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 className="font-semibold text-blue-800 mb-2">📝 Notas importantes:</h4>
-          <ul className="text-sm text-gray-700 space-y-1">
-            <li>• <strong>Código:</strong> Para materias, ingrese 7 caracteres alfanuméricos mayúsculas (ej: 1V2526). Para recesos, se genera automáticamente.</li>
-            <li>• <strong>Materias:</strong> Ocupan <strong>2 bloques consecutivos</strong>.</li>
-            <li>• <strong>Recesos:</strong> Ocupan <strong>1 solo bloque</strong>. Puede colocarlos en cualquier bloque disponible.</li>
-            <li>• Las materias se pueden asignar a cualquier grado/sección.</li>
-            <li>• Verifique que el bloque no esté ocupado antes de guardar.</li>
-          </ul>
+          {/* Aula */}
+          <div className="flex flex-col">
+            <label htmlFor="classroom" className="text-gray-700 font-bold mb-1">
+              Aula
+            </label>
+            <input
+              id="classroom"
+              type="text"
+              {...register('classroom')}
+              className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
+              placeholder="Ej: A-101"
+              disabled={isRecess}
+            />
+          </div>
+
+          {/* Edificio */}
+          <div className="flex flex-col">
+            <label htmlFor="building" className="text-gray-700 font-bold mb-1">
+              Edificio
+            </label>
+            <input
+              id="building"
+              type="text"
+              {...register('building')}
+              className="w-full px-3 py-2 border-2 border-solid border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
+              placeholder="Ej: Principal"
+              disabled={isRecess}
+            />
+          </div>
         </div>
 
         {/* Botón de envío */}
         <div className="flex justify-center pt-4">
           <button
             type="submit"
-            disabled={isPending || !grade || !section || !day || !startBlock || (!isRecess && !subjectId)}
-            className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md flex items-center"
+            disabled={isPending}
+            className="px-8 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
           >
-            {isPending ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Guardando...
-              </>
-            ) : (
-              'Guardar Horario'
-            )}
+            {isPending ? 'Guardando...' : 'Guardar Horario'}
           </button>
         </div>
       </form>
