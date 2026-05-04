@@ -1,4 +1,3 @@
-// src/publicViews/SolicitudInscripcion/SolicitudInscripcion.tsx
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -7,6 +6,7 @@ import type { PublicRegisterPayload } from '../../types/publicRegistration';
 import { toast } from 'react-toastify';
 import { usePublicRegistration } from './hooks/usePublicRegistration';
 
+// Interfaces locales para el formulario
 interface EstudianteForm {
   fullName: string;
   identityCard: string;
@@ -46,7 +46,7 @@ const SolicitudInscripcion: React.FC = () => {
   const [formDataForPDF, setFormDataForPDF] = useState<FormData | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
 
-  const { register, handleSubmit, control, formState: {  } } = useForm<FormData>({
+  const { register, handleSubmit, control, formState: {} } = useForm<FormData>({
     defaultValues: {
       email: '',
       password: '',
@@ -71,7 +71,7 @@ const SolicitudInscripcion: React.FC = () => {
 
   const { fields, append, remove } = useFieldArray({ control, name: 'students' });
 
-  const generateLogin = () => 'Rep' + Math.floor(1000 + Math.random() * 9000); // Rep1000-9999
+  const generateLogin = () => 'Rep' + Math.floor(1000 + Math.random() * 9000);
 
   const addStudent = () => {
     append({
@@ -130,7 +130,6 @@ const SolicitudInscripcion: React.FC = () => {
         }))
     };
 
-    // Guardar datos para el PDF
     setFormDataForPDF(data);
     await handleRegister(payload);
   };
@@ -139,9 +138,31 @@ const SolicitudInscripcion: React.FC = () => {
     window.print();
   };
 
-  // ... resto del JSX (similar al anterior pero usando step y loading del hook)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
+      {/* Estilos de impresión */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #print-area, #print-area * {
+            visibility: visible;
+          }
+          #print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 20px;
+            background: white;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -188,7 +209,6 @@ const SolicitudInscripcion: React.FC = () => {
                 <h2 className="text-xl font-bold text-slate-800 flex items-center mb-4">
                   <FiUsers className="mr-2 text-blue-700" /> Datos del Representante
                 </h2>
-                {/* ... todos los campos del representante ... */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700">Nombre Completo *</label>
@@ -225,7 +245,7 @@ const SolicitudInscripcion: React.FC = () => {
                 </div>
               </div>
 
-              {/* Sección Estudiantes (completa, como antes) */}
+              {/* Sección Estudiantes */}
               <div className="bg-white rounded-xl p-6 border border-slate-200">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-slate-800 flex items-center">
@@ -350,18 +370,18 @@ const SolicitudInscripcion: React.FC = () => {
 
         {step === 'success' && (
           <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-center">
-            <FiPrinter className="mx-auto h-20 w-20 text-green-500 mb-6" />
-            <h2 className="text-3xl font-bold text-slate-800 mb-4">¡Correo verificado!</h2>
-            <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
+            <FiPrinter className="mx-auto h-20 w-20 text-green-500 mb-6 no-print" />
+            <h2 className="text-3xl font-bold text-slate-800 mb-4 no-print">¡Correo verificado!</h2>
+            <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto no-print">
               Tu cuenta ha sido creada (aún inactiva hasta la entrevista). 
               Ahora puedes imprimir la planilla con tus datos. Recuerda llevarla a la entrevista presencial.
             </p>
 
-            {/* Contenido imprimible */}
-            <div className="hidden print:block text-left mx-auto max-w-3xl">
+            <div id="print-area" className="hidden print:block text-left mx-auto max-w-3xl">
               {formDataForPDF && (
                 <>
                   <div className="text-center mb-6">
+                    <img src="/logo.png" alt="Logo U.E. José Antonio Abreu" className="mx-auto h-24 mb-4" />
                     <h1 className="text-2xl font-bold">PLANILLA DE SOLICITUD DE INSCRIPCIÓN</h1>
                     <p className="text-lg">U.E. José Antonio Abreu - Naguanagua</p>
                     <p className="text-base">Fecha: {new Date().toLocaleDateString()}</p>
@@ -406,7 +426,7 @@ const SolicitudInscripcion: React.FC = () => {
             </div>
 
             <button onClick={handlePrint}
-              className="bg-green-600 text-white px-10 py-4 rounded-lg hover:bg-green-700 transition font-bold text-lg flex items-center justify-center mx-auto shadow-lg mt-8">
+              className="no-print bg-green-600 text-white px-10 py-4 rounded-lg hover:bg-green-700 transition font-bold text-lg flex items-center justify-center mx-auto shadow-lg mt-8">
               <FiPrinter className="mr-2" /> Imprimir / Descargar PDF
             </button>
           </motion.div>
