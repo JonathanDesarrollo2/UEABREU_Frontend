@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiMail, FiPhone, FiMapPin, FiUsers, FiClock, FiArrowRight, FiStar, FiShield } from 'react-icons/fi';
+import { FiMail, FiPhone, FiMapPin, FiUsers, FiClock, FiArrowRight, FiStar, FiShield, FiClipboard } from 'react-icons/fi';
 
 export const JoinUsView: React.FC = () => {
   const contactInfo = [
@@ -204,7 +204,7 @@ export const JoinUsView: React.FC = () => {
           ))}
         </div>
 
-        {/* CTA Final */}
+                {/* CTA Final */}
         <motion.div
           initial={{ y: 30, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
@@ -216,28 +216,18 @@ export const JoinUsView: React.FC = () => {
             ¿Listo para Comenzar?
           </h3>
           <p className="text-slate-600 mb-6 max-w-2xl mx-auto">
-            Agenda tu entrevista personal hoy mismo y descubre por qué somos la mejor opción educativa para tu familia.
+            Complete la planilla de solicitud en línea y luego preséntela en la entrevista personal.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <motion.a
-              href="tel:+584122088451"
+              href="/solicitud"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-blue-800 text-white px-8 py-3 rounded-lg hover:bg-blue-900 transition-colors font-semibold flex items-center justify-center"
+              className="bg-blue-800 text-white px-8 py-4 rounded-lg hover:bg-blue-900 transition-colors font-semibold flex items-center justify-center text-lg shadow-md"
             >
-              <FiPhone className="mr-2" />
-              Llamar Ahora
-            </motion.a>
-            
-            <motion.a
-              href="mailto:uejantonioabre@gmail.com"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="border-2 border-blue-800 text-blue-800 px-8 py-3 rounded-lg hover:bg-blue-50 transition-colors font-semibold flex items-center justify-center"
-            >
-              <FiMail className="mr-2" />
-              Enviar Email
+              <FiClipboard className="mr-2" />
+              Llenar Planilla de Solicitud
             </motion.a>
           </div>
         </motion.div>

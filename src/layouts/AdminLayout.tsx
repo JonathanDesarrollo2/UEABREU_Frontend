@@ -11,7 +11,8 @@ import {
   FaUserPlus,
   FaCalendar,
   FaGraduationCap,
-  FaChalkboardTeacher
+  FaChalkboardTeacher,
+  FaClipboardList
 } from 'react-icons/fa';
 
 interface SessionContext {
@@ -37,6 +38,7 @@ export default function AdminLayout() {
 
   const menuItems = [
     { name: 'Dashboard', icon: FaHome, path: '/admin' },
+    { name: 'Inscripciones', icon: FaClipboardList, path: '/admin/settings' },
     { name: 'Pagos', icon: FaMoneyCheck, path: '/admin/Balance' },
     { name: 'Usuarios', icon: FaUser, path: '/admin/users/list' },
     { name: 'Nuevo Usuario', icon: FaUserPlus, path: '/admin/users/insert' },
