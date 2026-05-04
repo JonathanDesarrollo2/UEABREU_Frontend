@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { FiDownload, FiUsers, FiClipboard, FiPrinter } from 'react-icons/fi';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import { FiUsers, FiClipboard, FiPrinter } from 'react-icons/fi';
 
 interface Estudiante {
   fullName: string;
@@ -36,9 +34,9 @@ interface FormData {
 }
 
 const SolicitudInscripcion: React.FC = () => {
-  const { register, handleSubmit, control, formState: {} } = useForm<FormData>({
+  const { register, handleSubmit, control, formState: { } } = useForm<FormData>({
     defaultValues: {
-      students: [{ 
+      students: [{
         fullName: '', identityCard: '', birthDate: '', nationality: '', birthCountry: '',
         state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
         emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
@@ -49,9 +47,10 @@ const SolicitudInscripcion: React.FC = () => {
 
   const { fields, append, remove } = useFieldArray({ control, name: 'students' });
   const [showSuccess, setShowSuccess] = useState(false);
+  const [formData, setFormData] = useState<FormData | null>(null);
 
   const addStudent = () => {
-    append({ 
+    append({
       fullName: '', identityCard: '', birthDate: '', nationality: '', birthCountry: '',
       state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
       emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
@@ -59,90 +58,13 @@ const SolicitudInscripcion: React.FC = () => {
     });
   };
 
-  const generarPDF = (data: FormData) => {
-    const doc = new jsPDF();
-    let y = 20;
-
-    // Título
-    doc.setFontSize(16);
-    doc.text('PLANILLA DE SOLICITUD DE INSCRIPCIÓN', 105, y, { align: 'center' });
-    y += 10;
-    doc.setFontSize(10);
-    doc.text('U.E. José Antonio Abreu - Naguanagua', 105, y, { align: 'center' });
-    y += 10;
-    doc.setFontSize(12);
-    doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 105, y, { align: 'center' });
-    y += 15;
-
-    // Datos del Representante
-    doc.setFontSize(12);
-    doc.text('1. DATOS DEL REPRESENTANTE', 14, y);
-    y += 8;
-    doc.setFontSize(10);
-    doc.text(`Nombre y Apellido: ${data.representativeFullName}`, 14, y);
-    y += 6;
-    doc.text(`Cédula de Identidad: ${data.representativeIdentityCard}`, 14, y);
-    y += 6;
-    doc.text(`Dirección: ${data.representativeAddress}`, 14, y);
-    y += 6;
-    doc.text(`Teléfono: ${data.representativePhone}`, 14, y);
-    y += 6;
-    doc.text(`Relación con el estudiante: ${data.relationship}`, 14, y);
-    y += 6;
-    doc.text(`Nombre del Padre/Madre: ${data.parentName}`, 14, y);
-    y += 6;
-    doc.text(`Cédula Padre/Madre: ${data.parentIdentityCard}`, 14, y);
-    y += 6;
-    doc.text(`Teléfono Padre/Madre: ${data.parentPhone}`, 14, y);
-    y += 12;
-
-    // Datos de Estudiantes
-    doc.setFontSize(12);
-    doc.text('2. DATOS DE LOS ESTUDIANTES', 14, y);
-    y += 8;
-    data.students.forEach((est, idx) => {
-      doc.setFontSize(10);
-      doc.text(`Estudiante ${idx + 1}:`, 14, y);
-      y += 6;
-      doc.text(`  Nombre y Apellido: ${est.fullName}`, 16, y);
-      y += 6;
-      doc.text(`  Cédula Escolar/Identidad: ${est.identityCard}`, 16, y);
-      y += 6;
-      doc.text(`  Fecha de Nacimiento: ${est.birthDate}`, 16, y);
-      y += 6;
-      doc.text(`  Nacionalidad: ${est.nationality}`, 16, y);
-      y += 6;
-      doc.text(`  País de Nacimiento: ${est.birthCountry}`, 16, y);
-      y += 6;
-      doc.text(`  Estado: ${est.state}`, 16, y);
-      y += 6;
-      doc.text(`  Zona: ${est.zone}`, 16, y);
-      y += 6;
-      doc.text(`  Dirección: ${est.addressDescription}`, 16, y);
-      y += 6;
-      doc.text(`  Teléfono: ${est.phone}`, 16, y);
-      y += 6;
-      doc.text(`  Contacto de Emergencia: ${est.emergencyContact}`, 16, y);
-      y += 6;
-      doc.text(`  Teléfono Emergencia: ${est.emergencyPhone}`, 16, y);
-      y += 6;
-      doc.text(`  Alergias: ${est.hasAllergies ? est.allergiesDescription : 'No'}`, 16, y);
-      y += 6;
-      doc.text(`  Enfermedades: ${est.hasDiseases ? est.diseasesDescription : 'No'}`, 16, y);
-      y += 10;
-    });
-
-    // Nota final
-    y += 10;
-    doc.setFontSize(12);
-    doc.text('IMPORTANTE: Debe presentar esta planilla en la entrevista presencial.', 14, y);
-    
-    doc.save('Planilla_Inscripcion_UEEA.pdf');
+  const onSubmit = (data: FormData) => {
+    setFormData(data);
+    setShowSuccess(true);
   };
 
-  const onSubmit = (data: FormData) => {
-    generarPDF(data);
-    setShowSuccess(true);
+  const handlePrint = () => {
+    window.print();
   };
 
   return (
@@ -205,7 +127,7 @@ const SolicitudInscripcion: React.FC = () => {
               </div>
             </div>
 
-            {/* Estudiantes */}
+            {/* Sección Estudiantes */}
             <div className="bg-white rounded-xl p-6 border border-slate-200">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-slate-800 flex items-center">
@@ -291,23 +213,70 @@ const SolicitudInscripcion: React.FC = () => {
 
             <div className="flex justify-center">
               <button type="submit"
-                className="bg-blue-800 text-white px-8 py-3 rounded-lg hover:bg-blue-900 transition font-semibold flex items-center">
-                <FiDownload className="mr-2" /> Generar y Descargar Planilla
+                className="bg-blue-800 text-white px-8 py-3 rounded-lg hover:bg-blue-900 transition font-semibold">
+                Revisar y Generar Planilla
               </button>
             </div>
           </form>
         ) : (
+          /* PANTALLA DE ÉXITO Y VISTA PREVIA DE IMPRESIÓN */
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="text-center py-12"
+            className="text-center"
           >
             <FiPrinter className="mx-auto h-20 w-20 text-green-500 mb-6" />
-            <h2 className="text-3xl font-bold text-slate-800 mb-4">¡Planilla Generada Exitosamente!</h2>
+            <h2 className="text-3xl font-bold text-slate-800 mb-4">¡Planilla Lista para Imprimir!</h2>
             <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
-              Su planilla de solicitud ha sido descargada. Ahora debe <strong>presentarla en la entrevista presencial</strong> en nuestras instalaciones.
+              Su planilla ha sido generada con éxito. Haga clic en el botón de abajo para <strong>imprimirla</strong> o <strong>guardarla como PDF</strong> desde el cuadro de diálogo.
             </p>
-            <div className="bg-blue-50 rounded-xl p-6 border border-blue-200 max-w-lg mx-auto">
+
+            {/* CONTENIDO QUE SE IMPRIMIRÁ (OCULTO EN PANTALLA) */}
+            <div className="hidden print:block text-left mx-auto max-w-3xl">
+              <div className="text-center mb-6">
+                <h1 className="text-2xl font-bold">PLANILLA DE SOLICITUD DE INSCRIPCIÓN</h1>
+                <p className="text-lg">U.E. José Antonio Abreu - Naguanagua</p>
+                <p className="text-base">Fecha: {new Date().toLocaleDateString()}</p>
+              </div>
+              <div className="mb-6">
+                <h2 className="text-xl font-bold underline mb-2">1. DATOS DEL REPRESENTANTE</h2>
+                <p><strong>Nombre y Apellido:</strong> {formData?.representativeFullName}</p>
+                <p><strong>Cédula:</strong> {formData?.representativeIdentityCard}</p>
+                <p><strong>Dirección:</strong> {formData?.representativeAddress}</p>
+                <p><strong>Teléfono:</strong> {formData?.representativePhone}</p>
+                <p><strong>Relación:</strong> {formData?.relationship}</p>
+                <p><strong>Padre/Madre:</strong> {formData?.parentName}</p>
+                <p><strong>Cédula Padre/Madre:</strong> {formData?.parentIdentityCard}</p>
+                <p><strong>Teléfono Padre/Madre:</strong> {formData?.parentPhone}</p>
+              </div>
+              <div className="mb-6">
+                <h2 className="text-xl font-bold underline mb-2">2. DATOS DE LOS ESTUDIANTES</h2>
+                {formData?.students.map((est, idx) => (
+                  <div key={idx} className="mb-4 ml-4">
+                    <h3 className="font-semibold">Estudiante {idx + 1}</h3>
+                    <p><strong>Nombre:</strong> {est.fullName}</p>
+                    <p><strong>Cédula:</strong> {est.identityCard}</p>
+                    <p><strong>Fecha de Nacimiento:</strong> {est.birthDate}</p>
+                    <p><strong>Nacionalidad:</strong> {est.nationality}</p>
+                    <p><strong>País de Nacimiento:</strong> {est.birthCountry}</p>
+                    <p><strong>Estado:</strong> {est.state}</p>
+                    <p><strong>Zona:</strong> {est.zone}</p>
+                    <p><strong>Dirección:</strong> {est.addressDescription}</p>
+                    <p><strong>Teléfono:</strong> {est.phone}</p>
+                    <p><strong>Contacto Emergencia:</strong> {est.emergencyContact}</p>
+                    <p><strong>Teléfono Emergencia:</strong> {est.emergencyPhone}</p>
+                    <p><strong>Alergias:</strong> {est.hasAllergies ? est.allergiesDescription : 'No'}</p>
+                    <p><strong>Enfermedades:</strong> {est.hasDiseases ? est.diseasesDescription : 'No'}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="text-center font-bold text-red-600 mt-8">
+                IMPORTANTE: Debe presentar esta planilla en la entrevista presencial.
+              </div>
+            </div>
+
+            {/* Recordatorio de la entrevista */}
+            <div className="bg-blue-50 rounded-xl p-6 border border-blue-200 max-w-lg mx-auto mb-8">
               <p className="text-lg font-semibold text-blue-900">
                 Recuerde: La entrevista es obligatoria para completar el proceso de admisión. 
                 Comuníquese con nosotros para programar su cita.
@@ -318,6 +287,13 @@ const SolicitudInscripcion: React.FC = () => {
                 <p>Dirección: Av. Universidad sector la Campiña # 192-50, Naguanagua</p>
               </div>
             </div>
+
+            <button
+              onClick={handlePrint}
+              className="bg-green-600 text-white px-10 py-4 rounded-lg hover:bg-green-700 transition font-bold text-lg flex items-center justify-center mx-auto shadow-lg"
+            >
+              <FiPrinter className="mr-2" /> Imprimir PDF
+            </button>
           </motion.div>
         )}
       </motion.div>
