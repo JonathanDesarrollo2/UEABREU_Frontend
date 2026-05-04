@@ -26,6 +26,7 @@ import TeacherListPage from './privateViews/TeacherList/AdminTeacherListBackend'
 import EditTeacherPage from './privateViews/TeacherEdit/EditTeacherView'
 import ChildrenScheduleView from './privateViews/ChildrenSchedule/ChildrenSchedule'
 import PaymentValidationPage from './privateViews/PaymentValidation/PaymentValidationPage'
+import SolicitudInscripcion from './publicViews/inscription/SolicitudInscripcion'
 
 function ListRoutes() {
   return (
@@ -38,6 +39,7 @@ function ListRoutes() {
         <Route path="SobreNosotros" element={<AboutUsView />} />
         <Route path="PrivacyPolicy" element={<PrivacyPolicy />} />
         <Route path="TermsAndConditions" element={<TermsAndConditions />} />
+        <Route path="Solicitud" element={<SolicitudInscripcion />} />
       </Route>
 
       {/* Rutas Privadas */}
