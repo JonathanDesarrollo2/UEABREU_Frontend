@@ -27,6 +27,7 @@ import EditTeacherPage from './privateViews/TeacherEdit/EditTeacherView'
 import ChildrenScheduleView from './privateViews/ChildrenSchedule/ChildrenSchedule'
 import PaymentValidationPage from './privateViews/PaymentValidation/PaymentValidationPage'
 import SolicitudInscripcion from './publicViews/inscription/SolicitudInscripcion'
+import InscriptionSettings from './privateViews/inscription/inscriptionSettings'
 
 function ListRoutes() {
   return (
@@ -65,6 +66,7 @@ function ListRoutes() {
           <Route path="ListSubjects" element={<AdminListSubjectsBackend />} />
           <Route path="listStudents" element={<AdminListStudentsBackend />} />
           <Route path="ListTeacher" element={<AdminListTeachersBackend />} />
+          <Route path="Settings" element={<InscriptionSettings />} />
           
           {/* ✅ NUEVAS RUTAS PARA PROFESORES (estructura modular) */}
           <Route path="teachers">
