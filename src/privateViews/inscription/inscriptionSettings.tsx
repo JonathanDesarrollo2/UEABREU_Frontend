@@ -8,7 +8,10 @@ interface StatusResponse {
   content: {
     registrationsEnabled: boolean;
   };
+  error:string;
 }
+
+const API_BASE = import.meta.env.VITE_API_URL || 'https://appservices.ueabreu.com'; // 👈 URL corregida
 
 const InscriptionSettings: React.FC = () => {
   const [isEnabled, setIsEnabled] = useState<boolean>(false);
@@ -23,15 +26,19 @@ const InscriptionSettings: React.FC = () => {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://api.ueabreu.com'}/api/private/settings/registrations`, {
+      const res = await fetch(`${API_BASE}/api/private/settings/registrations`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) throw new Error(res.statusText);
       const data: StatusResponse = await res.json();
       if (data.result) {
         setIsEnabled(data.content.registrationsEnabled);
+      } else {
+        toast.error(data.error?.[0] || 'Error al obtener estado');
       }
     } catch (error) {
       toast.error('Error al obtener estado de inscripciones');
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -40,7 +47,7 @@ const InscriptionSettings: React.FC = () => {
   const handleToggle = async () => {
     setToggling(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://api.ueabreu.com'}/api/private/settings/registrations/toggle`, {
+      const res = await fetch(`${API_BASE}/api/private/settings/registrations/toggle`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,6 +55,7 @@ const InscriptionSettings: React.FC = () => {
         },
         body: JSON.stringify({ enable: !isEnabled })
       });
+      if (!res.ok) throw new Error(res.statusText);
       const data = await res.json();
       if (data.result) {
         setIsEnabled(!isEnabled);
@@ -57,6 +65,7 @@ const InscriptionSettings: React.FC = () => {
       }
     } catch (error) {
       toast.error('Error de conexión');
+      console.error(error);
     } finally {
       setToggling(false);
     }
@@ -74,7 +83,7 @@ const InscriptionSettings: React.FC = () => {
       </p>
 
       {loading ? (
-        <div className="text-center">Cargando...</div>
+        <div className="text-center text-gray-500">Cargando estado...</div>
       ) : (
         <div className="flex items-center justify-between bg-gray-50 rounded-xl p-6">
           <div>
