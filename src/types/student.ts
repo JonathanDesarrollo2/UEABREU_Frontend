@@ -24,6 +24,9 @@ export interface TypeStudent {
   userId?: string;
   createdAt?: Date;
   updatedAt?: Date;
+  balance?: number;
+  previousSchool?: string;   // nuevo
+  municipality?: string;     // nuevo
   representative?: {
     id?: string;
     fullName?: string;
