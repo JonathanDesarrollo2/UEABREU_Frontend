@@ -1,4 +1,3 @@
-// src/hooks/usePublicRegistration.ts
 import { useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import type { PublicRegisterPayload } from '../../../types/publicRegistration';
@@ -10,13 +9,15 @@ export function usePublicRegistration() {
   const [step, setStep] = useState<Step>('form');
   const [loading, setLoading] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const [planillaNumber, setPlanillaNumber] = useState<number | null>(null);
 
   const handleRegister = useCallback(async (payload: PublicRegisterPayload) => {
     setLoading(true);
     try {
-      await registerPublic(payload);
+      const response = await registerPublic(payload);
       toast.success('Registro exitoso. Revisa tu correo para el código de verificación.');
       setRegisteredEmail(payload.usermail);
+      setPlanillaNumber(response.planillaNumber);
       setStep('verify');
     } catch (error: any) {
       toast.error(error.message || 'Error en el registro');
@@ -45,6 +46,7 @@ export function usePublicRegistration() {
   const reset = useCallback(() => {
     setStep('form');
     setRegisteredEmail('');
+    setPlanillaNumber(null);
     setLoading(false);
   }, []);
 
@@ -52,6 +54,7 @@ export function usePublicRegistration() {
     step,
     loading,
     registeredEmail,
+    planillaNumber,
     handleRegister,
     handleVerify,
     reset,

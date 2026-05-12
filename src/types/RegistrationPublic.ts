@@ -15,7 +15,7 @@ export interface PublicRegisterPayload {
   };
   studentsData: {
     fullName: string;
-    identityCard: string;
+    identityCard: string;          // obligatorio en el formulario
     birthDate: string;
     nationality: string;
     birthCountry: string;
@@ -29,15 +29,14 @@ export interface PublicRegisterPayload {
     allergiesDescription?: string;
     hasDiseases?: boolean;
     diseasesDescription?: string;
-    previousSchool?: string;   // nuevo
-    municipality?: string;     // nuevo
+    previousSchool?: string;
+    municipality?: string;
     currentGrade?: string;
     section?: string;
     status?: string;
     balance?: number;
   }[];
 }
-
 
 export interface PublicApiResponse {
   result: boolean;

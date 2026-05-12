@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { FiUsers, FiClipboard, FiPrinter, FiMail } from 'react-icons/fi';
+import { FiUsers, FiClipboard, FiPrinter, FiMail, FiEye, FiEyeOff } from 'react-icons/fi';
 import type { PublicRegisterPayload } from '../../types/publicRegistration';
 import { toast } from 'react-toastify';
 import { usePublicRegistration } from './hooks/usePublicRegistration';
@@ -25,6 +25,8 @@ interface EstudianteForm {
   allergiesDescription: string;
   hasDiseases: boolean;
   diseasesDescription: string;
+  previousSchool: string;
+  municipality: string;
 }
 
 interface FormData {
@@ -49,13 +51,15 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://appservices.ueabreu.co
 // Componente principal
 // ------------------------------------------------------
 const SolicitudInscripcion: React.FC = () => {
-  const { step, loading, registeredEmail, handleRegister, handleVerify } = usePublicRegistration();
+  const { step, loading, registeredEmail, planillaNumber, handleRegister, handleVerify } = usePublicRegistration();
 
   const [formDataForPDF, setFormDataForPDF] = useState<FormData | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const { register, handleSubmit, control, formState: {  } } = useForm<FormData>({
+  const { register, handleSubmit, control } = useForm<FormData>({
     defaultValues: {
       email: '',
       password: '',
@@ -73,7 +77,7 @@ const SolicitudInscripcion: React.FC = () => {
         fullName: '', identityCard: '', birthDate: '', nationality: '', birthCountry: '',
         state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
         emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
-        hasDiseases: false, diseasesDescription: ''
+        hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: ''
       }]
     }
   });
@@ -94,15 +98,26 @@ const SolicitudInscripcion: React.FC = () => {
       .catch(() => setRegistrationOpen(false));
   }, []);
 
-  // Generar un login automático si no se proporciona
   const generateLogin = () => 'Rep' + Math.floor(1000 + Math.random() * 9000);
+
+  const calcularEdad = (fecha: string): number | string => {
+    if (!fecha) return '';
+    const hoy = new Date();
+    const nac = new Date(fecha);
+    let edad = hoy.getFullYear() - nac.getFullYear();
+    const mes = hoy.getMonth() - nac.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) {
+      edad--;
+    }
+    return edad;
+  };
 
   const addStudent = () => {
     append({
       fullName: '', identityCard: '', birthDate: '', nationality: '', birthCountry: '',
       state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
       emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
-      hasDiseases: false, diseasesDescription: ''
+      hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: ''
     });
   };
 
@@ -147,6 +162,8 @@ const SolicitudInscripcion: React.FC = () => {
           allergiesDescription: s.allergiesDescription || '',
           hasDiseases: s.hasDiseases || false,
           diseasesDescription: s.diseasesDescription || '',
+          previousSchool: s.previousSchool || '',
+          municipality: s.municipality || '',
           currentGrade: 'En asignar',
           section: 'Pendiente',
           status: 'pendiente',
@@ -162,9 +179,7 @@ const SolicitudInscripcion: React.FC = () => {
     window.print();
   };
 
-  // ------------------------------------------------------
   // Estados de carga / inscripciones cerradas
-  // ------------------------------------------------------
   if (registrationOpen === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white">
@@ -198,45 +213,21 @@ const SolicitudInscripcion: React.FC = () => {
     );
   }
 
-  // ------------------------------------------------------
-  // Vista principal (formulario / verificación / éxito)
-  // ------------------------------------------------------
+  // Vista principal
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
-      {/* Estilos de impresión optimizados */}
+      {/* Estilos de impresión */}
       <style>{`
         @media print {
-          @page {
-            size: A4;
-            margin: 10mm;
-          }
-          body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: auto;
-          }
-          body * {
-            visibility: hidden;
-          }
-          #print-area, #print-area * {
-            visibility: visible;
-          }
-          #print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            padding: 0;
-            background: white;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .avoid-break {
-            page-break-inside: avoid;
-          }
+          @page { size: A4; margin: 10mm; }
+          body, html { margin: 0; padding: 0; width: 100%; height: auto; }
+          body * { visibility: hidden; }
+          #print-area, #print-area * { visibility: visible; }
+          #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; background: white; }
+          .no-print { display: none !important; }
+          .avoid-break { page-break-inside: avoid; }
         }
+        .required-asterisk { color: red; }
       `}</style>
 
       <motion.div
@@ -245,7 +236,7 @@ const SolicitudInscripcion: React.FC = () => {
         className="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl p-8 border border-slate-200"
       >
         {/* ------------------------------------------------------ */}
-        {/* PASO 1 – FORMULARIO                                   */}
+        {/* PASO 1 – FORMULARIO */}
         {/* ------------------------------------------------------ */}
         {step === 'form' && (
           <>
@@ -266,20 +257,48 @@ const SolicitudInscripcion: React.FC = () => {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700">Correo Electrónico *</label>
+                    <label className="block text-sm font-medium text-slate-700">
+                      Correo Electrónico <span className="required-asterisk">*</span>
+                    </label>
                     <input type="email" {...register('email', { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700">Usuario (opcional, se asigna automáticamente)</label>
+                    <label className="block text-sm font-medium text-slate-700">
+                      Usuario (opcional, se asigna automáticamente)
+                    </label>
                     <input {...register('userlogin')} placeholder="Ej: Rep1234" className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700">Contraseña *</label>
-                    <input type="password" {...register('password', { required: true, minLength: 6 })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
+                    <label className="block text-sm font-medium text-slate-700">
+                      Contraseña <span className="required-asterisk">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        {...register('password', { required: true, minLength: 6 })}
+                        className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm pr-10"
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                        {showPassword ? <FiEyeOff /> : <FiEye />}
+                      </button>
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700">Confirmar Contraseña *</label>
-                    <input type="password" {...register('confirmPassword', { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
+                    <label className="block text-sm font-medium text-slate-700">
+                      Confirmar Contraseña <span className="required-asterisk">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        {...register('confirmPassword', { required: true })}
+                        className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm pr-10"
+                      />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                        {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -291,23 +310,33 @@ const SolicitudInscripcion: React.FC = () => {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700">Nombre Completo *</label>
+                    <label className="block text-sm font-medium text-slate-700">
+                      Nombre Completo <span className="required-asterisk">*</span>
+                    </label>
                     <input {...register('representativeFullName', { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700">Cédula de Identidad *</label>
+                    <label className="block text-sm font-medium text-slate-700">
+                      Cédula de Identidad <span className="required-asterisk">*</span>
+                    </label>
                     <input {...register('representativeIdentityCard', { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-700">Dirección *</label>
+                    <label className="block text-sm font-medium text-slate-700">
+                      Dirección <span className="required-asterisk">*</span>
+                    </label>
                     <input {...register('representativeAddress', { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700">Teléfono *</label>
+                    <label className="block text-sm font-medium text-slate-700">
+                      Teléfono <span className="required-asterisk">*</span>
+                    </label>
                     <input {...register('representativePhone', { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700">Relación con el estudiante *</label>
+                    <label className="block text-sm font-medium text-slate-700">
+                      Relación con el estudiante <span className="required-asterisk">*</span>
+                    </label>
                     <input {...register('relationship', { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                   </div>
                   <div>
@@ -325,21 +354,21 @@ const SolicitudInscripcion: React.FC = () => {
                 </div>
               </div>
 
-              {/* Estudiantes */}
+              {/* Solicitantes */}
               <div className="bg-white rounded-xl p-6 border border-slate-200">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-slate-800 flex items-center">
-                    <FiUsers className="mr-2 text-blue-700" /> Estudiantes
+                    <FiUsers className="mr-2 text-blue-700" /> Solicitantes
                   </h2>
                   <button type="button" onClick={addStudent}
                     className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200 transition">
-                    + Agregar Estudiante
+                    + Agregar Solicitante
                   </button>
                 </div>
                 {fields.map((field, index) => (
                   <div key={field.id} className="border border-slate-200 rounded-lg p-4 mb-4">
                     <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-semibold text-slate-700">Estudiante #{index + 1}</h3>
+                      <h3 className="font-semibold text-slate-700">Solicitante #{index + 1}</h3>
                       {index > 0 && (
                         <button type="button" onClick={() => remove(index)}
                           className="text-red-500 hover:text-red-700 text-sm">Eliminar</button>
@@ -347,35 +376,60 @@ const SolicitudInscripcion: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700">Nombre Completo *</label>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Nombre Completo <span className="required-asterisk">*</span>
+                        </label>
                         <input {...register(`students.${index}.fullName`, { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
+                      {/* Cédula: obligatoria en formulario para el backend */}
                       <div>
-                        <label className="block text-sm font-medium text-slate-700">Cédula *</label>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Cédula <span className="required-asterisk">*</span>
+                        </label>
                         <input {...register(`students.${index}.identityCard`, { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700">Fecha de Nacimiento *</label>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Fecha de Nacimiento <span className="required-asterisk">*</span>
+                        </label>
                         <input type="date" {...register(`students.${index}.birthDate`, { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700">Nacionalidad *</label>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Nacionalidad <span className="required-asterisk">*</span>
+                        </label>
                         <input {...register(`students.${index}.nationality`, { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700">País de Nacimiento *</label>
+                        <label className="block text-sm font-medium text-slate-700">
+                          País de Nacimiento <span className="required-asterisk">*</span>
+                        </label>
                         <input {...register(`students.${index}.birthCountry`, { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700">Estado *</label>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Estado <span className="required-asterisk">*</span>
+                        </label>
                         <input {...register(`students.${index}.state`, { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700">Zona *</label>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Zona donde vive <span className="required-asterisk">*</span>
+                        </label>
                         <input {...register(`students.${index}.zone`, { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700">Municipio</label>
+                        <input {...register(`students.${index}.municipality`)} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700">Escuela de Procedencia</label>
+                        <input {...register(`students.${index}.previousSchool`)} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
+                      </div>
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-slate-700">Dirección Completa *</label>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Dirección Completa <span className="required-asterisk">*</span>
+                        </label>
                         <textarea {...register(`students.${index}.addressDescription`, { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" rows={2}></textarea>
                       </div>
                       <div>
@@ -383,11 +437,15 @@ const SolicitudInscripcion: React.FC = () => {
                         <input {...register(`students.${index}.phone`)} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700">Contacto de Emergencia *</label>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Contacto de Emergencia <span className="required-asterisk">*</span>
+                        </label>
                         <input {...register(`students.${index}.emergencyContact`, { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700">Teléfono Emergencia *</label>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Teléfono Emergencia <span className="required-asterisk">*</span>
+                        </label>
                         <input {...register(`students.${index}.emergencyPhone`, { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
                       <div className="flex items-center space-x-4">
@@ -419,9 +477,7 @@ const SolicitudInscripcion: React.FC = () => {
           </>
         )}
 
-        {/* ------------------------------------------------------ */}
-        {/* PASO 2 – VERIFICACIÓN DE CÓDIGO                       */}
-        {/* ------------------------------------------------------ */}
+        {/* PASO 2 – VERIFICACIÓN */}
         {step === 'verify' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
             <FiMail className="mx-auto h-16 w-16 text-blue-800 mb-4" />
@@ -431,9 +487,7 @@ const SolicitudInscripcion: React.FC = () => {
               Introdúcelo para continuar.
             </p>
             <input
-              type="text"
-              maxLength={5}
-              value={verificationCode}
+              type="text" maxLength={5} value={verificationCode}
               onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
               placeholder="Código de 5 dígitos"
               className="text-2xl py-3 px-4 border-2 border-gray-300 rounded-lg text-center mb-4"
@@ -451,9 +505,7 @@ const SolicitudInscripcion: React.FC = () => {
           </motion.div>
         )}
 
-        {/* ------------------------------------------------------ */}
-        {/* PASO 3 – ÉXITO Y PLANILLA IMPRIMIBLE                 */}
-        {/* ------------------------------------------------------ */}
+        {/* PASO 3 – ÉXITO Y PLANILLA */}
         {step === 'success' && (
           <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-center">
             <FiPrinter className="mx-auto h-20 w-20 text-green-500 mb-6 no-print" />
@@ -463,7 +515,7 @@ const SolicitudInscripcion: React.FC = () => {
               Ahora puedes imprimir la planilla con tus datos. Recuerda llevarla a la entrevista presencial.
             </p>
 
-            {/* Área de impresión optimizada */}
+            {/* Área de impresión */}
             <div id="print-area" className="hidden print:block text-left mx-auto max-w-full">
               {formDataForPDF && (
                 <div className="avoid-break">
@@ -471,6 +523,7 @@ const SolicitudInscripcion: React.FC = () => {
                     <img src="/logo.png" alt="Logo" className="mx-auto h-20 mb-2" />
                     <h1 className="text-xl font-bold">PLANILLA DE SOLICITUD DE INSCRIPCIÓN</h1>
                     <p className="text-sm">U.E. José Antonio Abreu - Naguanagua</p>
+                    <p className="text-sm"><strong>N° de Planilla:</strong> {planillaNumber}</p>
                     <p className="text-sm">Fecha: {new Date().toLocaleDateString()}</p>
                   </div>
 
@@ -485,30 +538,32 @@ const SolicitudInscripcion: React.FC = () => {
                           <tr><td className="font-semibold pr-2">Dirección:</td><td>{formDataForPDF.representativeAddress}</td></tr>
                           <tr><td className="font-semibold pr-2">Teléfono:</td><td>{formDataForPDF.representativePhone}</td></tr>
                           <tr><td className="font-semibold pr-2">Relación con el estudiante:</td><td>{formDataForPDF.relationship}</td></tr>
-                          <tr><td className="font-semibold pr-2">Nombre del Padre/Madre:</td><td>{formDataForPDF.parentName}</td></tr>
-                          <tr><td className="font-semibold pr-2">Cédula Padre/Madre:</td><td>{formDataForPDF.parentIdentityCard}</td></tr>
-                          <tr><td className="font-semibold pr-2">Teléfono Padre/Madre:</td><td>{formDataForPDF.parentPhone}</td></tr>
+                          <tr><td className="font-semibold pr-2">Nombre del Padre/Madre:</td><td>{formDataForPDF.parentName || '-'}</td></tr>
+                          <tr><td className="font-semibold pr-2">Cédula Padre/Madre:</td><td>{formDataForPDF.parentIdentityCard || '-'}</td></tr>
+                          <tr><td className="font-semibold pr-2">Teléfono Padre/Madre:</td><td>{formDataForPDF.parentPhone || '-'}</td></tr>
                         </tbody>
                       </table>
                     </div>
 
-                    {/* Columna derecha – Estudiantes */}
+                    {/* Columna derecha – Solicitantes */}
                     <div className="flex-1 avoid-break">
-                      <h3 className="font-bold underline mb-2">2. DATOS DE LOS ESTUDIANTES</h3>
+                      <h3 className="font-bold underline mb-2">2. DATOS DE LOS SOLICITANTES</h3>
                       {formDataForPDF.students.map((est, idx) => (
                         <div key={idx} className="mb-2 avoid-break">
-                          <p className="font-semibold text-sm">Estudiante {idx + 1}</p>
+                          <p className="font-semibold text-sm">Solicitante {idx + 1}</p>
                           <table className="w-full text-xs">
                             <tbody>
                               <tr><td className="font-semibold pr-2">Nombre:</td><td>{est.fullName}</td></tr>
-                              <tr><td className="font-semibold pr-2">Cédula:</td><td>{est.identityCard}</td></tr>
+                              <tr><td className="font-semibold pr-2">Edad:</td><td>{calcularEdad(est.birthDate)}</td></tr>
                               <tr><td className="font-semibold pr-2">Fecha Nac.:</td><td>{est.birthDate}</td></tr>
                               <tr><td className="font-semibold pr-2">Nacionalidad:</td><td>{est.nationality}</td></tr>
                               <tr><td className="font-semibold pr-2">País Nac.:</td><td>{est.birthCountry}</td></tr>
                               <tr><td className="font-semibold pr-2">Estado:</td><td>{est.state}</td></tr>
-                              <tr><td className="font-semibold pr-2">Zona:</td><td>{est.zone}</td></tr>
+                              <tr><td className="font-semibold pr-2">Zona donde vive:</td><td>{est.zone}</td></tr>
+                              <tr><td className="font-semibold pr-2">Municipio:</td><td>{est.municipality || '-'}</td></tr>
+                              <tr><td className="font-semibold pr-2">Escuela de procedencia:</td><td>{est.previousSchool || '-'}</td></tr>
                               <tr><td className="font-semibold pr-2">Dirección:</td><td>{est.addressDescription}</td></tr>
-                              <tr><td className="font-semibold pr-2">Teléfono:</td><td>{est.phone}</td></tr>
+                              <tr><td className="font-semibold pr-2">Teléfono:</td><td>{est.phone || '-'}</td></tr>
                               <tr><td className="font-semibold pr-2">Emergencia:</td><td>{est.emergencyContact}</td></tr>
                               <tr><td className="font-semibold pr-2">Tel. Emerg.:</td><td>{est.emergencyPhone}</td></tr>
                               <tr><td className="font-semibold pr-2">Alergias:</td><td>{est.hasAllergies ? est.allergiesDescription : 'No'}</td></tr>
@@ -520,8 +575,31 @@ const SolicitudInscripcion: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="text-center font-bold text-red-600 mt-4 avoid-break">
-                    IMPORTANTE: Debe presentar esta planilla en la entrevista presencial.
+                  {/* Firmas y nota */}
+                  <div className="mt-8 avoid-break">
+                    <p className="text-sm mb-2 font-bold">Para uso del representante:</p>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <p>_________________________</p>
+                        <p>Firma del Representante</p>
+                      </div>
+                      <div>
+                        <p>_________________________</p>
+                        <p>Firma de quien recibe</p>
+                      </div>
+                      <div>
+                        <p>_________________________</p>
+                        <p>Sello</p>
+                      </div>
+                      <div>
+                        <p>Fecha y hora: _______________</p>
+                        <p>(Solo uso de la institución)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-center text-xs font-semibold mt-6 avoid-break border-t pt-2">
+                    Nota: Esta planilla nos da derecho a aprobación de cupo solamente, es un proceso de preinscripción.
                   </div>
                 </div>
               )}
