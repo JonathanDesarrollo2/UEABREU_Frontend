@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { FiUsers, FiClipboard, FiPrinter, FiMail, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiUsers, FiClipboard, FiPrinter, FiMail, FiEye, FiEyeOff, FiFileText } from 'react-icons/fi';
 import type { PublicRegisterPayload } from '../../types/publicRegistration';
 import { toast } from 'react-toastify';
 import { usePublicRegistration } from './hooks/usePublicRegistration';
@@ -48,12 +48,71 @@ interface FormData {
 const API_BASE = import.meta.env.VITE_API_URL || 'https://appservices.ueabreu.com';
 
 // ------------------------------------------------------
+// Datos de prueba realistas (2 estudiantes)
+// ------------------------------------------------------
+const MOCK_DATA: FormData = {
+  email: '',
+  password: '',
+  confirmPassword: '',
+  userlogin: '',
+  representativeFullName: 'María Gabriela Rodríguez',
+  representativeIdentityCard: 'V-12.345.678',
+  representativeAddress: 'Calle Bolívar, Edif. Los Sauces, Piso 2, Apto. 4',
+  representativePhone: '0412-111.22.33',
+  relationship: 'Madre',
+  parentName: 'Carlos Eduardo Pérez',
+  parentIdentityCard: 'V-9.876.543',
+  parentPhone: '0414-555.66.77',
+  students: [
+    {
+      fullName: 'Luis Fernando Pérez Rodríguez',
+      identityCard: 'V-28.111.222',
+      birthDate: '2015-03-12',
+      nationality: 'Venezolano',
+      birthCountry: 'Venezuela',
+      state: 'Guárico',
+      zone: 'Zona Centro',
+      addressDescription: 'Av. Las Palmas, Casa N° 34, al lado de la farmacia',
+      phone: '0416-123.45.67',
+      emergencyContact: 'María Rodríguez (madre)',
+      emergencyPhone: '0412-111.22.33',
+      hasAllergies: true,
+      allergiesDescription: 'Alergia a la penicilina',
+      hasDiseases: false,
+      diseasesDescription: '',
+      previousSchool: 'U.E. "Juan Germán Roscio"',
+      municipality: 'Leonardo Infante',
+    },
+    {
+      fullName: 'Ana Valentina Pérez Rodríguez',
+      identityCard: 'V-30.555.888',
+      birthDate: '2018-07-25',
+      nationality: 'Venezolana',
+      birthCountry: 'Venezuela',
+      state: 'Guárico',
+      zone: 'Zona Centro',
+      addressDescription: 'Av. Las Palmas, Casa N° 34, al lado de la farmacia',
+      phone: '',
+      emergencyContact: 'María Rodríguez (madre)',
+      emergencyPhone: '0412-111.22.33',
+      hasAllergies: false,
+      allergiesDescription: '',
+      hasDiseases: false,
+      diseasesDescription: '',
+      previousSchool: 'Preescolar "Mi Pequeño Mundo"',
+      municipality: 'Leonardo Infante',
+    },
+  ],
+};
+
+// ------------------------------------------------------
 // Componente principal
 // ------------------------------------------------------
 const SolicitudInscripcion: React.FC = () => {
   const { step, loading, registeredEmail, planillaNumber, handleRegister, handleVerify } = usePublicRegistration();
 
   const [formDataForPDF, setFormDataForPDF] = useState<FormData | null>(null);
+  const [pdfPlanillaNumber, setPdfPlanillaNumber] = useState<number | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -84,7 +143,6 @@ const SolicitudInscripcion: React.FC = () => {
 
   const { fields, append, remove } = useFieldArray({ control, name: 'students' });
 
-  // Verificar si las inscripciones están habilitadas
   useEffect(() => {
     fetch(`${API_BASE}/api/public/registration-status`)
       .then(res => res.json())
@@ -179,6 +237,16 @@ const SolicitudInscripcion: React.FC = () => {
     window.print();
   };
 
+  // ============ NUEVA FUNCIÓN: Generar PDF de prueba ============
+  const handleTestPrint = useCallback(() => {
+    setFormDataForPDF(MOCK_DATA);
+    setPdfPlanillaNumber(9999); // número de prueba
+    // Pequeño retraso para asegurar que React renderice el área de impresión
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  }, []);
+
   // Estados de carga / inscripciones cerradas
   if (registrationOpen === null) {
     return (
@@ -213,7 +281,10 @@ const SolicitudInscripcion: React.FC = () => {
     );
   }
 
-  // Vista principal
+  // Determina qué datos se muestran en el PDF (prueba o real)
+  const pdfData = formDataForPDF;
+  const displayPlanillaNumber = pdfPlanillaNumber ?? planillaNumber;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
       {/* Estilos de impresión */}
@@ -247,6 +318,19 @@ const SolicitudInscripcion: React.FC = () => {
                 Complete todos los datos. Recibirá un código de verificación en su correo.
                 Su cuenta quedará pendiente de activación hasta la entrevista presencial.
               </p>
+              
+              {/* Botón de PDF de prueba */}
+              <div className="mt-6">
+                <button
+                  onClick={handleTestPrint}
+                  className="inline-flex items-center gap-2 bg-amber-500 text-white px-6 py-3 rounded-lg hover:bg-amber-600 transition font-semibold shadow-md"
+                >
+                  <FiFileText /> Generar PDF de prueba (2 estudiantes)
+                </button>
+                <p className="text-xs text-slate-500 mt-2">
+                  Crea una planilla de ejemplo para ver cómo quedará impresa.
+                </p>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -381,7 +465,6 @@ const SolicitudInscripcion: React.FC = () => {
                         </label>
                         <input {...register(`students.${index}.fullName`, { required: true })} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
-                      {/* Cédula: obligatoria en formulario para el backend */}
                       <div>
                         <label className="block text-sm font-medium text-slate-700">
                           Cédula <span className="required-asterisk">*</span>
@@ -505,7 +588,7 @@ const SolicitudInscripcion: React.FC = () => {
           </motion.div>
         )}
 
-        {/* PASO 3 – ÉXITO Y PLANILLA */}
+        {/* PASO 3 – ÉXITO */}
         {step === 'success' && (
           <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-center">
             <FiPrinter className="mx-auto h-20 w-20 text-green-500 mb-6 no-print" />
@@ -514,97 +597,6 @@ const SolicitudInscripcion: React.FC = () => {
               Tu cuenta ha sido creada (aún inactiva hasta la entrevista).
               Ahora puedes imprimir la planilla con tus datos. Recuerda llevarla a la entrevista presencial.
             </p>
-
-            {/* Área de impresión */}
-            <div id="print-area" className="hidden print:block text-left mx-auto max-w-full">
-              {formDataForPDF && (
-                <div className="avoid-break">
-                  <div className="text-center mb-4">
-                    <img src="/logo.png" alt="Logo" className="mx-auto h-20 mb-2" />
-                    <h1 className="text-xl font-bold">PLANILLA DE SOLICITUD DE INSCRIPCIÓN</h1>
-                    <p className="text-sm">U.E. José Antonio Abreu - Naguanagua</p>
-                    <p className="text-sm"><strong>N° de Planilla:</strong> {planillaNumber}</p>
-                    <p className="text-sm">Fecha: {new Date().toLocaleDateString()}</p>
-                  </div>
-
-                  <div className="flex flex-row gap-4">
-                    {/* Columna izquierda – Representante */}
-                    <div className="flex-1 avoid-break">
-                      <h3 className="font-bold underline mb-2">1. DATOS DEL REPRESENTANTE</h3>
-                      <table className="w-full text-xs">
-                        <tbody>
-                          <tr><td className="font-semibold pr-2">Nombre y Apellido:</td><td>{formDataForPDF.representativeFullName}</td></tr>
-                          <tr><td className="font-semibold pr-2">Cédula de Identidad:</td><td>{formDataForPDF.representativeIdentityCard}</td></tr>
-                          <tr><td className="font-semibold pr-2">Dirección:</td><td>{formDataForPDF.representativeAddress}</td></tr>
-                          <tr><td className="font-semibold pr-2">Teléfono:</td><td>{formDataForPDF.representativePhone}</td></tr>
-                          <tr><td className="font-semibold pr-2">Relación con el estudiante:</td><td>{formDataForPDF.relationship}</td></tr>
-                          <tr><td className="font-semibold pr-2">Nombre del Padre/Madre:</td><td>{formDataForPDF.parentName || '-'}</td></tr>
-                          <tr><td className="font-semibold pr-2">Cédula Padre/Madre:</td><td>{formDataForPDF.parentIdentityCard || '-'}</td></tr>
-                          <tr><td className="font-semibold pr-2">Teléfono Padre/Madre:</td><td>{formDataForPDF.parentPhone || '-'}</td></tr>
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Columna derecha – Solicitantes */}
-                    <div className="flex-1 avoid-break">
-                      <h3 className="font-bold underline mb-2">2. DATOS DE LOS SOLICITANTES</h3>
-                      {formDataForPDF.students.map((est, idx) => (
-                        <div key={idx} className="mb-2 avoid-break">
-                          <p className="font-semibold text-sm">Solicitante {idx + 1}</p>
-                          <table className="w-full text-xs">
-                            <tbody>
-                              <tr><td className="font-semibold pr-2">Nombre:</td><td>{est.fullName}</td></tr>
-                              <tr><td className="font-semibold pr-2">Edad:</td><td>{calcularEdad(est.birthDate)}</td></tr>
-                              <tr><td className="font-semibold pr-2">Fecha Nac.:</td><td>{est.birthDate}</td></tr>
-                              <tr><td className="font-semibold pr-2">Nacionalidad:</td><td>{est.nationality}</td></tr>
-                              <tr><td className="font-semibold pr-2">País Nac.:</td><td>{est.birthCountry}</td></tr>
-                              <tr><td className="font-semibold pr-2">Estado:</td><td>{est.state}</td></tr>
-                              <tr><td className="font-semibold pr-2">Zona donde vive:</td><td>{est.zone}</td></tr>
-                              <tr><td className="font-semibold pr-2">Municipio:</td><td>{est.municipality || '-'}</td></tr>
-                              <tr><td className="font-semibold pr-2">Escuela de procedencia:</td><td>{est.previousSchool || '-'}</td></tr>
-                              <tr><td className="font-semibold pr-2">Dirección:</td><td>{est.addressDescription}</td></tr>
-                              <tr><td className="font-semibold pr-2">Teléfono:</td><td>{est.phone || '-'}</td></tr>
-                              <tr><td className="font-semibold pr-2">Emergencia:</td><td>{est.emergencyContact}</td></tr>
-                              <tr><td className="font-semibold pr-2">Tel. Emerg.:</td><td>{est.emergencyPhone}</td></tr>
-                              <tr><td className="font-semibold pr-2">Alergias:</td><td>{est.hasAllergies ? est.allergiesDescription : 'No'}</td></tr>
-                              <tr><td className="font-semibold pr-2">Enfermedades:</td><td>{est.hasDiseases ? est.diseasesDescription : 'No'}</td></tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Firmas y nota */}
-                  <div className="mt-8 avoid-break">
-                    <p className="text-sm mb-2 font-bold">Para uso del representante:</p>
-                    <div className="grid grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <p>_________________________</p>
-                        <p>Firma del Representante</p>
-                      </div>
-                      <div>
-                        <p>_________________________</p>
-                        <p>Firma de quien recibe</p>
-                      </div>
-                      <div>
-                        <p>_________________________</p>
-                        <p>Sello</p>
-                      </div>
-                      <div>
-                        <p>Fecha y hora: _______________</p>
-                        <p>(Solo uso de la institución)</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-center text-xs font-semibold mt-6 avoid-break border-t pt-2">
-                    Nota: Esta planilla nos da derecho a aprobación de cupo solamente, es un proceso de preinscripción.
-                  </div>
-                </div>
-              )}
-            </div>
-
             <button onClick={handlePrint}
               className="no-print bg-green-600 text-white px-10 py-4 rounded-lg hover:bg-green-700 transition font-bold text-lg flex items-center justify-center mx-auto shadow-lg mt-8">
               <FiPrinter className="mr-2" /> Imprimir / Descargar PDF
@@ -612,6 +604,96 @@ const SolicitudInscripcion: React.FC = () => {
           </motion.div>
         )}
       </motion.div>
+
+      {/* Área de impresión SIEMPRE presente (oculta en pantalla, visible al imprimir) */}
+      <div id="print-area" className="hidden print:block text-left mx-auto max-w-full">
+        {pdfData && (
+          <div className="avoid-break">
+            <div className="text-center mb-4">
+              <img src="/logo.png" alt="Logo" className="mx-auto h-20 mb-2" />
+              <h1 className="text-xl font-bold">PLANILLA DE SOLICITUD DE INSCRIPCIÓN</h1>
+              <p className="text-sm">U.E. José Antonio Abreu - Naguanagua</p>
+              <p className="text-sm"><strong>N° de Planilla:</strong> {displayPlanillaNumber ?? '—'}</p>
+              <p className="text-sm">Fecha: {new Date().toLocaleDateString()}</p>
+            </div>
+
+            <div className="flex flex-row gap-4">
+              {/* Representante */}
+              <div className="flex-1 avoid-break">
+                <h3 className="font-bold underline mb-2">1. DATOS DEL REPRESENTANTE</h3>
+                <table className="w-full text-xs">
+                  <tbody>
+                    <tr><td className="font-semibold pr-2">Nombre y Apellido:</td><td>{pdfData.representativeFullName}</td></tr>
+                    <tr><td className="font-semibold pr-2">Cédula de Identidad:</td><td>{pdfData.representativeIdentityCard}</td></tr>
+                    <tr><td className="font-semibold pr-2">Dirección:</td><td>{pdfData.representativeAddress}</td></tr>
+                    <tr><td className="font-semibold pr-2">Teléfono:</td><td>{pdfData.representativePhone}</td></tr>
+                    <tr><td className="font-semibold pr-2">Relación con el estudiante:</td><td>{pdfData.relationship}</td></tr>
+                    <tr><td className="font-semibold pr-2">Nombre del Padre/Madre:</td><td>{pdfData.parentName || '-'}</td></tr>
+                    <tr><td className="font-semibold pr-2">Cédula Padre/Madre:</td><td>{pdfData.parentIdentityCard || '-'}</td></tr>
+                    <tr><td className="font-semibold pr-2">Teléfono Padre/Madre:</td><td>{pdfData.parentPhone || '-'}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Solicitantes */}
+              <div className="flex-1 avoid-break">
+                <h3 className="font-bold underline mb-2">2. DATOS DE LOS SOLICITANTES</h3>
+                {pdfData.students.map((est, idx) => (
+                  <div key={idx} className="mb-2 avoid-break">
+                    <p className="font-semibold text-sm">Solicitante {idx + 1}</p>
+                    <table className="w-full text-xs">
+                      <tbody>
+                        <tr><td className="font-semibold pr-2">Nombre:</td><td>{est.fullName}</td></tr>
+                        <tr><td className="font-semibold pr-2">Edad:</td><td>{calcularEdad(est.birthDate)}</td></tr>
+                        <tr><td className="font-semibold pr-2">Fecha Nac.:</td><td>{est.birthDate}</td></tr>
+                        <tr><td className="font-semibold pr-2">Nacionalidad:</td><td>{est.nationality}</td></tr>
+                        <tr><td className="font-semibold pr-2">País Nac.:</td><td>{est.birthCountry}</td></tr>
+                        <tr><td className="font-semibold pr-2">Estado:</td><td>{est.state}</td></tr>
+                        <tr><td className="font-semibold pr-2">Zona donde vive:</td><td>{est.zone}</td></tr>
+                        <tr><td className="font-semibold pr-2">Municipio:</td><td>{est.municipality || '-'}</td></tr>
+                        <tr><td className="font-semibold pr-2">Escuela de procedencia:</td><td>{est.previousSchool || '-'}</td></tr>
+                        <tr><td className="font-semibold pr-2">Dirección:</td><td>{est.addressDescription}</td></tr>
+                        <tr><td className="font-semibold pr-2">Teléfono:</td><td>{est.phone || '-'}</td></tr>
+                        <tr><td className="font-semibold pr-2">Emergencia:</td><td>{est.emergencyContact}</td></tr>
+                        <tr><td className="font-semibold pr-2">Tel. Emerg.:</td><td>{est.emergencyPhone}</td></tr>
+                        <tr><td className="font-semibold pr-2">Alergias:</td><td>{est.hasAllergies ? est.allergiesDescription : 'No'}</td></tr>
+                        <tr><td className="font-semibold pr-2">Enfermedades:</td><td>{est.hasDiseases ? est.diseasesDescription : 'No'}</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Firmas y nota */}
+            <div className="mt-8 avoid-break">
+              <p className="text-sm mb-2 font-bold">Para uso del representante:</p>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <p>_________________________</p>
+                  <p>Firma del Representante</p>
+                </div>
+                <div>
+                  <p>_________________________</p>
+                  <p>Firma de quien recibe</p>
+                </div>
+                <div>
+                  <p>_________________________</p>
+                  <p>Sello</p>
+                </div>
+                <div>
+                  <p>Fecha y hora: _______________</p>
+                  <p>(Solo uso de la institución)</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center text-xs font-semibold mt-6 avoid-break border-t pt-2">
+              Nota: Esta planilla nos da derecho a aprobación de cupo solamente, es un proceso de preinscripción.
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
