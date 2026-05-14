@@ -27,6 +27,8 @@ interface EstudianteForm {
   diseasesDescription: string;
   previousSchool: string;
   municipality: string;
+  aspiredGrade: string;   // nuevo
+  aspiredSection: string; // nuevo
 }
 
 interface FormData {
@@ -82,6 +84,8 @@ const MOCK_DATA: FormData = {
       diseasesDescription: '',
       previousSchool: 'U.E. "Juan Germán Roscio"',
       municipality: 'Leonardo Infante',
+      aspiredGrade: '1er año',
+      aspiredSection: 'A',
     },
     {
       fullName: 'Ana Valentina Pérez Rodríguez',
@@ -101,6 +105,8 @@ const MOCK_DATA: FormData = {
       diseasesDescription: '',
       previousSchool: 'Preescolar "Mi Pequeño Mundo"',
       municipality: 'Leonardo Infante',
+      aspiredGrade: '2do nivel',
+      aspiredSection: 'B',
     },
   ],
 };
@@ -136,7 +142,8 @@ const SolicitudInscripcion: React.FC = () => {
         fullName: '', identityCard: '', birthDate: '', nationality: '', birthCountry: '',
         state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
         emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
-        hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: ''
+        hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: '',
+        aspiredGrade: '', aspiredSection: ''  // nuevos defaults
       }]
     }
   });
@@ -175,7 +182,8 @@ const SolicitudInscripcion: React.FC = () => {
       fullName: '', identityCard: '', birthDate: '', nationality: '', birthCountry: '',
       state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
       emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
-      hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: ''
+      hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: '',
+      aspiredGrade: '', aspiredSection: ''
     });
   };
 
@@ -222,8 +230,8 @@ const SolicitudInscripcion: React.FC = () => {
           diseasesDescription: s.diseasesDescription || '',
           previousSchool: s.previousSchool || '',
           municipality: s.municipality || '',
-          currentGrade: 'En asignar',
-          section: 'Pendiente',
+          currentGrade: s.aspiredGrade || 'En asignar',     // enviamos el año aspirado
+          section: s.aspiredSection || 'Pendiente',          // enviamos la sección aspirada
           status: 'pendiente',
           balance: 0
         }))
@@ -237,11 +245,10 @@ const SolicitudInscripcion: React.FC = () => {
     window.print();
   };
 
-  // ============ NUEVA FUNCIÓN: Generar PDF de prueba ============
+  // Generar PDF de prueba
   const handleTestPrint = useCallback(() => {
     setFormDataForPDF(MOCK_DATA);
-    setPdfPlanillaNumber(9999); // número de prueba
-    // Pequeño retraso para asegurar que React renderice el área de impresión
+    setPdfPlanillaNumber(9999);
     setTimeout(() => {
       window.print();
     }, 100);
@@ -509,6 +516,23 @@ const SolicitudInscripcion: React.FC = () => {
                         <label className="block text-sm font-medium text-slate-700">Escuela de Procedencia</label>
                         <input {...register(`students.${index}.previousSchool`)} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
+                      {/* NUEVOS CAMPOS: Año y Sección aspirados */}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Año que aspira a cursar <span className="required-asterisk">*</span>
+                        </label>
+                        <input {...register(`students.${index}.aspiredGrade`, { required: true })} 
+                               placeholder="Ej: 1er año, 2do año" 
+                               className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Sección a la que aspira <span className="required-asterisk">*</span>
+                        </label>
+                        <input {...register(`students.${index}.aspiredSection`, { required: true })} 
+                               placeholder="Ej: A, B, C" 
+                               className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
+                      </div>
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-slate-700">
                           Dirección Completa <span className="required-asterisk">*</span>
@@ -605,7 +629,7 @@ const SolicitudInscripcion: React.FC = () => {
         )}
       </motion.div>
 
-      {/* Área de impresión SIEMPRE presente (oculta en pantalla, visible al imprimir) */}
+      {/* Área de impresión (PDF) */}
       <div id="print-area" className="hidden print:block text-left mx-auto max-w-full">
         {pdfData && (
           <div className="avoid-break">
@@ -652,6 +676,8 @@ const SolicitudInscripcion: React.FC = () => {
                         <tr><td className="font-semibold pr-2">Zona donde vive:</td><td>{est.zone}</td></tr>
                         <tr><td className="font-semibold pr-2">Municipio:</td><td>{est.municipality || '-'}</td></tr>
                         <tr><td className="font-semibold pr-2">Escuela de procedencia:</td><td>{est.previousSchool || '-'}</td></tr>
+                        <tr><td className="font-semibold pr-2">Año que aspira:</td><td>{est.aspiredGrade}</td></tr>
+                        <tr><td className="font-semibold pr-2">Sección a la que aspira:</td><td>{est.aspiredSection}</td></tr>
                         <tr><td className="font-semibold pr-2">Dirección:</td><td>{est.addressDescription}</td></tr>
                         <tr><td className="font-semibold pr-2">Teléfono:</td><td>{est.phone || '-'}</td></tr>
                         <tr><td className="font-semibold pr-2">Emergencia:</td><td>{est.emergencyContact}</td></tr>
