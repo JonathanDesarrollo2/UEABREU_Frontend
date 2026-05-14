@@ -27,8 +27,7 @@ interface EstudianteForm {
   diseasesDescription: string;
   previousSchool: string;
   municipality: string;
-  aspiredGrade: string;   // nuevo
-  aspiredSection: string; // nuevo
+  aspiredGrade: string;   // ahora será un select
 }
 
 interface FormData {
@@ -85,7 +84,6 @@ const MOCK_DATA: FormData = {
       previousSchool: 'U.E. "Juan Germán Roscio"',
       municipality: 'Leonardo Infante',
       aspiredGrade: '1er año',
-      aspiredSection: 'A',
     },
     {
       fullName: 'Ana Valentina Pérez Rodríguez',
@@ -105,8 +103,7 @@ const MOCK_DATA: FormData = {
       diseasesDescription: '',
       previousSchool: 'Preescolar "Mi Pequeño Mundo"',
       municipality: 'Leonardo Infante',
-      aspiredGrade: '2do nivel',
-      aspiredSection: 'B',
+      aspiredGrade: '2do año',
     },
   ],
 };
@@ -143,7 +140,7 @@ const SolicitudInscripcion: React.FC = () => {
         state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
         emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
         hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: '',
-        aspiredGrade: '', aspiredSection: ''  // nuevos defaults
+        aspiredGrade: ''  // default vacío
       }]
     }
   });
@@ -183,7 +180,7 @@ const SolicitudInscripcion: React.FC = () => {
       state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
       emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
       hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: '',
-      aspiredGrade: '', aspiredSection: ''
+      aspiredGrade: ''
     });
   };
 
@@ -231,7 +228,7 @@ const SolicitudInscripcion: React.FC = () => {
           previousSchool: s.previousSchool || '',
           municipality: s.municipality || '',
           currentGrade: s.aspiredGrade || 'En asignar',     // enviamos el año aspirado
-          section: s.aspiredSection || 'Pendiente',          // enviamos la sección aspirada
+          section: 'Pendiente',                              // siempre pendiente
           status: 'pendiente',
           balance: 0
         }))
@@ -516,22 +513,22 @@ const SolicitudInscripcion: React.FC = () => {
                         <label className="block text-sm font-medium text-slate-700">Escuela de Procedencia</label>
                         <input {...register(`students.${index}.previousSchool`)} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
-                      {/* NUEVOS CAMPOS: Año y Sección aspirados */}
+                      {/* NUEVO SELECT: Año que aspira */}
                       <div>
                         <label className="block text-sm font-medium text-slate-700">
                           Año que aspira a cursar <span className="required-asterisk">*</span>
                         </label>
-                        <input {...register(`students.${index}.aspiredGrade`, { required: true })} 
-                               placeholder="Ej: 1er año, 2do año" 
-                               className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700">
-                          Sección a la que aspira <span className="required-asterisk">*</span>
-                        </label>
-                        <input {...register(`students.${index}.aspiredSection`, { required: true })} 
-                               placeholder="Ej: A, B, C" 
-                               className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
+                        <select
+                          {...register(`students.${index}.aspiredGrade`, { required: true })}
+                          className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm bg-white"
+                          defaultValue=""
+                        >
+                          <option value="" disabled>Seleccione un año</option>
+                          <option value="1er año">1er año</option>
+                          <option value="2do año">2do año</option>
+                          <option value="3er año">3er año</option>
+                          <option value="4to año">4to año</option>
+                        </select>
                       </div>
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-slate-700">
@@ -677,7 +674,6 @@ const SolicitudInscripcion: React.FC = () => {
                         <tr><td className="font-semibold pr-2">Municipio:</td><td>{est.municipality || '-'}</td></tr>
                         <tr><td className="font-semibold pr-2">Escuela de procedencia:</td><td>{est.previousSchool || '-'}</td></tr>
                         <tr><td className="font-semibold pr-2">Año que aspira:</td><td>{est.aspiredGrade}</td></tr>
-                        <tr><td className="font-semibold pr-2">Sección a la que aspira:</td><td>{est.aspiredSection}</td></tr>
                         <tr><td className="font-semibold pr-2">Dirección:</td><td>{est.addressDescription}</td></tr>
                         <tr><td className="font-semibold pr-2">Teléfono:</td><td>{est.phone || '-'}</td></tr>
                         <tr><td className="font-semibold pr-2">Emergencia:</td><td>{est.emergencyContact}</td></tr>
