@@ -7,7 +7,7 @@ import { toast } from 'react-toastify';
 import { usePublicRegistration } from './hooks/usePublicRegistration';
 
 // ------------------------------------------------------
-// Tipos locales
+// Tipos locales 
 // ------------------------------------------------------
 interface EstudianteForm {
   fullName: string;
@@ -27,7 +27,7 @@ interface EstudianteForm {
   diseasesDescription: string;
   previousSchool: string;
   municipality: string;
-  aspiredGrade: string;   // ahora será un select
+  aspiredGrade: string;
 }
 
 interface FormData {
@@ -109,6 +109,28 @@ const MOCK_DATA: FormData = {
 };
 
 // ------------------------------------------------------
+// Texto del Acuerdo de Convivencia
+// ------------------------------------------------------
+const ACUERDO_TEXT = `ACUERDOS DE CONVIVENCIA 
+(Puntos claves de la norma) 
+1.Los estudiantes están en el deber de cumplir estrictamente con los horarios de clases, entendiéndose como tal el inicio establecido a las 7:00 a.m. hasta las 12:40 p.m.
+2.Los estudiantes están en el deber de respetar la integridad física intelectual y moral de sus compañeros, así como sus pertenencias, por tanto, se comprometen a respetar las prendas de uso personal, útiles escolares de sus compañeros, y de utilizarla solicitarán el expreso consentimiento de su propietario o propietaria para hacer uso de ellas.
+3.Los estudiantes deben procurar de su presentación personal; prive la higiene:
+-Los zapatos han de estar limpios, de color negro preferiblemente (con crema pulidos).
+-La camisa o chemise, se lleva por dentro del pantalón., en caso de usar franela debajo del uniforme, esta deberá ser blanco.
+-Los estudiantes llevaran su corte de cabello clásico, peinados y con su color natural., el no cumplimiento de este acuerdo y el reiterado llamado de atención al estudiante, al padre, madre, representante y/o responsable., por tal asunto, el colegio se toma la potestad de no otorgar la prosecución escolar del mismo.
+-Las estudiantes se presentarán en el colegio, con maquillaje moderado, propio de quien viene a una actividad diurna estudiantil.
+-El uso de: zarcillos extravagantes (niñas y adolescentes), túneles y piercing se restringe en la zona escolar.
+-El uso de pintura en las uñas de colores exagerados no está permitido en el área escolar, solo se permiten de colores muy suaves (niñas y adolescentes).
+4.	Los estudiantes usaran pantalón de gabardina holgado, a la cintura, el uso de esta prenda ajustada trae problemas de circulación, rotura de vasos capilares y enrojecimiento de la piel. 
+5.	Los estudiantes utilizaran el uniforme escolar de diario o de educación física y deportes., en concordancia a las orientaciones emitidas por el MPPE, en su decreto 1139 y la Unidad Educativa José Antonio Abreu.
+6.El sueter es el respectivo de la institución y en caso de no tenerlo, uno  de color azul marino, abierto por el frente para todos los niveles (sin emblema, totalmente unicolor).
+7.Los zapatos para las actividades de educación física, deben ser deportivos de color negro o blanco.
+8.El uniforme debe estar conformado por el pantalón de gabardina holgado, color azul marino, franela tipo chemise (color azul claro hasta 3er año y color beige para 4to y 5to año con su respectiva insignia), correa color negro (unicolor), medias color blanco, zapatos negros colegiales cerrados (sin tacones en el caso de las adolescentes).
+
+El incumplimiento de este acuerdo, generara el llamado del representante para establecer una mediación que supere esta circunstancia.`;
+
+// ------------------------------------------------------
 // Componente principal
 // ------------------------------------------------------
 const SolicitudInscripcion: React.FC = () => {
@@ -120,6 +142,8 @@ const SolicitudInscripcion: React.FC = () => {
   const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [acuerdoAceptado, setAcuerdoAceptado] = useState(false); // Nuevo estado
+  const [showAcuerdo, setShowAcuerdo] = useState(false); // Controla el modal
 
   const { register, handleSubmit, control } = useForm<FormData>({
     defaultValues: {
@@ -140,7 +164,7 @@ const SolicitudInscripcion: React.FC = () => {
         state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
         emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
         hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: '',
-        aspiredGrade: ''  // default vacío
+        aspiredGrade: ''
       }]
     }
   });
@@ -185,6 +209,10 @@ const SolicitudInscripcion: React.FC = () => {
   };
 
   const onSubmit = async (data: FormData) => {
+    if (!acuerdoAceptado) {
+      toast.error('Debe aceptar el Acuerdo de Convivencia antes de continuar.');
+      return;
+    }
     if (data.password !== data.confirmPassword) {
       toast.error('Las contraseñas no coinciden');
       return;
@@ -227,8 +255,8 @@ const SolicitudInscripcion: React.FC = () => {
           diseasesDescription: s.diseasesDescription || '',
           previousSchool: s.previousSchool || '',
           municipality: s.municipality || '',
-          currentGrade: s.aspiredGrade || 'En asignar',     // enviamos el año aspirado
-          section: 'Pendiente',                              // siempre pendiente
+          currentGrade: s.aspiredGrade || 'En asignar',
+          section: 'Pendiente',
           status: 'pendiente',
           balance: 0
         }))
@@ -242,7 +270,6 @@ const SolicitudInscripcion: React.FC = () => {
     window.print();
   };
 
-  // Generar PDF de prueba
   const handleTestPrint = useCallback(() => {
     setFormDataForPDF(MOCK_DATA);
     setPdfPlanillaNumber(9999);
@@ -250,6 +277,12 @@ const SolicitudInscripcion: React.FC = () => {
       window.print();
     }, 100);
   }, []);
+
+  // Maneja la aceptación del acuerdo dentro del modal
+  const aceptarAcuerdo = () => {
+    setAcuerdoAceptado(true);
+    setShowAcuerdo(false);
+  };
 
   // Estados de carga / inscripciones cerradas
   if (registrationOpen === null) {
@@ -285,7 +318,6 @@ const SolicitudInscripcion: React.FC = () => {
     );
   }
 
-  // Determina qué datos se muestran en el PDF (prueba o real)
   const pdfData = formDataForPDF;
   const displayPlanillaNumber = pdfPlanillaNumber ?? planillaNumber;
 
@@ -304,6 +336,40 @@ const SolicitudInscripcion: React.FC = () => {
         }
         .required-asterisk { color: red; }
       `}</style>
+
+      {/* Modal del Acuerdo de Convivencia */}
+      {showAcuerdo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+          >
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">Acuerdo de Convivencia</h2>
+              <button
+                onClick={() => setShowAcuerdo(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <pre className="whitespace-pre-wrap font-sans text-gray-700 text-sm leading-relaxed">
+                {ACUERDO_TEXT}
+              </pre>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={aceptarAcuerdo}
+                className="bg-blue-800 text-white px-6 py-2 rounded-lg hover:bg-blue-900 transition font-semibold"
+              >
+                Acepto el Acuerdo de Convivencia
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -335,10 +401,34 @@ const SolicitudInscripcion: React.FC = () => {
                   Crea una planilla de ejemplo para ver cómo quedará impresa.
                 </p>
               </div>
+
+              {/* Botón para mostrar el Acuerdo de Convivencia */}
+              <div className="mt-4">
+                {!acuerdoAceptado && (
+                  <>
+                    <button
+                      onClick={() => setShowAcuerdo(true)}
+                      className="inline-flex items-center gap-2 bg-indigo-500 text-white px-6 py-3 rounded-lg hover:bg-indigo-600 transition font-semibold shadow-md"
+                    >
+                      <FiFileText /> Leer Acuerdo de Convivencia
+                    </button>
+                    <p className="text-xs text-red-600 mt-2 font-medium">
+                      Debe leer y aceptar el Acuerdo de Convivencia para completar la inscripción.
+                    </p>
+                  </>
+                )}
+                {acuerdoAceptado && (
+                  <div className="text-green-600 font-semibold mt-2 flex items-center justify-center gap-2">
+                    <span>✔ Acuerdo de Convivencia aceptado</span>
+                  </div>
+                )}
+              </div>
             </div>
 
+            {/* El formulario se muestra siempre, pero el botón de envío se deshabilita si no se ha aceptado el acuerdo */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
               {/* Cuenta */}
+              {/* (El resto del formulario permanece idéntico) */}
               <div className="bg-white rounded-xl p-6 border border-slate-300">
                 <h2 className="text-xl font-bold text-slate-800 flex items-center mb-4">
                   <FiMail className="mr-2 text-blue-700" /> Datos de la cuenta
@@ -513,7 +603,6 @@ const SolicitudInscripcion: React.FC = () => {
                         <label className="block text-sm font-medium text-slate-700">Escuela de Procedencia</label>
                         <input {...register(`students.${index}.previousSchool`)} className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm" />
                       </div>
-                      {/* NUEVO SELECT: Año que aspira */}
                       <div>
                         <label className="block text-sm font-medium text-slate-700">
                           Año que aspira a cursar <span className="required-asterisk">*</span>
@@ -572,11 +661,20 @@ const SolicitudInscripcion: React.FC = () => {
               </div>
 
               <div className="flex justify-center">
-                <button type="submit" disabled={loading}
-                  className="bg-blue-800 text-white px-8 py-3 rounded-lg hover:bg-blue-900 transition font-semibold disabled:opacity-50">
+                <button
+                  type="submit"
+                  disabled={loading || !acuerdoAceptado}
+                  className={`bg-blue-800 text-white px-8 py-3 rounded-lg hover:bg-blue-900 transition font-semibold disabled:opacity-50 ${!acuerdoAceptado ? 'cursor-not-allowed' : ''}`}
+                  title={!acuerdoAceptado ? 'Debe aceptar el Acuerdo de Convivencia' : ''}
+                >
                   {loading ? 'Registrando...' : 'Crear cuenta y enviar código'}
                 </button>
               </div>
+              {!acuerdoAceptado && (
+                <p className="text-center text-red-600 text-sm mt-2">
+                  * Debe leer y aceptar el Acuerdo de Convivencia antes de enviar el formulario.
+                </p>
+              )}
             </form>
           </>
         )}
