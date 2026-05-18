@@ -76,56 +76,73 @@ export const JoinUsView: React.FC = () => {
         {/* Información Principal */}
         <div className="grid lg:grid-cols-2 gap-12 mb-16">
           {/* Columna izquierda - Proceso */}
-          <motion.div
-            initial={{ x: -50, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-8 border border-slate-200"
-          >
-            <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center">
-              <FiUsers className="mr-3 text-blue-700" />
-              Proceso de Admisión
-            </h2>
-            
-            <div className="space-y-6">
-              <div className="flex items-start space-x-4">
-                <div className="bg-blue-50 text-blue-700 rounded-lg p-3 mt-1 border border-blue-200">
-                  <span className="font-bold">1</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-800 mb-2">Contacto Inicial</h3>
-                  <p className="text-slate-700">
-                    Comuníquese con nosotros para programar una entrevista informativa.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="bg-blue-50 text-blue-700 rounded-lg p-3 mt-1 border border-blue-200">
-                  <span className="font-bold">2</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-800 mb-2">Entrevista Personal</h3>
-                  <p className="text-slate-700">
-                    Reunión con el departamento académico para conocer sus expectativas.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="bg-blue-50 text-blue-700 rounded-lg p-3 mt-1 border border-blue-200">
-                  <span className="font-bold">3</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-800 mb-2">Invitación Formal</h3>
-                  <p className="text-slate-700">
-                    Una vez evaluada la solicitud, extendemos la invitación formal.
-                  </p>
-                </div>
-              </div>
+          {/* Columna izquierda - Proceso */}
+      <motion.div
+        initial={{ x: -50, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.6 }}
+        viewport={{ once: true }}
+        className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-8 border border-slate-200"
+      >
+        <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center">
+          <FiUsers className="mr-3 text-blue-700" />
+          Proceso de Admisión
+        </h2>
+        
+        <div className="space-y-6">
+          {/* Paso 1 */}
+          <div className="flex items-start space-x-4">
+            <div className="bg-blue-50 text-blue-700 rounded-lg p-3 mt-1 border border-blue-200">
+              <span className="font-bold">1</span>
             </div>
-          </motion.div>
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-2">Contacto Inicial</h3>
+              <p className="text-slate-700">
+                Comuníquese con nosotros para programar una entrevista informativa.
+              </p>
+            </div>
+          </div>
+
+          {/* Paso 2 – NUEVO */}
+          <div className="flex items-start space-x-4">
+            <div className="bg-blue-50 text-blue-700 rounded-lg p-3 mt-1 border border-blue-200">
+              <span className="font-bold">2</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-2">Carga de Información</h3>
+              <p className="text-slate-700">
+                Llenar la planilla de solicitud. Diríjase al final del portal para acceder al registro de preselección.
+              </p>
+            </div>
+          </div>
+
+          {/* Paso 3 (antes 2) */}
+          <div className="flex items-start space-x-4">
+            <div className="bg-blue-50 text-blue-700 rounded-lg p-3 mt-1 border border-blue-200">
+              <span className="font-bold">3</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-2">Entrevista Personal</h3>
+              <p className="text-slate-700">
+                Reunión con el departamento académico para conocer sus expectativas.
+              </p>
+            </div>
+          </div>
+
+          {/* Paso 4 (antes 3) */}
+          <div className="flex items-start space-x-4">
+            <div className="bg-blue-50 text-blue-700 rounded-lg p-3 mt-1 border border-blue-200">
+              <span className="font-bold">4</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-2">Invitación Formal</h3>
+              <p className="text-slate-700">
+                Una vez evaluada la solicitud, extendemos la invitación formal.
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
 
           {/* Columna derecha - Beneficios */}
           <motion.div
