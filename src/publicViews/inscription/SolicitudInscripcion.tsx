@@ -7,7 +7,7 @@ import { toast } from 'react-toastify';
 import { usePublicRegistration } from './hooks/usePublicRegistration';
 
 // ------------------------------------------------------
-// Tipos locales 
+// Tipos locales
 // ------------------------------------------------------
 interface EstudianteForm {
   fullName: string;
@@ -142,8 +142,8 @@ const SolicitudInscripcion: React.FC = () => {
   const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [acuerdoAceptado, setAcuerdoAceptado] = useState(false); // Nuevo estado
-  const [showAcuerdo, setShowAcuerdo] = useState(false); // Controla el modal
+  const [acuerdoAceptado, setAcuerdoAceptado] = useState(false); // nuevo estado
+  const [showAcuerdo, setShowAcuerdo] = useState(false); // controla el modal
 
   const { register, handleSubmit, control } = useForm<FormData>({
     defaultValues: {
@@ -278,7 +278,6 @@ const SolicitudInscripcion: React.FC = () => {
     }, 100);
   }, []);
 
-  // Maneja la aceptación del acuerdo dentro del modal
   const aceptarAcuerdo = () => {
     setAcuerdoAceptado(true);
     setShowAcuerdo(false);
@@ -402,9 +401,9 @@ const SolicitudInscripcion: React.FC = () => {
                 </p>
               </div>
 
-              {/* Botón para mostrar el Acuerdo de Convivencia */}
-              <div className="mt-4">
-                {!acuerdoAceptado && (
+              {/* Bloque del Acuerdo de Convivencia */}
+              <div className="mt-6">
+                {!acuerdoAceptado ? (
                   <>
                     <button
                       onClick={() => setShowAcuerdo(true)}
@@ -416,8 +415,7 @@ const SolicitudInscripcion: React.FC = () => {
                       Debe leer y aceptar el Acuerdo de Convivencia para completar la inscripción.
                     </p>
                   </>
-                )}
-                {acuerdoAceptado && (
+                ) : (
                   <div className="text-green-600 font-semibold mt-2 flex items-center justify-center gap-2">
                     <span>✔ Acuerdo de Convivencia aceptado</span>
                   </div>
@@ -425,10 +423,10 @@ const SolicitudInscripcion: React.FC = () => {
               </div>
             </div>
 
-            {/* El formulario se muestra siempre, pero el botón de envío se deshabilita si no se ha aceptado el acuerdo */}
+            {/* Formulario (siempre visible, pero el botón se bloquea si no se aceptó) */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+              {/* ... todos los campos del formulario ... */}
               {/* Cuenta */}
-              {/* (El resto del formulario permanece idéntico) */}
               <div className="bg-white rounded-xl p-6 border border-slate-300">
                 <h2 className="text-xl font-bold text-slate-800 flex items-center mb-4">
                   <FiMail className="mr-2 text-blue-700" /> Datos de la cuenta
@@ -660,7 +658,8 @@ const SolicitudInscripcion: React.FC = () => {
                 ))}
               </div>
 
-              <div className="flex justify-center">
+              {/* Botón de envío (se deshabilita si no se aceptó el acuerdo) */}
+              <div className="flex flex-col items-center">
                 <button
                   type="submit"
                   disabled={loading || !acuerdoAceptado}
@@ -669,12 +668,12 @@ const SolicitudInscripcion: React.FC = () => {
                 >
                   {loading ? 'Registrando...' : 'Crear cuenta y enviar código'}
                 </button>
+                {!acuerdoAceptado && (
+                  <p className="text-red-600 text-sm mt-2">
+                    * Debe leer y aceptar el Acuerdo de Convivencia antes de enviar el formulario.
+                  </p>
+                )}
               </div>
-              {!acuerdoAceptado && (
-                <p className="text-center text-red-600 text-sm mt-2">
-                  * Debe leer y aceptar el Acuerdo de Convivencia antes de enviar el formulario.
-                </p>
-              )}
             </form>
           </>
         )}
