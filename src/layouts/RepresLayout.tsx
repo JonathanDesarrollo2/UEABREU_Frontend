@@ -161,13 +161,13 @@ export default function RepresLayout() {
               </div>
             </div>
             
-            {/* Información del estudiante (sin el estado) */}
-            {sessionContext.studentInfo?.name && (
-              <div className="px-5 py-5 bg-gray-700 mx-4 mt-4 rounded-xl">
-                <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Representante</p>
-                <p className="text-white font-bold text-lg mt-2">{sessionContext.studentInfo.name}</p>
-              </div>
-            )}
+              {/* Información del representante */}
+              {sessionContext.sesionUser && (
+                <div className="px-5 py-4 bg-gray-700 mx-3 mt-4 rounded-lg">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Representante</p>
+                  <p className="text-white font-bold text-lg mt-1">{sessionContext.sesionUser}</p>
+                </div>
+              )}
             
             <nav className="mt-6 flex-1 px-4 space-y-3">
               {menuItems.map(item => renderMenuItem(item))}

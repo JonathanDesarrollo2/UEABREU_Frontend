@@ -1,4 +1,3 @@
-// src/pages/representante/RepresDashboard.tsx
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -36,17 +35,14 @@ export default function RepresDashboard() {
     const fetchData = async () => {
       try {
         if (sessionContext.sesionEmail) {
-          // 1. Obtener el ID del representante por email
           const repEmailRes = await getRepresentativeByEmail(sessionContext.sesionEmail);
           if (repEmailRes.result) {
             const repId = repEmailRes.content.id;
             setRepresentativeId(repId);
 
-            // 2. Obtener el balance completo
             const balanceRes = await getRepresentativeBalance(repId);
             if (balanceRes.result) {
               setBalanceData(balanceRes.content);
-              // El número de hijos se obtiene del arreglo students dentro de representative
               setChildrenCount(balanceRes.content.representative.students?.length || 0);
             }
           }
@@ -61,11 +57,9 @@ export default function RepresDashboard() {
     fetchData();
   }, [sessionContext.sesionEmail]);
 
-  // Datos reales de deuda/saldo (ahora desde balanceData.representative)
   const representative = balanceData?.representative;
+  const students = representative?.students || [];
   const balance = representative?.balance ?? 0;
-  const isDebt = balance < 0;
-  const debtAmount = isDebt ? Math.abs(balance) : 0;
   const fullName = representative?.fullName || sessionContext.sesionUser;
 
   return (
@@ -99,60 +93,96 @@ export default function RepresDashboard() {
         </div>
       </motion.div>
 
-      {/* Tarjeta de Estado de Cuenta (REAL) */}
+      {/* --- NUEVA SECCIÓN: Estado de Cuenta por Estudiante --- */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 mb-8"
+        className="mb-8"
       >
-        <div className="flex flex-col md:flex-row items-center justify-between">
-          <div className="flex items-center space-x-4 mb-4 md:mb-0">
-            <div className={`p-4 ${isDebt ? 'bg-red-100' : 'bg-green-100'} rounded-xl`}>
-              <FaMoneyBillWave className={`${isDebt ? 'text-red-600' : 'text-green-600'} text-2xl`} />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900">Estado de Cuenta</h3>
-              <p className="text-gray-600">Saldo actual</p>
-            </div>
-          </div>
-          <div className="text-center md:text-right">
-            <p className={`text-4xl font-bold ${isDebt ? 'text-red-600' : 'text-green-600'}`}>
-              ${balance.toFixed(2)}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              {isDebt ? 'Deuda pendiente' : 'Saldo a favor'}
-            </p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+          <h2 className="text-2xl font-bold text-gray-800">Estado de Cuenta</h2>
+          <div
+            className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+              balance < 0
+                ? 'bg-red-50 text-red-700'
+                : balance > 0
+                ? 'bg-green-50 text-green-700'
+                : 'bg-gray-100 text-gray-700'
+            }`}
+          >
+            Total: ${balance.toFixed(2)}
           </div>
         </div>
 
-        {isDebt && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
-            <div className="flex items-center">
-              <FaExclamationTriangle className="text-red-600 text-xl mr-4 flex-shrink-0" />
-              <p className="text-red-800">
-                Tienes una deuda de ${debtAmount.toFixed(2)}. Por favor regulariza tu situación para evitar recargos.
-              </p>
-            </div>
+        {loadingBalance ? (
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 text-center text-gray-500">
+            Cargando información de estudiantes...
           </div>
-        )}
-        {!isDebt && balance === 0 && (
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-            <div className="flex items-center">
-              <FaCheckCircle className="text-blue-600 text-xl mr-4 flex-shrink-0" />
-              <p className="text-blue-800">
-                No tienes deudas ni saldo a favor.
-              </p>
-            </div>
+        ) : students.length === 0 ? (
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 text-center text-gray-500">
+            No hay estudiantes registrados.
           </div>
-        )}
-        {!isDebt && balance > 0 && (
-          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
-            <div className="flex items-center">
-              <FaCheckCircle className="text-green-600 text-xl mr-4 flex-shrink-0" />
-              <p className="text-green-800">
-                Tienes un saldo a favor de ${balance.toFixed(2)}. ¡Todo al día!
-              </p>
-            </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {students.map((student: any) => {
+              const sBalance = student.balance || 0;
+              const isDebt = sBalance < 0;
+              const isCredit = sBalance > 0;
+              const balanceColor = isDebt ? 'text-red-600' : isCredit ? 'text-green-600' : 'text-gray-600';
+              const bgColor = isDebt
+                ? 'bg-red-50 border-red-200'
+                : isCredit
+                ? 'bg-green-50 border-green-200'
+                : 'bg-gray-50 border-gray-200';
+              const icon = isDebt ? (
+                <FaExclamationTriangle className="text-red-600 text-xl" />
+              ) : isCredit ? (
+                <FaCheckCircle className="text-green-600 text-xl" />
+              ) : (
+                <FaMoneyBillWave className="text-gray-400 text-xl" />
+              );
+
+              return (
+                <motion.div
+                  key={student.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className={`rounded-xl border ${bgColor} p-5 shadow-sm hover:shadow-md transition-shadow`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-800 text-lg leading-tight">
+                        {student.fullName}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {student.currentGrade || 'Sin grado'} • {student.status}
+                      </p>
+                    </div>
+                    <div className="ml-3">{icon}</div>
+                  </div>
+
+                  <div className="mt-4">
+                    <p className={`text-2xl font-bold ${balanceColor}`}>
+                      ${sBalance.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {isDebt
+                        ? `Deuda de $${Math.abs(sBalance).toFixed(2)}`
+                        : isCredit
+                        ? 'Saldo a favor'
+                        : 'Sin movimientos'}
+                    </p>
+                  </div>
+
+                  {isDebt && (
+                    <div className="mt-3 bg-red-100/50 rounded-lg px-3 py-2 text-sm text-red-800 font-medium flex items-center">
+                      <FaExclamationTriangle className="mr-2 flex-shrink-0" />
+                      Pendiente de pago
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </motion.div>
@@ -200,4 +230,4 @@ export default function RepresDashboard() {
       </motion.div>
     </div>
   );
-}
+};
