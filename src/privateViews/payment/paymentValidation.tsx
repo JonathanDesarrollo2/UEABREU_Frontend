@@ -137,7 +137,12 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
           const depositRes = await manualDeposit(representativeId, depositPayload);
           setDepositResult(depositRes);
         } catch (depErr: any) {
-          setError(`Validación bancaria exitosa, pero error al registrar depósito: ${depErr.message}`);
+        // Extrae el mensaje del backend si está disponible
+        const serverMessage =
+          depErr?.response?.data?.error?.[0] ||
+          depErr?.response?.data?.message ||
+          depErr.message;
+        setError(`Validación bancaria exitosa, pero error al registrar depósito: ${serverMessage}`);
         } finally {
           setDepositLoading(false);
         }
