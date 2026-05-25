@@ -33,7 +33,6 @@ const PaymentHistory: React.FC = () => {
   });
   const [pagination, setPagination] = useState({ totalRecords: 0, currentPage: 1, totalPages: 1 });
 
-  // Estados para autocompletados
   const [repSearchTerm, setRepSearchTerm] = useState('');
   const [repResults, setRepResults] = useState<any[]>([]);
   const [showRepDropdown, setShowRepDropdown] = useState(false);
@@ -45,7 +44,6 @@ const PaymentHistory: React.FC = () => {
   const repInputRef = useRef<HTMLInputElement>(null);
   const studentInputRef = useRef<HTMLInputElement>(null);
 
-  // Búsqueda de representantes al escribir
   const searchReps = useCallback(async (term: string) => {
     if (term.length < 2) {
       setRepResults([]);
@@ -59,12 +57,9 @@ const PaymentHistory: React.FC = () => {
         setRepResults(data.content.representatives || data.content || []);
         setShowRepDropdown(true);
       }
-    } catch (error) {
-      // silencio
-    }
+    } catch (error) {}
   }, []);
 
-  // Búsqueda de estudiantes al escribir
   const searchStudents = useCallback(async (term: string) => {
     if (term.length < 2) {
       setStudentResults([]);
@@ -76,12 +71,9 @@ const PaymentHistory: React.FC = () => {
         setStudentResults(response.content || []);
         setShowStudentDropdown(true);
       }
-    } catch (error) {
-      // silencio
-    }
+    } catch (error) {}
   }, []);
 
-  // Cargar transacciones con filtros
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
     try {
@@ -132,14 +124,12 @@ const PaymentHistory: React.FC = () => {
     fetchTransactions();
   };
 
-  // Seleccionar representante del dropdown
   const selectRepresentative = (rep: any) => {
     setFilters(prev => ({ ...prev, representativeId: rep.id, page: 1 }));
     setRepSearchTerm(rep.fullName);
     setShowRepDropdown(false);
   };
 
-  // Seleccionar estudiante del dropdown
   const selectStudent = (student: any) => {
     setFilters(prev => ({ ...prev, studentId: student.id, page: 1 }));
     setStudentSearchTerm(student.fullName);
@@ -147,12 +137,11 @@ const PaymentHistory: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-gray-200 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Encabezado */}
+    <div className="min-h-screen bg-gray-100 p-4 md:p-6">
+      <div className="max-w-8xl mx-auto"> {/* Ancho ampliado */}
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 rounded-2xl shadow-lg">
+            <div className="bg-blue-600 p-4 rounded-2xl shadow-lg">
               <FaHistory className="text-3xl text-white" />
             </div>
             <div>
@@ -160,21 +149,19 @@ const PaymentHistory: React.FC = () => {
               <p className="text-gray-600">Consulte todos los movimientos financieros del sistema</p>
             </div>
           </div>
-          <div className="hidden md:block bg-white/80 rounded-xl px-5 py-2 shadow-sm">
+          <div className="hidden md:block bg-white rounded-xl px-5 py-2 shadow-sm">
             <span className="text-sm text-gray-500">Total registros: </span>
-            <span className="font-bold text-indigo-700">{pagination.totalRecords}</span>
+            <span className="font-bold text-blue-700">{pagination.totalRecords}</span>
           </div>
         </div>
 
-        {/* Panel de filtros mejorado */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-8">
+        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 mb-8">
           <div className="flex items-center space-x-2 mb-6">
-            <FaFilter className="text-indigo-500" />
+            <FaFilter className="text-blue-600" />
             <h2 className="text-lg font-bold text-gray-700">Filtros de búsqueda</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Búsqueda general */}
             <div>
               <label className="block text-sm font-semibold text-gray-600 mb-1">Buscar</label>
               <div className="relative">
@@ -183,13 +170,12 @@ const PaymentHistory: React.FC = () => {
                   value={filters.search}
                   onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                   placeholder="Referencia, descripción..."
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                 />
                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               </div>
             </div>
 
-            {/* Representante con autocompletado */}
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-600 mb-1">Representante</label>
               <input
@@ -204,7 +190,7 @@ const PaymentHistory: React.FC = () => {
                   searchReps(e.target.value);
                 }}
                 placeholder="Buscar representante..."
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400"
               />
               {showRepDropdown && repResults.length > 0 && (
                 <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-auto">
@@ -212,7 +198,7 @@ const PaymentHistory: React.FC = () => {
                     <div
                       key={rep.id}
                       onClick={() => selectRepresentative(rep)}
-                      className="px-4 py-2 hover:bg-indigo-50 cursor-pointer text-gray-700"
+                      className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-gray-700"
                     >
                       {rep.fullName} <span className="text-sm text-gray-400">({rep.identityCard})</span>
                     </div>
@@ -221,7 +207,6 @@ const PaymentHistory: React.FC = () => {
               )}
             </div>
 
-            {/* Estudiante con autocompletado */}
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-600 mb-1">Estudiante</label>
               <input
@@ -236,7 +221,7 @@ const PaymentHistory: React.FC = () => {
                   searchStudents(e.target.value);
                 }}
                 placeholder="Buscar estudiante..."
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400"
               />
               {showStudentDropdown && studentResults.length > 0 && (
                 <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-auto">
@@ -244,7 +229,7 @@ const PaymentHistory: React.FC = () => {
                     <div
                       key={student.id}
                       onClick={() => selectStudent(student)}
-                      className="px-4 py-2 hover:bg-indigo-50 cursor-pointer text-gray-700"
+                      className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-gray-700"
                     >
                       {student.fullName} <span className="text-sm text-gray-400">({student.currentGrade || 'Sin grado'})</span>
                     </div>
@@ -253,7 +238,6 @@ const PaymentHistory: React.FC = () => {
               )}
             </div>
 
-            {/* Fechas */}
             <div className="flex space-x-2">
               <div className="flex-1">
                 <label className="block text-sm font-semibold text-gray-600 mb-1">Desde</label>
@@ -261,7 +245,7 @@ const PaymentHistory: React.FC = () => {
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl"
+                  className="w-full px-2 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400"
                 />
               </div>
               <div className="flex-1">
@@ -270,7 +254,7 @@ const PaymentHistory: React.FC = () => {
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl"
+                  className="w-full px-2 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400"
                 />
               </div>
             </div>
@@ -279,7 +263,7 @@ const PaymentHistory: React.FC = () => {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button
               onClick={handleApplyFilters}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition"
+              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition"
             >
               <FaSearch className="inline mr-2" /> Buscar
             </button>
@@ -292,11 +276,10 @@ const PaymentHistory: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabla de transacciones */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-indigo-500 border-t-transparent"></div>
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
             </div>
           ) : transactions.length === 0 ? (
             <div className="text-center py-20">
@@ -308,21 +291,21 @@ const PaymentHistory: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-gradient-to-r from-indigo-50 to-purple-50">
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Fecha</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Representante</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Estudiante</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Tipo</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Monto</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Método</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Referencia</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Descripción</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Estado</th>
+                  <tr className="bg-blue-600">
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Fecha</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Representante</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Estudiante</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Tipo</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Método</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Referencia</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Descripción</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Estado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {transactions.map(t => (
-                    <tr key={t.id} className="hover:bg-indigo-50/30 transition-colors">
+                    <tr key={t.id} className="hover:bg-blue-50/30 transition-colors">
                       <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                         {t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '-'}
                       </td>
@@ -367,9 +350,8 @@ const PaymentHistory: React.FC = () => {
             </div>
           )}
 
-          {/* Paginación */}
           {pagination.totalPages > 1 && (
-            <div className="flex justify-between items-center px-6 py-4 bg-gray-50/50">
+            <div className="flex justify-between items-center px-6 py-4 bg-gray-50">
               <span className="text-sm text-gray-600">
                 Página {pagination.currentPage} de {pagination.totalPages} (Total: {pagination.totalRecords})
               </span>
