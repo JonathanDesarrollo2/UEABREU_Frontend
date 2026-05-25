@@ -7,7 +7,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
  * Ahora retorna además el número de planilla.
  */
 export async function registerPublic(payload: PublicRegisterPayload): Promise<{ planillaNumber: number }> {
-  const res = await fetch(`${API_BASE}/api/public/register`, {
+  const res = await fetch(`${API_BASE}/public/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -32,7 +32,7 @@ export async function registerPublic(payload: PublicRegisterPayload): Promise<{ 
  * Verifica el código de 5 dígitos enviado al correo.
  */
 export async function verifyEmailCode(payload: VerifyEmailPayload): Promise<PublicApiResponse> {
-  const res = await fetch(`${API_BASE}/api/public/verify-email`, {
+  const res = await fetch(`${API_BASE}/public/verify-email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
