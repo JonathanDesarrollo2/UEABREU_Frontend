@@ -26,7 +26,7 @@ const InscriptionSettings: React.FC = () => {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/private/settings/registrations`, {
+      const res = await fetch(`${API_BASE}/private/settings/registrations`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) throw new Error(res.statusText);
@@ -47,7 +47,7 @@ const InscriptionSettings: React.FC = () => {
   const handleToggle = async () => {
     setToggling(true);
     try {
-      const res = await fetch(`${API_BASE}/api/private/settings/registrations/toggle`, {
+      const res = await fetch(`${API_BASE}/private/settings/registrations/toggle`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
