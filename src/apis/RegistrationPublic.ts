@@ -1,6 +1,6 @@
 import type { PublicRegisterPayload, PublicApiResponse, VerifyEmailPayload } from "../types/publicRegistration";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
 
 /**
  * Registra un nuevo representante con sus estudiantes.
