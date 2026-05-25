@@ -11,7 +11,7 @@ interface StatusResponse {
   error:string;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://appservices.ueabreu.com'; // 👈 URL corregida
+const API_BASE = import.meta.env.VITE_API_URL; 
 
 const InscriptionSettings: React.FC = () => {
   const [isEnabled, setIsEnabled] = useState<boolean>(false);

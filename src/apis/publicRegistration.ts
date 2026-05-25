@@ -1,6 +1,6 @@
 import type { PublicRegisterPayload, PublicApiResponse, VerifyEmailPayload } from "../types/publicRegistration";
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://appservices.ueabreu.com';
+const API_BASE = import.meta.env.VITE_API_URL;
 
 export async function registerPublic(payload: PublicRegisterPayload): Promise<{ planillaNumber: number }> {
   const res = await fetch(`${API_BASE}/api/public/register`, {

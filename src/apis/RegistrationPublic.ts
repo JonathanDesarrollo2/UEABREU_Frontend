@@ -1,6 +1,6 @@
 import type { PublicRegisterPayload, PublicApiResponse, VerifyEmailPayload } from "../types/publicRegistration";
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://appservices.ueabreu.com';
+const API_BASE = import.meta.env.VITE_API_URL;
 
 /**
  * Registra un nuevo representante con sus estudiantes.

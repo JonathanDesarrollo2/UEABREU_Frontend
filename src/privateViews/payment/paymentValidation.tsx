@@ -132,12 +132,11 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
             description: `Pago validado - Ref: ${formData.Reference}`,
             paymentMethod: 'pago_movil' as const,
             reference: formData.Reference,
-            studentId: selectedStudentId || undefined, // si está vacío, se reparte entre todos
+            studentId: selectedStudentId || undefined, 
           };
           const depositRes = await manualDeposit(representativeId, depositPayload);
           setDepositResult(depositRes);
         } catch (depErr: any) {
-        // Extrae el mensaje del backend si está disponible
         const serverMessage =
           depErr?.response?.data?.error?.[0] ||
           depErr?.response?.data?.message ||
