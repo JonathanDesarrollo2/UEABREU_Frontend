@@ -106,3 +106,7 @@ export async function getRepresentativeByEmail(email: string): Promise<any> {
   });
   return response.data;
 }
+export async function getAllTransactions(params?: any) {
+  const response = await api.get('/private/balance/transactions', { params });
+  return response.data;
+}

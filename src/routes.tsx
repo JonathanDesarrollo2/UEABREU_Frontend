@@ -28,6 +28,7 @@ import ChildrenScheduleView from './privateViews/ChildrenSchedule/ChildrenSchedu
 import PaymentValidationPage from './privateViews/PaymentValidation/PaymentValidationPage'
 import SolicitudInscripcion from './publicViews/inscription/SolicitudInscripcion'
 import InscriptionSettings from './privateViews/inscription/inscriptionSettings'
+import PaymentHistory from './privateViews/PaymentHistory/PaymentHistoryAdmin'
 
 function ListRoutes() {
   return (
@@ -67,6 +68,7 @@ function ListRoutes() {
           <Route path="listStudents" element={<AdminListStudentsBackend />} />
           <Route path="ListTeacher" element={<AdminListTeachersBackend />} />
           <Route path="Settings" element={<InscriptionSettings />} />
+          <Route path="transactions" element={<PaymentHistory />} />   // NUEVA RUTA
           
           {/* ✅ NUEVAS RUTAS PARA PROFESORES (estructura modular) */}
           <Route path="teachers">
