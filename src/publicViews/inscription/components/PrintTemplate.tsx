@@ -93,7 +93,7 @@ const PrintTemplate: React.FC<Props> = ({ data, planillaNumber, calcularEdad }) 
         </div>
 
         <div className="text-center text-xs font-semibold mt-6 avoid-break border-t pt-2">
-          Nota: Esta planilla nos da derecho a aprobación de cupo solamente, es un proceso de preinscripción.
+          Nota: Esta planilla no da derecho a aprobación de cupo solamente, es un proceso de preinscripción.
         </div>
       </div>
     </div>

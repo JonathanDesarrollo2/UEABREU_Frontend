@@ -240,8 +240,8 @@ const FormularioSections: React.FC<Props> = ({
                   { value: '2do año', text: '2do año' },
                   { value: '3er año', text: '3er año' },
                   { value: '4to año', text: '4to año' },
-                ]}
-              />
+                  { value: '5to año', text: '5to año' },
+                ]}              />
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700">
                   Dirección Completa <span className="text-red-500">*</span>
