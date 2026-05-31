@@ -201,50 +201,60 @@ const SolicitudInscripcion: React.FC = () => {
   const displayPlanillaNumber = pdfPlanillaNumber ?? planillaNumber;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
-      <style>{`
-  @media print {
-    /* Ocultar todo por defecto */
-    * {
-      display: none;
-    }
+  <div
+    id="main-container"
+    className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4"
+  >
+    <style>{`
+      @media print {
+        /* Ocultar todo por defecto */
+        * {
+          display: none;
+        }
 
-    /* Hacer visibles los ancestros necesarios y el área de impresión */
-    html, body, #root, #print-area, #print-area * {
-      display: block;
-    }
+        /* Hacer visibles solo los ancestros necesarios y el área de impresión */
+        html,
+        body,
+        #main-container,
+        #print-area,
+        #print-area * {
+          display: block;
+        }
 
-    /* Asegurar el contexto de flexbox dentro del área de impresión */
-    #print-area {
-      display: flex !important;
-      flex-direction: column;
-      min-height: 100vh;       /* ocupa toda la altura de la página */
-      width: 100%;
-      padding: 0;
-      background: white;
-    }
+        /* Restaurar el comportamiento flex dentro del área de impresión */
+        #print-area {
+          display: flex !important;
+          flex-direction: column;
+          min-height: 100vh;
+          width: 100%;
+          padding: 0;
+          background: white;
+        }
 
-    /* Mantener el comportamiento de tabla en las tablas */
-    #print-area table, #print-area tr, #print-area td, #print-area tbody {
-      display: table;
-    }
+        /* Restaurar el comportamiento de tabla en las tablas */
+        #print-area table,
+        #print-area tr,
+        #print-area td,
+        #print-area tbody {
+          display: table;
+        }
 
-    /* Ocultar explícitamente elementos con la clase no-print */
-    .no-print {
-      display: none !important;
-    }
+        /* Ocultar explícitamente los elementos no imprimibles */
+        .no-print {
+          display: none !important;
+        }
 
-    /* Evitar saltos de página dentro de secciones */
-    .avoid-break {
-      page-break-inside: avoid;
-    }
+        /* Evitar saltos de página dentro de secciones */
+        .avoid-break {
+          page-break-inside: avoid;
+        }
 
-    @page {
-      size: A4;
-      margin: 10mm;
-    }
-  }
-`}</style>
+        @page {
+          size: A4;
+          margin: 10mm;
+        }
+      }
+    `}</style>
 
       <AcuerdoModal
         isOpen={showAcuerdo}
@@ -373,7 +383,11 @@ const SolicitudInscripcion: React.FC = () => {
         )}
       </motion.div>
 
-      <PrintTemplate data={pdfData} planillaNumber={displayPlanillaNumber} calcularEdad={calcularEdad} />
+          <PrintTemplate
+      data={pdfData}
+      planillaNumber={displayPlanillaNumber}
+      calcularEdad={calcularEdad}
+    />
     </div>
   );
 };
