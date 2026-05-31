@@ -11,13 +11,13 @@ const PrintTemplate: React.FC<Props> = ({ data, planillaNumber, calcularEdad }) 
   if (!data) return null;
 
   return (
-    <div id="print-area" className="hidden print:flex flex-col min-h-screen">
-      {/* Contenido que crece para empujar el pie al fondo */}
+    <div id="print-area" className="hidden print:flex flex-col" style={{ minHeight: '100vh' }}>
+      {/* Contenido principal que ocupa el espacio restante */}
       <div className="flex-1">
         {/* Encabezado */}
-        <div className="text-center mb-4">
-          <img src="/logo.png" alt="Logo" className="mx-auto h-16 mb-1" />
-          <h1 className="text-lg font-bold">PLANILLA DE SOLICITUD DE INSCRIPCIÓN</h1>
+        <div className="text-center mb-3">
+          <img src="/logo.png" alt="Logo" className="mx-auto h-14 mb-1" />
+          <h1 className="text-base font-bold">PLANILLA DE SOLICITUD DE INSCRIPCIÓN</h1>
           <p className="text-sm">U.E. José Antonio Abreu - Naguanagua</p>
           <p className="text-xs">
             <strong>N° de Planilla:</strong> {planillaNumber ?? '—'} &nbsp;|&nbsp;
@@ -25,7 +25,7 @@ const PrintTemplate: React.FC<Props> = ({ data, planillaNumber, calcularEdad }) 
           </p>
         </div>
 
-        {/* Dos columnas principales */}
+        {/* Dos columnas */}
         <div className="flex flex-row gap-4">
           {/* Representante */}
           <div className="flex-1 avoid-break">
@@ -76,7 +76,7 @@ const PrintTemplate: React.FC<Props> = ({ data, planillaNumber, calcularEdad }) 
         </div>
       </div>
 
-      {/* Pie de página (firmas + nota) siempre al final */}
+      {/* Pie de página siempre al final */}
       <div className="mt-auto avoid-break">
         <div className="mt-4">
           <p className="text-xs mb-1 font-bold">Para uso del representante:</p>

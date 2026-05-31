@@ -204,35 +204,26 @@ const SolicitudInscripcion: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
       <style>{`
   @media print {
-    /* Eliminar todo excepto el área de impresión */
-    body > *:not(#print-area) {
-      display: none;
+    body * {
+      visibility: hidden;
     }
-
-    body {
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
+    #print-area, #print-area * {
+      visibility: visible;
     }
-
     #print-area {
-      display: flex !important;
-      flex-direction: column;
+      position: absolute;
+      left: 0;
+      top: 0;
       width: 100%;
       padding: 0;
       background: white;
     }
-
     .no-print {
       display: none !important;
     }
-
     .avoid-break {
       page-break-inside: avoid;
     }
-
     @page {
       size: A4;
       margin: 10mm;
