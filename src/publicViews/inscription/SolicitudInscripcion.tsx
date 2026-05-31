@@ -40,35 +40,49 @@ const openPrintWindow = (
         <title>Planilla de Inscripción</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; padding: 10mm; }
-          .avoid-break { page-break-inside: avoid; }
-          @page { size: A4; margin: 10mm; }
+          body { font-family: Arial, sans-serif; padding: 5mm; }
+          @page { size: A4; margin: 5mm; }
+          
+          .flex { display: flex; }
+          .flex-col { flex-direction: column; }
+          .flex-row { flex-direction: row; }
+          .flex-1 { flex: 1; }
+          .gap-4 { gap: 16px; }
+          .gap-2 { gap: 8px; }
+          
           .text-center { text-align: center; }
-          .mb-3 { margin-bottom: 12px; }
-          .mb-1 { margin-bottom: 4px; }
           .text-base { font-size: 1rem; }
           .text-sm { font-size: 0.875rem; }
           .text-xs { font-size: 0.75rem; }
+          
           .font-bold { font-weight: 700; }
           .font-semibold { font-weight: 600; }
           .underline { text-decoration: underline; }
-          .flex { display: flex; }
-          .flex-row { flex-direction: row; }
-          .flex-col { flex-direction: column; }
-          .flex-1 { flex: 1; }
-          .gap-4 { gap: 16px; }
-          .mt-auto { margin-top: auto; }
+          
+          .mb-1 { margin-bottom: 4px; }
+          .mb-2 { margin-bottom: 8px; }
+          .mb-3 { margin-bottom: 12px; }
           .mt-2 { margin-top: 8px; }
           .mt-4 { margin-top: 16px; }
+          .mt-auto { margin-top: auto; }
+          
           .border-t { border-top: 1px solid #000; }
           .pt-1 { padding-top: 4px; }
           .leading-tight { line-height: 1.25; }
           .pr-2 { padding-right: 8px; }
-          table { width: 100%; border-collapse: collapse; }
+          
+          .w-full { width: 100%; }
+          .mx-auto { margin-left: auto; margin-right: auto; }
+          .h-14 { height: 3.5rem; }   /* Tamaño del logo */
           img { max-width: 100%; height: auto; }
+          
           .grid { display: grid; }
           .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
-          .gap-2 { gap: 8px; }
+          
+          table { width: 100%; border-collapse: collapse; }
+          td { vertical-align: top; }
+          
+          .avoid-break { page-break-inside: avoid; }
         </style>
       </head>
       <body>${printContent}</body>
@@ -78,10 +92,11 @@ const openPrintWindow = (
   printWindow.document.close();
   printWindow.focus();
 
-  printWindow.onload = () => {
+  // Imprimir después de que la ventana cargue
+  setTimeout(() => {
     printWindow.print();
     printWindow.close();
-  };
+  }, 500);
 };
 
 // ------------------------------------------------------------------

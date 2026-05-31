@@ -11,8 +11,8 @@ const PrintTemplate: React.FC<Props> = ({ data, planillaNumber, calcularEdad }) 
   if (!data) return null;
 
   return (
-    <div className="flex flex-col" style={{ minHeight: '100vh' }}>
-      {/* Contenido que empuja el pie al fondo */}
+    <div className="flex flex-col">
+      {/* Contenido principal */}
       <div className="flex-1">
         {/* Encabezado */}
         <div className="text-center mb-3">
