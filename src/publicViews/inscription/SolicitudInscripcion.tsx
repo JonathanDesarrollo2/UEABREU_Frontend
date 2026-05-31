@@ -204,26 +204,41 @@ const SolicitudInscripcion: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
       <style>{`
   @media print {
-    body * {
-      visibility: hidden;
+    /* Ocultar todo por defecto */
+    * {
+      display: none;
     }
-    #print-area, #print-area * {
-      visibility: visible;
+
+    /* Hacer visibles los ancestros necesarios y el área de impresión */
+    html, body, #root, #print-area, #print-area * {
+      display: block;
     }
+
+    /* Asegurar el contexto de flexbox dentro del área de impresión */
     #print-area {
-      position: absolute;
-      left: 0;
-      top: 0;
+      display: flex !important;
+      flex-direction: column;
+      min-height: 100vh;       /* ocupa toda la altura de la página */
       width: 100%;
       padding: 0;
       background: white;
     }
+
+    /* Mantener el comportamiento de tabla en las tablas */
+    #print-area table, #print-area tr, #print-area td, #print-area tbody {
+      display: table;
+    }
+
+    /* Ocultar explícitamente elementos con la clase no-print */
     .no-print {
       display: none !important;
     }
+
+    /* Evitar saltos de página dentro de secciones */
     .avoid-break {
       page-break-inside: avoid;
     }
+
     @page {
       size: A4;
       margin: 10mm;
