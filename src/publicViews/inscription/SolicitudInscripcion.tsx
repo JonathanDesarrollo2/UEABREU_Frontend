@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import ReactDOMServer from 'react-dom/server';
 import { motion } from 'framer-motion';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { FiClipboard, FiPrinter, FiMail, FiFileText } from 'react-icons/fi';
@@ -13,18 +14,90 @@ import type { InscripcionFormData } from '../../types/inscripcion';
 
 const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
 
+// ------------------------------------------------------------------
+// Función para abrir una ventana nueva con el contenido de la planilla
+// ------------------------------------------------------------------
+const openPrintWindow = (
+  data: InscripcionFormData,
+  planillaNumber: number | null,
+  calcularEdad: (fecha: string) => number | string
+) => {
+  const printContent = ReactDOMServer.renderToString(
+    <PrintTemplate
+      data={data}
+      planillaNumber={planillaNumber}
+      calcularEdad={calcularEdad}
+    />
+  );
+
+  const printWindow = window.open('', '_blank', 'width=800,height=600');
+  if (!printWindow) return;
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Planilla de Inscripción</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 10mm; }
+          .avoid-break { page-break-inside: avoid; }
+          @page { size: A4; margin: 10mm; }
+          .text-center { text-align: center; }
+          .mb-3 { margin-bottom: 12px; }
+          .mb-1 { margin-bottom: 4px; }
+          .text-base { font-size: 1rem; }
+          .text-sm { font-size: 0.875rem; }
+          .text-xs { font-size: 0.75rem; }
+          .font-bold { font-weight: 700; }
+          .font-semibold { font-weight: 600; }
+          .underline { text-decoration: underline; }
+          .flex { display: flex; }
+          .flex-row { flex-direction: row; }
+          .flex-col { flex-direction: column; }
+          .flex-1 { flex: 1; }
+          .gap-4 { gap: 16px; }
+          .mt-auto { margin-top: auto; }
+          .mt-2 { margin-top: 8px; }
+          .mt-4 { margin-top: 16px; }
+          .border-t { border-top: 1px solid #000; }
+          .pt-1 { padding-top: 4px; }
+          .leading-tight { line-height: 1.25; }
+          .pr-2 { padding-right: 8px; }
+          table { width: 100%; border-collapse: collapse; }
+          img { max-width: 100%; height: auto; }
+          .grid { display: grid; }
+          .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+          .gap-2 { gap: 8px; }
+        </style>
+      </head>
+      <body>${printContent}</body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+
+  printWindow.onload = () => {
+    printWindow.print();
+    printWindow.close();
+  };
+};
+
+// ------------------------------------------------------------------
+// Componente principal
+// ------------------------------------------------------------------
 const SolicitudInscripcion: React.FC = () => {
   const { step, loading, registeredEmail, planillaNumber, handleRegister, handleVerify } = usePublicRegistration();
 
   const [formDataForPDF, setFormDataForPDF] = useState<InscripcionFormData | null>(null);
-  const [pdfPlanillaNumber, setPdfPlanillaNumber] = useState<number | null>(null);
+  const [pdfPlanillaNumber ] = useState<number | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acuerdoAceptado, setAcuerdoAceptado] = useState(false);
   const [showAcuerdo, setShowAcuerdo] = useState(false);
-  const printTriggered = useRef(false);
 
   const { register, handleSubmit, control } = useForm<InscripcionFormData>({
     defaultValues: {
@@ -74,18 +147,6 @@ const SolicitudInscripcion: React.FC = () => {
       })
       .catch(() => setRegistrationOpen(false));
   }, []);
-
-  // Efecto para imprimir después de que el DOM se haya actualizado
-  useEffect(() => {
-    if (printTriggered.current && formDataForPDF !== null) {
-      printTriggered.current = false;
-      // Pequeño retardo para asegurar que el render se complete
-      const timer = setTimeout(() => {
-        window.print();
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [formDataForPDF]);
 
   const generateLogin = () => 'Rep' + Math.floor(1000 + Math.random() * 9000);
 
@@ -159,22 +220,27 @@ const SolicitudInscripcion: React.FC = () => {
     await handleRegister(payload);
   };
 
+  // ----------------------------------------------------------------
+  // Handlers de impresión (ventana nueva)
+  // ----------------------------------------------------------------
   const handlePrint = () => {
-    window.print();
+    if (formDataForPDF) {
+      openPrintWindow(formDataForPDF, pdfPlanillaNumber ?? planillaNumber, calcularEdad);
+    } else {
+      toast.error('No hay datos de planilla para imprimir.');
+    }
   };
 
   const handleTestPrint = useCallback(() => {
-    setFormDataForPDF(MOCK_DATA);
-    setPdfPlanillaNumber(9999);
-    printTriggered.current = true;
-  }, []);
+    openPrintWindow(MOCK_DATA, 9999, calcularEdad);
+  }, [calcularEdad]);
 
   const aceptarAcuerdo = () => {
     setAcuerdoAceptado(true);
     setShowAcuerdo(false);
   };
 
-  // Estados de carga / inscripciones cerradas
+  // Pantallas de carga / inscripciones cerradas
   if (registrationOpen === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white">
@@ -208,160 +274,136 @@ const SolicitudInscripcion: React.FC = () => {
     );
   }
 
-  const pdfData = formDataForPDF;
-  const displayPlanillaNumber = pdfPlanillaNumber ?? planillaNumber;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
-      {/* Estilos de impresión ultra simplificados */}
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          .print-only { display: block !important; }
-          #print-area {
-            display: flex !important;
-            flex-direction: column;
-            min-height: 100vh;
-            width: 100%;
-            padding: 0;
-            background: white;
-          }
-          @page { size: A4; margin: 10mm; }
-        }
-      `}</style>
+      {/* Ya no necesitamos estilos de impresión globales, se manejan en la ventana nueva */}
 
-      {/* Contenido que NO se imprime */}
-      <div className="no-print">
-        <AcuerdoModal
-          isOpen={showAcuerdo}
-          onClose={() => setShowAcuerdo(false)}
-          onAccept={aceptarAcuerdo}
-        />
+      <AcuerdoModal
+        isOpen={showAcuerdo}
+        onClose={() => setShowAcuerdo(false)}
+        onAccept={aceptarAcuerdo}
+      />
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl p-8 border border-slate-200"
-        >
-          {step === 'form' && (
-            <>
-              <div className="text-center mb-10">
-                <FiClipboard className="mx-auto h-16 w-16 text-blue-800 mb-4" />
-                <h1 className="text-3xl font-bold text-slate-800 mb-2">Solicitud de Inscripción</h1>
-                <p className="text-slate-600 max-w-2xl mx-auto">
-                  Complete todos los datos. Recibirá un código de verificación en su correo.
-                  Su cuenta quedará pendiente de activación hasta la entrevista presencial.
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl p-8 border border-slate-200"
+      >
+        {step === 'form' && (
+          <>
+            <div className="text-center mb-10">
+              <FiClipboard className="mx-auto h-16 w-16 text-blue-800 mb-4" />
+              <h1 className="text-3xl font-bold text-slate-800 mb-2">Solicitud de Inscripción</h1>
+              <p className="text-slate-600 max-w-2xl mx-auto">
+                Complete todos los datos. Recibirá un código de verificación en su correo.
+                Su cuenta quedará pendiente de activación hasta la entrevista presencial.
+              </p>
+
+              <div className="mt-6">
+                <button
+                  onClick={handleTestPrint}
+                  className="inline-flex items-center gap-2 bg-amber-500 text-white px-6 py-3 rounded-lg hover:bg-amber-600 transition font-semibold shadow-md"
+                >
+                  <FiFileText /> Generar PDF de prueba (2 estudiantes)
+                </button>
+                <p className="text-xs text-slate-500 mt-2">
+                  Crea una planilla de ejemplo para ver cómo quedará impresa.
                 </p>
-                
-                <div className="mt-6">
-                  <button
-                    onClick={handleTestPrint}
-                    className="inline-flex items-center gap-2 bg-amber-500 text-white px-6 py-3 rounded-lg hover:bg-amber-600 transition font-semibold shadow-md"
-                  >
-                    <FiFileText /> Generar PDF de prueba (2 estudiantes)
-                  </button>
-                  <p className="text-xs text-slate-500 mt-2">
-                    Crea una planilla de ejemplo para ver cómo quedará impresa.
-                  </p>
-                </div>
-
-                <div className="mt-6">
-                  {!acuerdoAceptado ? (
-                    <>
-                      <button
-                        onClick={() => setShowAcuerdo(true)}
-                        className="inline-flex items-center gap-2 bg-indigo-500 text-white px-6 py-3 rounded-lg hover:bg-indigo-600 transition font-semibold shadow-md"
-                      >
-                        <FiFileText /> Leer Acuerdo de Convivencia
-                      </button>
-                      <p className="text-xs text-red-600 mt-2 font-medium">
-                        Debe leer y aceptar el Acuerdo de Convivencia para completar la inscripción.
-                      </p>
-                    </>
-                  ) : (
-                    <div className="text-green-600 font-semibold mt-2 flex items-center justify-center gap-2">
-                      <span>✔ Acuerdo de Convivencia aceptado</span>
-                    </div>
-                  )}
-                </div>
               </div>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-                <FormularioSections
-                  register={register}
-                  control={control}
-                  showPassword={showPassword}
-                  togglePassword={() => setShowPassword(!showPassword)}
-                  showConfirmPassword={showConfirmPassword}
-                  toggleConfirmPassword={() => setShowConfirmPassword(!showConfirmPassword)}
-                  addStudent={addStudent}
-                />
-
-                <div className="flex flex-col items-center">
-                  <button
-                    type="submit"
-                    disabled={loading || !acuerdoAceptado}
-                    className={`bg-blue-800 text-white px-8 py-3 rounded-lg hover:bg-blue-900 transition font-semibold disabled:opacity-50 ${!acuerdoAceptado ? 'cursor-not-allowed' : ''}`}
-                    title={!acuerdoAceptado ? 'Debe aceptar el Acuerdo de Convivencia' : ''}
-                  >
-                    {loading ? 'Registrando...' : 'Crear cuenta y enviar código'}
-                  </button>
-                  {!acuerdoAceptado && (
-                    <p className="text-red-600 text-sm mt-2">
-                      * Debe leer y aceptar el Acuerdo de Convivencia antes de enviar el formulario.
+              <div className="mt-6">
+                {!acuerdoAceptado ? (
+                  <>
+                    <button
+                      onClick={() => setShowAcuerdo(true)}
+                      className="inline-flex items-center gap-2 bg-indigo-500 text-white px-6 py-3 rounded-lg hover:bg-indigo-600 transition font-semibold shadow-md"
+                    >
+                      <FiFileText /> Leer Acuerdo de Convivencia
+                    </button>
+                    <p className="text-xs text-red-600 mt-2 font-medium">
+                      Debe leer y aceptar el Acuerdo de Convivencia para completar la inscripción.
                     </p>
-                  )}
-                </div>
-              </form>
-            </>
-          )}
+                  </>
+                ) : (
+                  <div className="text-green-600 font-semibold mt-2 flex items-center justify-center gap-2">
+                    <span>✔ Acuerdo de Convivencia aceptado</span>
+                  </div>
+                )}
+              </div>
+            </div>
 
-          {step === 'verify' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
-              <FiMail className="mx-auto h-16 w-16 text-blue-800 mb-4" />
-              <h2 className="text-3xl font-bold mb-4">Verifica tu correo</h2>
-              <p className="text-lg mb-6">
-                Hemos enviado un código de 5 dígitos a <strong>{registeredEmail}</strong>.
-                Introdúcelo para continuar.
-              </p>
-              <input
-                type="text" maxLength={5} value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="Código de 5 dígitos"
-                className="text-2xl py-3 px-4 border-2 border-gray-300 rounded-lg text-center mb-4"
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+              <FormularioSections
+                register={register}
+                control={control}
+                showPassword={showPassword}
+                togglePassword={() => setShowPassword(!showPassword)}
+                showConfirmPassword={showConfirmPassword}
+                toggleConfirmPassword={() => setShowConfirmPassword(!showConfirmPassword)}
+                addStudent={addStudent}
               />
-              <button
-                onClick={() => handleVerify(verificationCode)}
-                disabled={loading || verificationCode.length !== 5}
-                className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50"
-              >
-                {loading ? 'Verificando...' : 'Verificar código'}
-              </button>
-              <p className="mt-4 text-sm text-gray-500">
-                ¿No recibiste el código? Revisa la carpeta de spam.
-              </p>
-            </motion.div>
-          )}
 
-          {step === 'success' && (
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-center">
-              <FiPrinter className="mx-auto h-20 w-20 text-green-500 mb-6" />
-              <h2 className="text-3xl font-bold text-slate-800 mb-4">¡Correo verificado!</h2>
-              <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
-                Tu cuenta ha sido creada (aún inactiva hasta la entrevista).
-                Ahora puedes imprimir la planilla con tus datos. Recuerda llevarla a la entrevista presencial.
-              </p>
-              <button onClick={handlePrint}
-                className="bg-green-600 text-white px-10 py-4 rounded-lg hover:bg-green-700 transition font-bold text-lg flex items-center justify-center mx-auto shadow-lg mt-8">
-                <FiPrinter className="mr-2" /> Imprimir / Descargar PDF
-              </button>
-            </motion.div>
-          )}
-        </motion.div>
-      </div>
+              <div className="flex flex-col items-center">
+                <button
+                  type="submit"
+                  disabled={loading || !acuerdoAceptado}
+                  className={`bg-blue-800 text-white px-8 py-3 rounded-lg hover:bg-blue-900 transition font-semibold disabled:opacity-50 ${!acuerdoAceptado ? 'cursor-not-allowed' : ''}`}
+                  title={!acuerdoAceptado ? 'Debe aceptar el Acuerdo de Convivencia' : ''}
+                >
+                  {loading ? 'Registrando...' : 'Crear cuenta y enviar código'}
+                </button>
+                {!acuerdoAceptado && (
+                  <p className="text-red-600 text-sm mt-2">
+                    * Debe leer y aceptar el Acuerdo de Convivencia antes de enviar el formulario.
+                  </p>
+                )}
+              </div>
+            </form>
+          </>
+        )}
 
-      {/* Área de impresión – siempre renderizada pero oculta en pantalla */}
-      <PrintTemplate data={pdfData} planillaNumber={displayPlanillaNumber} calcularEdad={calcularEdad} />
+        {step === 'verify' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
+            <FiMail className="mx-auto h-16 w-16 text-blue-800 mb-4" />
+            <h2 className="text-3xl font-bold mb-4">Verifica tu correo</h2>
+            <p className="text-lg mb-6">
+              Hemos enviado un código de 5 dígitos a <strong>{registeredEmail}</strong>.
+              Introdúcelo para continuar.
+            </p>
+            <input
+              type="text" maxLength={5} value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="Código de 5 dígitos"
+              className="text-2xl py-3 px-4 border-2 border-gray-300 rounded-lg text-center mb-4"
+            />
+            <button
+              onClick={() => handleVerify(verificationCode)}
+              disabled={loading || verificationCode.length !== 5}
+              className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50"
+            >
+              {loading ? 'Verificando...' : 'Verificar código'}
+            </button>
+            <p className="mt-4 text-sm text-gray-500">
+              ¿No recibiste el código? Revisa la carpeta de spam.
+            </p>
+          </motion.div>
+        )}
+
+        {step === 'success' && (
+          <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-center">
+            <FiPrinter className="mx-auto h-20 w-20 text-green-500 mb-6" />
+            <h2 className="text-3xl font-bold text-slate-800 mb-4">¡Correo verificado!</h2>
+            <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
+              Tu cuenta ha sido creada (aún inactiva hasta la entrevista).
+              Ahora puedes imprimir la planilla con tus datos. Recuerda llevarla a la entrevista presencial.
+            </p>
+            <button onClick={handlePrint}
+              className="bg-green-600 text-white px-10 py-4 rounded-lg hover:bg-green-700 transition font-bold text-lg flex items-center justify-center mx-auto shadow-lg mt-8">
+              <FiPrinter className="mr-2" /> Imprimir / Descargar PDF
+            </button>
+          </motion.div>
+        )}
+      </motion.div>
     </div>
   );
 };
