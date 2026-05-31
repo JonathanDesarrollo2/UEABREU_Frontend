@@ -206,55 +206,66 @@ const SolicitudInscripcion: React.FC = () => {
     className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4"
   >
     <style>{`
-      @media print {
-        /* Ocultar todo por defecto */
-        * {
-          display: none;
-        }
+  @media print {
+    /* Ocultar todo por defecto */
+    * {
+      display: none;
+    }
 
-        /* Hacer visibles solo los ancestros necesarios y el área de impresión */
-        html,
-        body,
-        #main-container,
-        #print-area,
-        #print-area * {
-          display: block;
-        }
+    /* Hacer visibles solo los contenedores necesarios */
+    html,
+    body,
+    #main-container {
+      display: block;
+    }
 
-        /* Restaurar el comportamiento flex dentro del área de impresión */
-        #print-area {
-          display: flex !important;
-          flex-direction: column;
-          min-height: 100vh;
-          width: 100%;
-          padding: 0;
-          background: white;
-        }
+    /* Ocultar todos los hijos del contenedor principal... */
+    #main-container > * {
+      display: none;
+    }
 
-        /* Restaurar el comportamiento de tabla en las tablas */
-        #print-area table,
-        #print-area tr,
-        #print-area td,
-        #print-area tbody {
-          display: table;
-        }
+    /* ...excepto el área de impresión */
+    #main-container > #print-area {
+      display: flex !important;
+      flex-direction: column;
+      min-height: 100vh;
+      width: 100%;
+      padding: 0;
+      background: white;
+    }
 
-        /* Ocultar explícitamente los elementos no imprimibles */
-        .no-print {
-          display: none !important;
-        }
+    /* Restaurar el comportamiento normal de los elementos dentro del área de impresión */
+    #print-area * {
+      display: block;
+    }
 
-        /* Evitar saltos de página dentro de secciones */
-        .avoid-break {
-          page-break-inside: avoid;
-        }
+    #print-area table,
+    #print-area tr,
+    #print-area td,
+    #print-area tbody {
+      display: table;
+    }
 
-        @page {
-          size: A4;
-          margin: 10mm;
-        }
-      }
-    `}</style>
+    #print-area img {
+      display: inline-block;
+    }
+
+    /* Ocultar elementos con la clase no-print */
+    .no-print {
+      display: none !important;
+    }
+
+    /* Evitar saltos de página dentro de secciones */
+    .avoid-break {
+      page-break-inside: avoid;
+    }
+
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
+  }
+`}</style>
 
       <AcuerdoModal
         isOpen={showAcuerdo}
