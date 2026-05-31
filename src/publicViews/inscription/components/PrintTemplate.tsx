@@ -11,8 +11,8 @@ const PrintTemplate: React.FC<Props> = ({ data, planillaNumber, calcularEdad }) 
   if (!data) return null;
 
   return (
-    <div id="print-area" className="hidden print:flex flex-col" style={{ minHeight: '100vh' }}>
-      {/* Contenido principal que ocupa el espacio restante */}
+    <div id="print-area" className="hidden print-only flex flex-col" style={{ minHeight: '100vh' }}>
+      {/* Contenido que empuja el pie al fondo */}
       <div className="flex-1">
         {/* Encabezado */}
         <div className="text-center mb-3">
@@ -76,7 +76,7 @@ const PrintTemplate: React.FC<Props> = ({ data, planillaNumber, calcularEdad }) 
         </div>
       </div>
 
-      {/* Pie de página siempre al final */}
+      {/* Pie de página */}
       <div className="mt-auto avoid-break">
         <div className="mt-4">
           <p className="text-xs mb-1 font-bold">Para uso del representante:</p>
