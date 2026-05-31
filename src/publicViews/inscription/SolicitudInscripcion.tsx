@@ -30,18 +30,23 @@ const openPrintWindow = (
     />
   );
 
-  const printWindow = window.open('', '_blank', 'width=800,height=600');
+  const printWindow = window.open('', '_blank', 'width=900,height=700');
   if (!printWindow) return;
 
   printWindow.document.write(`
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Planilla de Inscripción</title>
+        <title>Planilla de Inscripción N° ${planillaNumber ?? ''}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: Arial, sans-serif; padding: 5mm; }
           @page { size: A4; margin: 5mm; }
+          
+          .no-print { }
+          @media print {
+            .no-print { display: none !important; }
+          }
           
           .flex { display: flex; }
           .flex-col { flex-direction: column; }
@@ -73,7 +78,7 @@ const openPrintWindow = (
           
           .w-full { width: 100%; }
           .mx-auto { margin-left: auto; margin-right: auto; }
-          .h-14 { height: 3.5rem; }   /* Tamaño del logo */
+          .h-14 { height: 3.5rem; }
           img { max-width: 100%; height: auto; }
           
           .grid { display: grid; }
@@ -83,20 +88,33 @@ const openPrintWindow = (
           td { vertical-align: top; }
           
           .avoid-break { page-break-inside: avoid; }
+          
+          /* Botón de impresión */
+          .print-btn {
+            display: inline-block;
+            margin: 10px 0;
+            padding: 8px 16px;
+            background: #1e40af;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+          }
+          .print-btn:hover { background: #1e3a8a; }
         </style>
       </head>
-      <body>${printContent}</body>
+      <body>
+        <div class="no-print" style="text-align: right; margin-bottom: 10px;">
+          <button class="print-btn" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+        </div>
+        ${printContent}
+      </body>
     </html>
   `);
 
   printWindow.document.close();
   printWindow.focus();
-
-  // Imprimir después de que la ventana cargue
-  setTimeout(() => {
-    printWindow.print();
-    printWindow.close();
-  }, 500);
 };
 
 // ------------------------------------------------------------------
