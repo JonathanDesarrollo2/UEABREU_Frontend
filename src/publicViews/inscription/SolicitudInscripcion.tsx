@@ -175,7 +175,7 @@ const SolicitudInscripcion: React.FC = () => {
     },
   });
 
-  // ---------- CORRECCIÓN: usar fields, append y remove desde el padre ----------
+  // ✅ Un solo useFieldArray, compartido con FormularioSections
   const { fields, append, remove } = useFieldArray({ control, name: 'students' });
 
   const addStudent = useCallback(() => {
@@ -236,8 +236,9 @@ const SolicitudInscripcion: React.FC = () => {
         parentIdentityCard: data.parentIdentityCard,
         parentPhone: data.parentPhone,
       },
+      // ❗️ Filtramos solo estudiantes con nombre y cédula no vacíos (trim)
       studentsData: data.students
-        .filter(s => s.fullName && s.identityCard)
+        .filter(s => s.fullName.trim() && s.identityCard.trim())
         .map(s => ({
           fullName: s.fullName,
           identityCard: s.identityCard,
@@ -374,7 +375,6 @@ const SolicitudInscripcion: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-              {/* ---------- CAMBIO IMPORTANTE: pasar fields, append, remove ---------- */}
               <FormularioSections
                 register={register}
                 control={control}
