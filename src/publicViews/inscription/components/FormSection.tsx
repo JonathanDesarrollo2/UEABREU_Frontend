@@ -1,5 +1,5 @@
 import React from 'react';
-import { useFieldArray, type Control, type UseFormRegister } from 'react-hook-form';
+import { type Control, type UseFormRegister, type FieldArrayWithId } from 'react-hook-form';
 import { FiMail, FiUsers, FiEye, FiEyeOff } from 'react-icons/fi';
 import type { InscripcionFormData } from '../../../types/inscripcion';
 import { FormField } from '../../../components/FormField';
@@ -7,23 +7,34 @@ import { FormField } from '../../../components/FormField';
 interface Props {
   register: UseFormRegister<InscripcionFormData>;
   control: Control<InscripcionFormData>;
+  fields: FieldArrayWithId<InscripcionFormData, 'students', 'id'>[];
+  onRemoveStudent: (index: number) => void;
+  onAddStudent: (student: any) => void;
   showPassword: boolean;
   togglePassword: () => void;
   showConfirmPassword: boolean;
   toggleConfirmPassword: () => void;
-  addStudent: () => void;
 }
 
 const FormularioSections: React.FC<Props> = ({
   register,
-  control,
+  fields,
+  onRemoveStudent,
+  onAddStudent,
   showPassword,
   togglePassword,
   showConfirmPassword,
   toggleConfirmPassword,
-  addStudent,
 }) => {
-  const { fields, remove } = useFieldArray({ control, name: 'students' });
+  const handleAddStudent = () => {
+    onAddStudent({
+      fullName: '', identityCard: '', birthDate: '', nationality: '', birthCountry: '',
+      state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
+      emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
+      hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: '',
+      aspiredGrade: '',
+    });
+  };
 
   return (
     <>
@@ -46,7 +57,6 @@ const FormularioSections: React.FC<Props> = ({
             register={register}
           />
 
-          {/* Contraseña con toggle */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Contraseña <span className="text-red-500 ml-1">*</span>
@@ -67,7 +77,6 @@ const FormularioSections: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Confirmar contraseña con toggle */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Confirmar Contraseña <span className="text-red-500 ml-1">*</span>
@@ -150,11 +159,11 @@ const FormularioSections: React.FC<Props> = ({
       <div className="bg-white rounded-xl p-6 border border-slate-200">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-slate-800 flex items-center">
-            <FiUsers className="mr-2 text-blue-700" /> Solicitantes
+            <FiUsers className="mr-2 text-blue-700" /> Solicitantes ({fields.length})
           </h2>
           <button
             type="button"
-            onClick={addStudent}
+            onClick={handleAddStudent}
             className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200 transition"
           >
             + Agregar Solicitante
@@ -167,7 +176,7 @@ const FormularioSections: React.FC<Props> = ({
               {index > 0 && (
                 <button
                   type="button"
-                  onClick={() => remove(index)}
+                  onClick={() => onRemoveStudent(index)}
                   className="text-red-500 hover:text-red-700 text-sm"
                 >
                   Eliminar
@@ -241,7 +250,8 @@ const FormularioSections: React.FC<Props> = ({
                   { value: '3er año', text: '3er año' },
                   { value: '4to año', text: '4to año' },
                   { value: '5to año', text: '5to año' },
-                ]}              />
+                ]}
+              />
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700">
                   Dirección Completa <span className="text-red-500">*</span>
