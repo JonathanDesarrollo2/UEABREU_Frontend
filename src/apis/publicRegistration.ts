@@ -1,6 +1,26 @@
-import type { PublicRegisterPayload, PublicApiResponse, VerifyEmailPayload } from "../types/publicRegistration";
+import type { PublicRegisterPayload, VerifyEmailPayload } from "../types/publicRegistration";
 
 const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
+
+// Interfaz para la respuesta de registro
+interface RegisterApiResponse {
+  result: boolean;
+  content?: {
+    message?: string;
+    planillaNumber?: number;
+  };
+  error?: string[];
+}
+
+// Interfaz para la respuesta de verificación
+interface VerifyApiResponse {
+  result: boolean;
+  content?: {
+    message?: string;
+    pdfBase64?: string | null;
+  };
+  error?: string[];
+}
 
 export async function registerPublic(payload: PublicRegisterPayload): Promise<{ planillaNumber: number }> {
   const res = await fetch(`${API_BASE}/public/register`, {
@@ -9,13 +29,13 @@ export async function registerPublic(payload: PublicRegisterPayload): Promise<{ 
     body: JSON.stringify(payload),
   });
 
-  const data: PublicApiResponse = await res.json();
+  const data: RegisterApiResponse = await res.json();
 
   if (!res.ok || !data.result) {
     throw new Error(data.error?.[0] || 'Error en el registro');
   }
 
-  const planillaNumber = (data.content as any)?.planillaNumber;
+  const planillaNumber = data.content?.planillaNumber;
   if (!planillaNumber) {
     throw new Error('No se recibió el número de planilla');
   }
@@ -30,12 +50,11 @@ export async function verifyEmailCode(payload: VerifyEmailPayload): Promise<{ pd
     body: JSON.stringify(payload),
   });
 
-  const data: PublicApiResponse = await res.json();
+  const data: VerifyApiResponse = await res.json();
 
   if (!res.ok || !data.result) {
     throw new Error(data.error?.[0] || 'Error en la verificación');
   }
 
-  // content ahora incluye { message, pdfBase64 }
   return { pdfBase64: data.content?.pdfBase64 || null };
 }
