@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef  } from 'react';
 import { motion } from 'framer-motion';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { FiClipboard, FiPrinter, FiMail, FiFileText } from 'react-icons/fi';
@@ -148,6 +148,8 @@ const SolicitudInscripcion: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acuerdoAceptado, setAcuerdoAceptado] = useState(false);
   const [showAcuerdo, setShowAcuerdo] = useState(false);
+  const autoDownloadDone = useRef(false);
+  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
 
   const { register, handleSubmit, control } = useForm<InscripcionFormData>({
     defaultValues: {
@@ -196,6 +198,40 @@ const SolicitudInscripcion: React.FC = () => {
       })
       .catch(() => setRegistrationOpen(false));
   }, []);
+  // Descargar automáticamente cuando se reciba el pdfBase64
+useEffect(() => {
+  if (pdfBase64 && !autoDownloadDone.current) {
+    autoDownloadDone.current = true;
+    try {
+      const byteCharacters = atob(pdfBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Planilla_Inscripcion.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error al descargar el PDF:', error);
+      toast.error('No se pudo descargar el PDF automáticamente.');
+    }
+  }
+}, [pdfBase64]);
+
+// Reiniciar el flag cuando el usuario regrese al formulario
+useEffect(() => {
+  if (step === 'form') {
+    autoDownloadDone.current = false;
+    setPdfBase64(null);
+  }
+}, [step]);
 
   const generateLogin = () => 'Rep' + Math.floor(1000 + Math.random() * 9000);
 
@@ -421,7 +457,10 @@ const SolicitudInscripcion: React.FC = () => {
               className="text-2xl py-3 px-4 border-2 border-gray-300 rounded-lg text-center mb-4"
             />
             <button
-              onClick={() => handleVerify(verificationCode)}
+              onClick={async () => {
+                const base64 = await handleVerify(verificationCode);
+                if (base64) setPdfBase64(base64);
+              }}
               disabled={loading || verificationCode.length !== 5}
               className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50"
             >

@@ -23,7 +23,7 @@ export async function registerPublic(payload: PublicRegisterPayload): Promise<{ 
   return { planillaNumber };
 }
 
-export async function verifyEmailCode(payload: VerifyEmailPayload): Promise<PublicApiResponse> {
+export async function verifyEmailCode(payload: VerifyEmailPayload): Promise<{ pdfBase64: string | null }> {
   const res = await fetch(`${API_BASE}/public/verify-email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -36,5 +36,6 @@ export async function verifyEmailCode(payload: VerifyEmailPayload): Promise<Publ
     throw new Error(data.error?.[0] || 'Error en la verificación');
   }
 
-  return data;
+  // content ahora incluye { message, pdfBase64 }
+  return { pdfBase64: data.content?.pdfBase64 || null };
 }

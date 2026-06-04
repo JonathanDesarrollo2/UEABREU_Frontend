@@ -26,22 +26,24 @@ export function usePublicRegistration() {
     }
   }, []);
 
-  const handleVerify = useCallback(async (code: string) => {
-    if (!code || code.length !== 5) {
-      toast.error('Ingresa un código de 5 dígitos');
-      return;
-    }
-    setLoading(true);
-    try {
-      await verifyEmailCode({ email: registeredEmail, code });
-      toast.success('Correo verificado con éxito.');
-      setStep('success');
-    } catch (error: any) {
-      toast.error(error.message || 'Código incorrecto o expirado');
-    } finally {
-      setLoading(false);
-    }
-  }, [registeredEmail]);
+  const handleVerify = useCallback(async (code: string): Promise<string | null> => {
+  if (!code || code.length !== 5) {
+    toast.error('Ingresa un código de 5 dígitos');
+    return null;
+  }
+  setLoading(true);
+  try {
+    const { pdfBase64 } = await verifyEmailCode({ email: registeredEmail, code });
+    toast.success('Correo verificado con éxito.');
+    setStep('success');
+    return pdfBase64;       // ← devuelve el base64
+  } catch (error: any) {
+    toast.error(error.message || 'Código incorrecto o expirado');
+    return null;
+  } finally {
+    setLoading(false);
+  }
+}, [registeredEmail]);
 
   const reset = useCallback(() => {
     setStep('form');
