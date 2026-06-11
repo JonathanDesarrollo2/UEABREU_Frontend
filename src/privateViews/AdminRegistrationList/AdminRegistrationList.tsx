@@ -47,9 +47,33 @@ const AdminRegistrationsList: React.FC = () => {
     fetchApplications();
   }, [fetchApplications]);
 
-  const handleDownload = (id: string) => {
-    window.open(`${API_BASE}/api/private/registrations/${id}/pdf`, "_blank");
-  };
+  const handleDownload = async (id: string) => {
+  try {
+    const res = await fetch(`${API_BASE}/api/private/registrations/${id}/pdf`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      toast.error(errorData.error?.[0] || "Error al descargar el PDF");
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Planilla.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    toast.error("Error de conexión al descargar el PDF");
+  }
+};
 
   const handleActivate = (id: string) => {
     setSelectedId(id);
