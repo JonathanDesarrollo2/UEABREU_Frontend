@@ -29,6 +29,7 @@ import PaymentValidationPage from './privateViews/PaymentValidation/PaymentValid
 import SolicitudInscripcion from './publicViews/inscription/SolicitudInscripcion'
 import InscriptionSettings from './privateViews/inscription/inscriptionSettings'
 import PaymentHistory from './privateViews/PaymentHistory/PaymentHistoryAdmin'
+import AdminRegistrationsList from './privateViews/AdminRegistrationList/AdminRegistrationList'
 
 function ListRoutes() {
   return (
@@ -74,6 +75,7 @@ function ListRoutes() {
           <Route path="teachers">
             <Route path="list" element={<TeacherListPage />} />
             <Route path="edit" element={<EditTeacherPage />} />
+            <Route path="registrations" element={<AdminRegistrationsList />} />
           </Route>
         </Route>
       </Route>

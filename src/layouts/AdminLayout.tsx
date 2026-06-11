@@ -48,6 +48,7 @@ export default function AdminLayout() {
     { name: 'Materias', icon: FaGraduationCap, path: '/admin/ListSubjects' },
     { name: 'Estudiantes', icon: FaGraduationCap, path: '/admin/listStudents' },
     { name: 'Profesores', icon: FaChalkboardTeacher, path: '/admin/teachers/list' },
+    { name: 'Solicitudes', icon: FaClipboardList, path: '/admin/registrations' },
   ];
 
   return (
