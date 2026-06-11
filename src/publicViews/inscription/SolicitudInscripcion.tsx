@@ -12,7 +12,7 @@ import type { InscripcionFormData } from '../../types/inscripcion';
 
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-(pdfMake as any).vfs = (pdfFonts as any).vfs;
+(pdfMake as any).vfs = pdfFonts.vfs;
 
 const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
 
