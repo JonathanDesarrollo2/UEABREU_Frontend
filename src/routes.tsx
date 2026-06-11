@@ -70,12 +70,12 @@ function ListRoutes() {
           <Route path="ListTeacher" element={<AdminListTeachersBackend />} />
           <Route path="Settings" element={<InscriptionSettings />} />
           <Route path="transactions" element={<PaymentHistory />} />   // NUEVA RUTA
+          <Route path="registrations" element={<AdminRegistrationsList />} />
           
           {/* ✅ NUEVAS RUTAS PARA PROFESORES (estructura modular) */}
           <Route path="teachers">
             <Route path="list" element={<TeacherListPage />} />
             <Route path="edit" element={<EditTeacherPage />} />
-            <Route path="registrations" element={<AdminRegistrationsList />} />
           </Route>
         </Route>
       </Route>
