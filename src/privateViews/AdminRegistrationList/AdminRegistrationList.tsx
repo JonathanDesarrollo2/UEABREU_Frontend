@@ -27,19 +27,25 @@ const AdminRegistrationsList: React.FC = () => {
   const fetchApplications = useCallback(async () => {
     setLoading(true);
     try {
+      console.log("🔍 [fetchApplications] Iniciando carga...");
       const res = await fetch(`${API_BASE}/api/private/registrations/list`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+      console.log("📦 [fetchApplications] Respuesta:", data);
       if (data.result) {
         setApplications(data.content);
+        console.log(`✅ [fetchApplications] Se cargaron ${data.content.length} solicitudes.`);
       } else {
+        console.warn("⚠️ [fetchApplications] Error en respuesta:", data.error);
         toast.error(data.error?.[0] || "Error al cargar solicitudes");
       }
     } catch (error) {
+      console.error("❌ [fetchApplications] Excepción:", error);
       toast.error("Error de conexión al cargar solicitudes");
     } finally {
       setLoading(false);
+      console.log("🏁 [fetchApplications] Finalizado.");
     }
   }, [token]);
 
@@ -48,32 +54,65 @@ const AdminRegistrationsList: React.FC = () => {
   }, [fetchApplications]);
 
   const handleDownload = async (id: string) => {
-  try {
-    const res = await fetch(`${API_BASE}/api/private/registrations/${id}/pdf`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    console.log(`⬇️ [handleDownload] Iniciando descarga para solicitud ${id}`);
+    try {
+      const url = `${API_BASE}/api/private/registrations/${id}/pdf`;
+      console.log(`🌐 [handleDownload] URL: ${url}`);
 
-    if (!res.ok) {
-      const errorData = await res.json();
-      toast.error(errorData.error?.[0] || "Error al descargar el PDF");
-      return;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log(`📡 [handleDownload] Estado de respuesta: ${res.status} ${res.statusText}`);
+      console.log(`📋 [handleDownload] Headers:`, Object.fromEntries(res.headers.entries()));
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("⚠️ [handleDownload] Error en respuesta:", errorData);
+        toast.error(errorData.error?.[0] || "Error al obtener el PDF");
+        return;
+      }
+
+      const contentType = res.headers.get("content-type");
+      console.log(`📄 [handleDownload] Content-Type: ${contentType}`);
+
+      const blob = await res.blob();
+      console.log(`📊 [handleDownload] Tamaño del blob: ${blob.size} bytes`);
+      console.log(`🔬 [handleDownload] Tipo del blob: ${blob.type}`);
+
+      if (blob.size === 0) {
+        console.error("🆘 [handleDownload] El blob está vacío (0 bytes).");
+        toast.error("El PDF descargado está vacío.");
+        return;
+      }
+
+      // Leer primeros bytes para ver si empieza por %PDF
+      const reader = new FileReader();
+      reader.onload = function () {
+        const arr = new Uint8Array(reader.result as ArrayBuffer);
+        const header = String.fromCharCode(...arr.slice(0, 5));
+        console.log(`📖 [handleDownload] Primeros 5 bytes: "${header}"`);
+        if (header !== "%PDF-") {
+          console.error("🛑 [handleDownload] El archivo no es un PDF válido (falta cabecera %PDF).");
+          toast.error("El archivo descargado no es un PDF válido.");
+        } else {
+          console.log("✅ [handleDownload] Cabecera PDF verificada, abriendo en nueva pestaña.");
+        }
+      };
+      reader.readAsArrayBuffer(blob.slice(0, 5)); // solo los primeros bytes
+
+      const urlBlob = URL.createObjectURL(blob);
+      console.log(`🔗 [handleDownload] URL del blob creada: ${urlBlob}`);
+
+      window.open(urlBlob, '_blank');
+      console.log("🚀 [handleDownload] Nueva pestaña abierta con el PDF.");
+    } catch (error) {
+      console.error("🔥 [handleDownload] Excepción:", error);
+      toast.error("Error de conexión al obtener el PDF");
     }
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Planilla.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  } catch (error) {
-    toast.error("Error de conexión al descargar el PDF");
-  }
-};
+  };
 
   const handleActivate = (id: string) => {
     setSelectedId(id);
@@ -89,6 +128,7 @@ const AdminRegistrationsList: React.FC = () => {
 
   const confirmAction = async () => {
     if (!selectedId || !action) return;
+    console.log(`⚡ [confirmAction] Ejecutando ${action} sobre ${selectedId}`);
     try {
       const url =
         action === "activate"
@@ -103,6 +143,7 @@ const AdminRegistrationsList: React.FC = () => {
         },
       });
       const data = await res.json();
+      console.log("📦 [confirmAction] Respuesta:", data);
       if (data.result) {
         toast.success(data.content[0]);
         fetchApplications();
@@ -110,6 +151,7 @@ const AdminRegistrationsList: React.FC = () => {
         toast.error(data.error?.[0] || "Error al ejecutar acción");
       }
     } catch (error) {
+      console.error("❌ [confirmAction] Excepción:", error);
       toast.error("Error de conexión");
     } finally {
       setShowConfirm(false);
