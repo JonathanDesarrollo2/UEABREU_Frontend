@@ -3,6 +3,10 @@ import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import { FaDownload, FaCheck, FaTrash } from "react-icons/fa";
 import ConfirmModal from "../../components/ConfirmModal";
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+
+(pdfMake as any).vfs = pdfFonts.vfs;
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://appservices.ueabreu.com";
 
@@ -28,7 +32,6 @@ const AdminRegistrationsList: React.FC = () => {
     console.log("🔍 [fetchApplications] Iniciando carga de solicitudes...");
     setLoading(true);
     try {
-      console.log("🌐 [fetchApplications] URL:", `${API_BASE}/api/private/registrations/list`);
       const res = await fetch(`${API_BASE}/api/private/registrations/list`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -52,97 +55,148 @@ const AdminRegistrationsList: React.FC = () => {
   }, [token]);
 
   useEffect(() => {
-    console.log("🚀 [AdminRegistrationsList] Componente montado, cargando solicitudes...");
     fetchApplications();
   }, [fetchApplications]);
 
   const handleDownload = async (id: string) => {
-    console.log(`⬇️ [handleDownload] Iniciando descarga para solicitud ${id}`);
+    console.log(`⬇️ [handleDownload] Generando PDF para solicitud ${id}`);
     try {
-      const url = `${API_BASE}/api/private/registrations/${id}/pdf`;
-      console.log("🌐 [handleDownload] URL:", url);
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const res = await fetch(`${API_BASE}/api/private/registrations/${id}/data`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       console.log("📡 [handleDownload] Estado de respuesta:", res.status);
-      console.log("📋 [handleDownload] Headers:", Object.fromEntries(res.headers.entries()));
-
       if (!res.ok) {
         const errorData = await res.json();
-        console.error("⚠️ [handleDownload] Error en respuesta:", errorData);
-        toast.error(errorData.error?.[0] || "Error al descargar el PDF");
+        console.error("⚠️ [handleDownload] Error al obtener datos:", errorData);
+        toast.error(errorData.error?.[0] || "Error al obtener datos de la solicitud");
         return;
       }
-
-      const blob = await res.blob();
-      console.log(`📊 [handleDownload] Tamaño del blob: ${blob.size} bytes`);
-      console.log(`📄 [handleDownload] Tipo del blob: ${blob.type}`);
-
-      if (blob.size === 0) {
-        console.error("❌ [handleDownload] El blob está vacío (0 bytes).");
-        toast.error("El PDF recibido está vacío.");
+      const json = await res.json();
+      console.log("📦 [handleDownload] Datos recibidos:", json);
+      if (!json.result) {
+        toast.error(json.error?.[0] || "Error al obtener datos");
         return;
       }
+      const appData = json.content;
 
-      const urlBlob = URL.createObjectURL(blob);
-      console.log("🔗 [handleDownload] URL del blob creada:", urlBlob);
+      const calcEdad = (fecha: string) => {
+        if (!fecha) return '';
+        const hoy = new Date();
+        const nac = new Date(fecha);
+        let edad = hoy.getFullYear() - nac.getFullYear();
+        const mes = hoy.getMonth() - nac.getMonth();
+        if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--;
+        return edad;
+      };
 
-      // Verificar los primeros bytes del blob para confirmar que es un PDF
-      const reader = new FileReader();
-      reader.onload = () => {
-        const arr = new Uint8Array(reader.result as ArrayBuffer);
-        const header = String.fromCharCode(...arr.slice(0, 5));
-        console.log("🔎 [handleDownload] Primeros 5 bytes del archivo:", header);
-        if (header !== "%PDF-") {
-          console.error("❌ [handleDownload] El archivo no comienza con '%PDF-', no es un PDF válido.");
-          toast.error("El archivo descargado no es un PDF válido.");
-          return;
-        }
-        // Si es un PDF válido, abrir en nueva pestaña
-        console.log("✅ [handleDownload] Cabecera PDF verificada, abriendo en nueva pestaña.");
-        const newTab = window.open(urlBlob, "_blank");
-        if (newTab) {
-          console.log("🚀 [handleDownload] Nueva pestaña abierta con el PDF.");
-        } else {
-          console.warn("⚠️ [handleDownload] No se pudo abrir la nueva pestaña (bloqueo de ventanas emergentes).");
-          toast.error("No se pudo abrir el PDF. Revisa el bloqueo de ventanas emergentes.");
-        }
-        // También forzamos la descarga tradicional
-        const a = document.createElement("a");
-        a.href = urlBlob;
-        a.download = `Planilla_${id}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        console.log("📥 [handleDownload] Descarga tradicional iniciada también.");
-        // Limpiamos la URL del blob después de un tiempo
-        setTimeout(() => {
-          URL.revokeObjectURL(urlBlob);
-          console.log("🗑️ [handleDownload] URL del blob revocada.");
-        }, 1000);
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageMargins: [20, 20, 20, 20],
+        content: [
+          { text: 'PLANILLA DE SOLICITUD DE INSCRIPCIÓN', style: 'title' },
+          { text: 'U.E. José Antonio Abreu - Naguanagua', style: 'subtitle' },
+          { text: `N° de Planilla: ${appData.planillaNumber}    |    Fecha: ${new Date().toLocaleDateString()}`, style: 'date' },
+          { text: '\n' },
+          {
+            layout: 'noBorders',
+            table: {
+              widths: ['*', '*'],
+              body: [
+                [
+                  {
+                    stack: [
+                      { text: '1. DATOS DEL REPRESENTANTE', style: 'sectionHeader' },
+                      { text: `Nombre y Apellido: ${appData.representativeFullName}` },
+                      { text: `Cédula de Identidad: ${appData.representativeIdentityCard}` },
+                      { text: `Dirección: ${appData.representativeAddress}` },
+                      { text: `Teléfono: ${appData.representativePhone}` },
+                      { text: `Relación con el estudiante: ${appData.relationship}` },
+                      { text: `Nombre del Padre/Madre: ${appData.parentName || '-'}` },
+                      { text: `Cédula Padre/Madre: ${appData.parentIdentityCard || '-'}` },
+                      { text: `Teléfono Padre/Madre: ${appData.parentPhone || '-'}` },
+                    ],
+                    margin: [0, 0, 5, 0],
+                  },
+                  {
+                    stack: [
+                      { text: '2. DATOS DE LOS SOLICITANTES', style: 'sectionHeader' },
+                      ...appData.students.map((est: any, idx: number) => ({
+                        stack: [
+                          { text: `Solicitante ${idx + 1}`, style: 'studentTitle' },
+                          { text: `Nombre: ${est.fullName}` },
+                          { text: `Edad: ${calcEdad(est.birthDate)}` },
+                          { text: `Fecha Nac.: ${est.birthDate}` },
+                          { text: `Nacionalidad: ${est.nationality}` },
+                          { text: `País Nac.: ${est.birthCountry}` },
+                          { text: `Estado: ${est.state}` },
+                          { text: `Zona donde vive: ${est.zone}` },
+                          { text: `Municipio: ${est.municipality || '-'}` },
+                          { text: `Escuela de procedencia: ${est.previousSchool || '-'}` },
+                          { text: `Año que aspira: ${est.aspiredGrade}` },
+                          { text: `Dirección: ${est.addressDescription}` },
+                          { text: `Teléfono: ${est.phone || '-'}` },
+                          { text: `Emergencia: ${est.emergencyContact}` },
+                          { text: `Tel. Emerg.: ${est.emergencyPhone}` },
+                          { text: `Alergias: ${est.hasAllergies ? est.allergiesDescription : 'No'}` },
+                          { text: `Enfermedades: ${est.hasDiseases ? est.diseasesDescription : 'No'}` },
+                        ],
+                        margin: [0, 0, 0, 8],
+                      })),
+                    ],
+                  },
+                ],
+              ],
+            },
+          },
+          { text: '\n' },
+          { text: 'Para uso del representante:', style: 'bold' },
+          {
+            layout: 'noBorders',
+            table: {
+              widths: ['*', '*', '*', '*'],
+              body: [
+                [
+                  '_________________\nFirma del Representante',
+                  '_________________\nFirma de quien recibe',
+                  '_________________\nSello',
+                  'Fecha y hora: ________\n(Uso interno)',
+                ],
+              ],
+            },
+          },
+          { text: '\n' },
+          {
+            text: 'Nota: Esta planilla es solo una solicitud de preinscripción, no asegura ni garantiza un cupo definitivo. La aprobación está sujeta a disponibilidad y evaluación de la U.E. José Antonio Abreu.',
+            style: 'note',
+          },
+        ],
+        styles: {
+          title: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 5, 0, 0] },
+          subtitle: { fontSize: 10, alignment: 'center', margin: [0, 0, 0, 5] },
+          date: { fontSize: 9, alignment: 'center', margin: [0, 0, 0, 10] },
+          sectionHeader: { fontSize: 11, bold: true, decoration: 'underline', margin: [0, 0, 0, 4] },
+          studentTitle: { fontSize: 10, bold: true, margin: [0, 4, 0, 2] },
+          note: { fontSize: 8, alignment: 'center', color: 'red', margin: [0, 10, 0, 0] },
+          bold: { bold: true, fontSize: 9 },
+        },
+        defaultStyle: { fontSize: 8, lineHeight: 1.15 },
       };
-      reader.onerror = () => {
-        console.error("❌ [handleDownload] Error al leer el blob.");
-        toast.error("Error al procesar el PDF descargado.");
-      };
-      reader.readAsArrayBuffer(blob.slice(0, 5));
+
+      pdfMake.createPdf(docDefinition).download(`Planilla_${appData.planillaNumber}.pdf`);
+      console.log("✅ PDF descargado");
     } catch (error) {
-      console.error("❌ [handleDownload] Error de red:", error);
-      toast.error("Error de conexión al descargar el PDF");
+      console.error("❌ [handleDownload] Error:", error);
+      toast.error("Error al generar el PDF.");
     }
   };
 
   const handleActivate = (id: string) => {
-    console.log(`🔓 [handleActivate] Preparando activación de solicitud ${id}`);
     setSelectedId(id);
     setAction("activate");
     setShowConfirm(true);
   };
 
   const handleDelete = (id: string) => {
-    console.log(`🗑️ [handleDelete] Preparando eliminación de solicitud ${id}`);
     setSelectedId(id);
     setAction("delete");
     setShowConfirm(true);
@@ -150,14 +204,12 @@ const AdminRegistrationsList: React.FC = () => {
 
   const confirmAction = async () => {
     if (!selectedId || !action) return;
-    console.log(`🚨 [confirmAction] Ejecutando acción "${action}" para solicitud ${selectedId}`);
     try {
       const url =
         action === "activate"
           ? `${API_BASE}/api/private/registrations/${selectedId}/activate`
           : `${API_BASE}/api/private/registrations/${selectedId}`;
       const method = action === "activate" ? "POST" : "DELETE";
-      console.log("🌐 [confirmAction] URL:", url, "Método:", method);
       const res = await fetch(url, {
         method,
         headers: {
@@ -165,36 +217,27 @@ const AdminRegistrationsList: React.FC = () => {
           "Content-Type": "application/json",
         },
       });
-      console.log("📡 [confirmAction] Estado de respuesta:", res.status);
       const data = await res.json();
-      console.log("📦 [confirmAction] Respuesta:", data);
       if (data.result) {
         toast.success(data.content[0]);
-        console.log("✅ [confirmAction] Acción completada exitosamente.");
         fetchApplications();
       } else {
-        console.error("⚠️ [confirmAction] Error:", data.error);
         toast.error(data.error?.[0] || "Error al ejecutar acción");
       }
     } catch (error) {
-      console.error("❌ [confirmAction] Error de red:", error);
       toast.error("Error de conexión");
     } finally {
       setShowConfirm(false);
       setSelectedId(null);
       setAction(null);
-      console.log("🧹 [confirmAction] Estado de confirmación limpiado.");
     }
   };
 
   const cancelAction = () => {
-    console.log("🚫 [cancelAction] Acción cancelada por el usuario.");
     setShowConfirm(false);
     setSelectedId(null);
     setAction(null);
   };
-
-  console.log("🎨 [AdminRegistrationsList] Renderizando con", applications.length, "solicitudes.");
 
   return (
     <motion.div
