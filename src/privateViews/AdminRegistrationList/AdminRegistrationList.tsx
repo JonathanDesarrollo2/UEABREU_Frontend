@@ -25,14 +25,16 @@ const AdminRegistrationsList: React.FC = () => {
   const token = localStorage.getItem("tokcattleraising_inCattleRanchCloud") || "";
 
   const fetchApplications = useCallback(async () => {
+    console.log("🔍 [fetchApplications] Iniciando carga de solicitudes...");
     setLoading(true);
     try {
-      console.log("🔍 [fetchApplications] Iniciando carga...");
+      console.log("🌐 [fetchApplications] URL:", `${API_BASE}/api/private/registrations/list`);
       const res = await fetch(`${API_BASE}/api/private/registrations/list`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log("📡 [fetchApplications] Estado de respuesta:", res.status);
       const data = await res.json();
-      console.log("📦 [fetchApplications] Respuesta:", data);
+      console.log("📦 [fetchApplications] Datos recibidos:", data);
       if (data.result) {
         setApplications(data.content);
         console.log(`✅ [fetchApplications] Se cargaron ${data.content.length} solicitudes.`);
@@ -41,7 +43,7 @@ const AdminRegistrationsList: React.FC = () => {
         toast.error(data.error?.[0] || "Error al cargar solicitudes");
       }
     } catch (error) {
-      console.error("❌ [fetchApplications] Excepción:", error);
+      console.error("❌ [fetchApplications] Error de red:", error);
       toast.error("Error de conexión al cargar solicitudes");
     } finally {
       setLoading(false);
@@ -50,6 +52,7 @@ const AdminRegistrationsList: React.FC = () => {
   }, [token]);
 
   useEffect(() => {
+    console.log("🚀 [AdminRegistrationsList] Componente montado, cargando solicitudes...");
     fetchApplications();
   }, [fetchApplications]);
 
@@ -57,70 +60,89 @@ const AdminRegistrationsList: React.FC = () => {
     console.log(`⬇️ [handleDownload] Iniciando descarga para solicitud ${id}`);
     try {
       const url = `${API_BASE}/api/private/registrations/${id}/pdf`;
-      console.log(`🌐 [handleDownload] URL: ${url}`);
-
+      console.log("🌐 [handleDownload] URL:", url);
       const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-
-      console.log(`📡 [handleDownload] Estado de respuesta: ${res.status} ${res.statusText}`);
-      console.log(`📋 [handleDownload] Headers:`, Object.fromEntries(res.headers.entries()));
+      console.log("📡 [handleDownload] Estado de respuesta:", res.status);
+      console.log("📋 [handleDownload] Headers:", Object.fromEntries(res.headers.entries()));
 
       if (!res.ok) {
         const errorData = await res.json();
         console.error("⚠️ [handleDownload] Error en respuesta:", errorData);
-        toast.error(errorData.error?.[0] || "Error al obtener el PDF");
+        toast.error(errorData.error?.[0] || "Error al descargar el PDF");
         return;
       }
-
-      const contentType = res.headers.get("content-type");
-      console.log(`📄 [handleDownload] Content-Type: ${contentType}`);
 
       const blob = await res.blob();
       console.log(`📊 [handleDownload] Tamaño del blob: ${blob.size} bytes`);
-      console.log(`🔬 [handleDownload] Tipo del blob: ${blob.type}`);
+      console.log(`📄 [handleDownload] Tipo del blob: ${blob.type}`);
 
       if (blob.size === 0) {
-        console.error("🆘 [handleDownload] El blob está vacío (0 bytes).");
-        toast.error("El PDF descargado está vacío.");
+        console.error("❌ [handleDownload] El blob está vacío (0 bytes).");
+        toast.error("El PDF recibido está vacío.");
         return;
       }
 
-      // Leer primeros bytes para ver si empieza por %PDF
+      const urlBlob = URL.createObjectURL(blob);
+      console.log("🔗 [handleDownload] URL del blob creada:", urlBlob);
+
+      // Verificar los primeros bytes del blob para confirmar que es un PDF
       const reader = new FileReader();
-      reader.onload = function () {
+      reader.onload = () => {
         const arr = new Uint8Array(reader.result as ArrayBuffer);
         const header = String.fromCharCode(...arr.slice(0, 5));
-        console.log(`📖 [handleDownload] Primeros 5 bytes: "${header}"`);
+        console.log("🔎 [handleDownload] Primeros 5 bytes del archivo:", header);
         if (header !== "%PDF-") {
-          console.error("🛑 [handleDownload] El archivo no es un PDF válido (falta cabecera %PDF).");
+          console.error("❌ [handleDownload] El archivo no comienza con '%PDF-', no es un PDF válido.");
           toast.error("El archivo descargado no es un PDF válido.");
-        } else {
-          console.log("✅ [handleDownload] Cabecera PDF verificada, abriendo en nueva pestaña.");
+          return;
         }
+        // Si es un PDF válido, abrir en nueva pestaña
+        console.log("✅ [handleDownload] Cabecera PDF verificada, abriendo en nueva pestaña.");
+        const newTab = window.open(urlBlob, "_blank");
+        if (newTab) {
+          console.log("🚀 [handleDownload] Nueva pestaña abierta con el PDF.");
+        } else {
+          console.warn("⚠️ [handleDownload] No se pudo abrir la nueva pestaña (bloqueo de ventanas emergentes).");
+          toast.error("No se pudo abrir el PDF. Revisa el bloqueo de ventanas emergentes.");
+        }
+        // También forzamos la descarga tradicional
+        const a = document.createElement("a");
+        a.href = urlBlob;
+        a.download = `Planilla_${id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        console.log("📥 [handleDownload] Descarga tradicional iniciada también.");
+        // Limpiamos la URL del blob después de un tiempo
+        setTimeout(() => {
+          URL.revokeObjectURL(urlBlob);
+          console.log("🗑️ [handleDownload] URL del blob revocada.");
+        }, 1000);
       };
-      reader.readAsArrayBuffer(blob.slice(0, 5)); // solo los primeros bytes
-
-      const urlBlob = URL.createObjectURL(blob);
-      console.log(`🔗 [handleDownload] URL del blob creada: ${urlBlob}`);
-
-      window.open(urlBlob, '_blank');
-      console.log("🚀 [handleDownload] Nueva pestaña abierta con el PDF.");
+      reader.onerror = () => {
+        console.error("❌ [handleDownload] Error al leer el blob.");
+        toast.error("Error al procesar el PDF descargado.");
+      };
+      reader.readAsArrayBuffer(blob.slice(0, 5));
     } catch (error) {
-      console.error("🔥 [handleDownload] Excepción:", error);
-      toast.error("Error de conexión al obtener el PDF");
+      console.error("❌ [handleDownload] Error de red:", error);
+      toast.error("Error de conexión al descargar el PDF");
     }
   };
 
   const handleActivate = (id: string) => {
+    console.log(`🔓 [handleActivate] Preparando activación de solicitud ${id}`);
     setSelectedId(id);
     setAction("activate");
     setShowConfirm(true);
   };
 
   const handleDelete = (id: string) => {
+    console.log(`🗑️ [handleDelete] Preparando eliminación de solicitud ${id}`);
     setSelectedId(id);
     setAction("delete");
     setShowConfirm(true);
@@ -128,13 +150,14 @@ const AdminRegistrationsList: React.FC = () => {
 
   const confirmAction = async () => {
     if (!selectedId || !action) return;
-    console.log(`⚡ [confirmAction] Ejecutando ${action} sobre ${selectedId}`);
+    console.log(`🚨 [confirmAction] Ejecutando acción "${action}" para solicitud ${selectedId}`);
     try {
       const url =
         action === "activate"
           ? `${API_BASE}/api/private/registrations/${selectedId}/activate`
           : `${API_BASE}/api/private/registrations/${selectedId}`;
       const method = action === "activate" ? "POST" : "DELETE";
+      console.log("🌐 [confirmAction] URL:", url, "Método:", method);
       const res = await fetch(url, {
         method,
         headers: {
@@ -142,29 +165,36 @@ const AdminRegistrationsList: React.FC = () => {
           "Content-Type": "application/json",
         },
       });
+      console.log("📡 [confirmAction] Estado de respuesta:", res.status);
       const data = await res.json();
       console.log("📦 [confirmAction] Respuesta:", data);
       if (data.result) {
         toast.success(data.content[0]);
+        console.log("✅ [confirmAction] Acción completada exitosamente.");
         fetchApplications();
       } else {
+        console.error("⚠️ [confirmAction] Error:", data.error);
         toast.error(data.error?.[0] || "Error al ejecutar acción");
       }
     } catch (error) {
-      console.error("❌ [confirmAction] Excepción:", error);
+      console.error("❌ [confirmAction] Error de red:", error);
       toast.error("Error de conexión");
     } finally {
       setShowConfirm(false);
       setSelectedId(null);
       setAction(null);
+      console.log("🧹 [confirmAction] Estado de confirmación limpiado.");
     }
   };
 
   const cancelAction = () => {
+    console.log("🚫 [cancelAction] Acción cancelada por el usuario.");
     setShowConfirm(false);
     setSelectedId(null);
     setAction(null);
   };
+
+  console.log("🎨 [AdminRegistrationsList] Renderizando con", applications.length, "solicitudes.");
 
   return (
     <motion.div

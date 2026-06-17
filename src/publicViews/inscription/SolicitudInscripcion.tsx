@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef  } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { FiClipboard, FiPrinter, FiMail, FiFileText } from 'react-icons/fi';
@@ -10,134 +10,171 @@ import AcuerdoModal from './components/Modal';
 import FormularioSections from './components/FormSection';
 import type { InscripcionFormData } from '../../types/inscripcion';
 
+// pdfmake imports
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 (pdfMake as any).vfs = pdfFonts.vfs;
 
 const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
 
-/* ───── helpers ───── */
-async function getBase64ImageFromUrl(url: string): Promise<string> {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-const downloadPDF = async (
+// ------------------------------------------------------------
+// Definición UNIFICADA del documento (se devuelve como any para evitar errores de tipos)
+// ------------------------------------------------------------
+const buildDocDefinition = (
   data: InscripcionFormData,
   planillaNumber: number | null,
-  calcularEdad: (fecha: string) => number | string,
+  _calcularEdad: (fecha: string) => number | string
+): any => {
+  const calcEdad = (fecha: string): number | string => {
+    if (!fecha) return '';
+    const hoy = new Date();
+    const nac = new Date(fecha);
+    let edad = hoy.getFullYear() - nac.getFullYear();
+    const mes = hoy.getMonth() - nac.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--;
+    return edad;
+  };
+
+  return {
+    pageSize: 'A4',
+    pageMargins: [20, 20, 20, 20] as [number, number, number, number],
+    content: [
+      { text: 'PLANILLA DE SOLICITUD DE INSCRIPCIÓN', style: 'title' },
+      { text: 'U.E. José Antonio Abreu - Naguanagua', style: 'subtitle' },
+      { text: `N° de Planilla: ${planillaNumber ?? '—'}    |    Fecha: ${new Date().toLocaleDateString()}`, style: 'date' },
+      { text: '\n' },
+      {
+        layout: 'noBorders',
+        table: {
+          widths: ['*', '*'],
+          body: [
+            [
+              {
+                stack: [
+                  { text: '1. DATOS DEL REPRESENTANTE', style: 'sectionHeader' },
+                  { text: `Nombre y Apellido: ${data.representativeFullName}` },
+                  { text: `Cédula de Identidad: ${data.representativeIdentityCard}` },
+                  { text: `Dirección: ${data.representativeAddress}` },
+                  { text: `Teléfono: ${data.representativePhone}` },
+                  { text: `Relación con el estudiante: ${data.relationship}` },
+                  { text: `Nombre del Padre/Madre: ${data.parentName || '-'}` },
+                  { text: `Cédula Padre/Madre: ${data.parentIdentityCard || '-'}` },
+                  { text: `Teléfono Padre/Madre: ${data.parentPhone || '-'}` },
+                ],
+                margin: [0, 0, 5, 0] as [number, number, number, number],
+              },
+              {
+                stack: [
+                  { text: '2. DATOS DE LOS SOLICITANTES', style: 'sectionHeader' },
+                  ...data.students.map((est, idx) => ({
+                    stack: [
+                      { text: `Solicitante ${idx + 1}`, style: 'studentTitle' },
+                      { text: `Nombre: ${est.fullName}` },
+                      { text: `Edad: ${calcEdad(est.birthDate)}` },
+                      { text: `Fecha Nac.: ${est.birthDate}` },
+                      { text: `Nacionalidad: ${est.nationality}` },
+                      { text: `País Nac.: ${est.birthCountry}` },
+                      { text: `Estado: ${est.state}` },
+                      { text: `Zona donde vive: ${est.zone}` },
+                      { text: `Municipio: ${est.municipality || '-'}` },
+                      { text: `Escuela de procedencia: ${est.previousSchool || '-'}` },
+                      { text: `Año que aspira: ${est.aspiredGrade}` },
+                      { text: `Dirección: ${est.addressDescription}` },
+                      { text: `Teléfono: ${est.phone || '-'}` },
+                      { text: `Emergencia: ${est.emergencyContact}` },
+                      { text: `Tel. Emerg.: ${est.emergencyPhone}` },
+                      { text: `Alergias: ${est.hasAllergies ? est.allergiesDescription : 'No'}` },
+                      { text: `Enfermedades: ${est.hasDiseases ? est.diseasesDescription : 'No'}` },
+                    ],
+                    margin: [0, 0, 0, 8] as [number, number, number, number],
+                  })),
+                ],
+              },
+            ],
+          ],
+        },
+      },
+      { text: '\n' },
+      { text: 'Para uso del representante:', style: 'bold' },
+      {
+        layout: 'noBorders',
+        table: {
+          widths: ['*', '*', '*', '*'],
+          body: [
+            [
+              '_________________\nFirma del Representante',
+              '_________________\nFirma de quien recibe',
+              '_________________\nSello',
+              'Fecha y hora: ________\n(Uso interno)',
+            ],
+          ],
+        },
+      },
+      { text: '\n' },
+      {
+        text: 'Nota: Esta planilla es solo una solicitud de preinscripción, no asegura ni garantiza un cupo definitivo. La aprobación está sujeta a disponibilidad y evaluación de la U.E. José Antonio Abreu.',
+        style: 'note',
+      },
+    ],
+    styles: {
+      title: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 5, 0, 0] as [number, number, number, number] },
+      subtitle: { fontSize: 10, alignment: 'center', margin: [0, 0, 0, 5] as [number, number, number, number] },
+      date: { fontSize: 9, alignment: 'center', margin: [0, 0, 0, 10] as [number, number, number, number] },
+      sectionHeader: { fontSize: 11, bold: true, decoration: 'underline', margin: [0, 0, 0, 4] as [number, number, number, number] },
+      studentTitle: { fontSize: 10, bold: true, margin: [0, 4, 0, 2] as [number, number, number, number] },
+      note: { fontSize: 8, alignment: 'center', color: 'red', margin: [0, 10, 0, 0] as [number, number, number, number] },
+      bold: { bold: true, fontSize: 9 },
+    },
+    defaultStyle: { fontSize: 8, lineHeight: 1.15 },
+  };
+};
+
+// ------------------------------------------------------------
+// Descarga directa del PDF (para botón de prueba y éxito)
+// ------------------------------------------------------------
+const downloadPDF = (
+  data: InscripcionFormData,
+  planillaNumber: number | null,
+  calcularEdad: (fecha: string) => number | string
 ) => {
   try {
-    const logoBase64 = await getBase64ImageFromUrl('/logo.png');
-
-    const docDefinition: any = {
-      pageSize: 'A4',
-      pageMargins: [20, 20, 20, 20],
-      content: [
-        { image: logoBase64, width: 80, alignment: 'center', margin: [0, 0, 0, 5] },
-        { text: 'PLANILLA DE SOLICITUD DE INSCRIPCIÓN', style: 'title' },
-        { text: 'U.E. José Antonio Abreu - Naguanagua', style: 'subtitle' },
-        { text: `N° de Planilla: ${planillaNumber ?? '—'}    |    Fecha: ${new Date().toLocaleDateString()}`, style: 'date' },
-        { text: '\n' },
-        {
-          layout: 'noBorders',
-          table: {
-            widths: ['*', '*'],
-            body: [
-              [
-                {
-                  stack: [
-                    { text: '1. DATOS DEL REPRESENTANTE', style: 'sectionHeader' },
-                    { text: `Nombre y Apellido: ${data.representativeFullName}` },
-                    { text: `Cédula de Identidad: ${data.representativeIdentityCard}` },
-                    { text: `Dirección: ${data.representativeAddress}` },
-                    { text: `Teléfono: ${data.representativePhone}` },
-                    { text: `Relación con el estudiante: ${data.relationship}` },
-                    { text: `Nombre del Padre/Madre: ${data.parentName || '-'}` },
-                    { text: `Cédula Padre/Madre: ${data.parentIdentityCard || '-'}` },
-                    { text: `Teléfono Padre/Madre: ${data.parentPhone || '-'}` },
-                  ],
-                  margin: [0, 0, 5, 0],
-                },
-                {
-                  stack: [
-                    { text: '2. DATOS DE LOS SOLICITANTES', style: 'sectionHeader' },
-                    ...data.students.map((est, idx) => ({
-                      stack: [
-                        { text: `Solicitante ${idx + 1}`, style: 'studentTitle' },
-                        { text: `Nombre: ${est.fullName}` },
-                        { text: `Edad: ${calcularEdad(est.birthDate)}` },
-                        { text: `Fecha Nac.: ${est.birthDate}` },
-                        { text: `Nacionalidad: ${est.nationality}` },
-                        { text: `País Nac.: ${est.birthCountry}` },
-                        { text: `Estado: ${est.state}` },
-                        { text: `Zona donde vive: ${est.zone}` },
-                        { text: `Municipio: ${est.municipality || '-'}` },
-                        { text: `Escuela de procedencia: ${est.previousSchool || '-'}` },
-                        { text: `Año que aspira: ${est.aspiredGrade}` },
-                        { text: `Dirección: ${est.addressDescription}` },
-                        { text: `Teléfono: ${est.phone || '-'}` },
-                        { text: `Emergencia: ${est.emergencyContact}` },
-                        { text: `Tel. Emerg.: ${est.emergencyPhone}` },
-                        { text: `Alergias: ${est.hasAllergies ? est.allergiesDescription : 'No'}` },
-                        { text: `Enfermedades: ${est.hasDiseases ? est.diseasesDescription : 'No'}` },
-                      ],
-                      margin: [0, 0, 0, 8],
-                    })),
-                  ],
-                },
-              ],
-            ],
-          },
-        },
-        { text: '\n' },
-        { text: 'Para uso del representante:', style: 'bold' },
-        {
-          layout: 'noBorders',
-          table: {
-            widths: ['*', '*', '*', '*'],
-            body: [
-              [
-                '_________________\nFirma del Representante',
-                '_________________\nFirma de quien recibe',
-                '_________________\nSello',
-                'Fecha y hora: ________\n(Uso interno)',
-              ],
-            ],
-          },
-        },
-        { text: '\n' },
-        {
-          text: 'Nota: Esta planilla es solo una solicitud de preinscripción, no asegura ni garantiza un cupo definitivo. La aprobación está sujeta a disponibilidad y evaluación de la U.E. José Antonio Abreu.',
-          style: 'note',
-        },
-      ],
-      styles: {
-        title: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 5, 0, 0] },
-        subtitle: { fontSize: 10, alignment: 'center', margin: [0, 0, 0, 5] },
-        date: { fontSize: 9, alignment: 'center', margin: [0, 0, 0, 10] },
-        sectionHeader: { fontSize: 11, bold: true, decoration: 'underline', margin: [0, 0, 0, 4] },
-        studentTitle: { fontSize: 10, bold: true, margin: [0, 4, 0, 2] },
-        note: { fontSize: 8, alignment: 'center', color: 'red', margin: [0, 10, 0, 0] },
-        bold: { bold: true, fontSize: 9 },
-      },
-      defaultStyle: { fontSize: 8, lineHeight: 1.15 },
-    };
-
+    console.log('⬇️ [downloadPDF] Generando PDF...');
+    const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
     pdfMake.createPdf(docDefinition).download(`Planilla_Inscripcion_${planillaNumber ?? 'UEEA'}.pdf`);
+    console.log('✅ [downloadPDF] Descarga iniciada.');
   } catch (error) {
-    console.error('Error al generar PDF:', error);
-    toast.error('Ocurrió un error al generar el PDF. Intente nuevamente.');
+    console.error('❌ [downloadPDF] Error:', error);
+    toast.error('Error al generar el PDF.');
   }
 };
 
-/* ───── Componente ───── */
+// ------------------------------------------------------------
+// Genera el PDF en base64 para enviar al backend
+// ------------------------------------------------------------
+const generatePdfBase64 = (
+  data: InscripcionFormData,
+  planillaNumber: number | null,
+  calcularEdad: (fecha: string) => number | string
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log('🔧 [generatePdfBase64] Generando base64...');
+      const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
+      (pdfMake.createPdf(docDefinition) as any).getDataUrl((dataUrl: string) => {
+        const base64 = dataUrl.split(',')[1];
+        console.log(`📄 [generatePdfBase64] Base64 generado (longitud ${base64.length})`);
+        resolve(base64);
+      });
+    } catch (error) {
+      console.error('❌ [generatePdfBase64] Error:', error);
+      reject(error);
+    }
+  });
+};
+
+// ------------------------------------------------------------
+// Componente principal
+// ------------------------------------------------------------
 const SolicitudInscripcion: React.FC = () => {
   const { step, loading, registeredEmail, planillaNumber, handleRegister, handleVerify } = usePublicRegistration();
 
@@ -148,8 +185,6 @@ const SolicitudInscripcion: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acuerdoAceptado, setAcuerdoAceptado] = useState(false);
   const [showAcuerdo, setShowAcuerdo] = useState(false);
-  const autoDownloadDone = useRef(false);
-  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
 
   const { register, handleSubmit, control } = useForm<InscripcionFormData>({
     defaultValues: {
@@ -165,19 +200,16 @@ const SolicitudInscripcion: React.FC = () => {
       parentName: '',
       parentIdentityCard: '',
       parentPhone: '',
-      students: [
-        {
-          fullName: '', identityCard: '', birthDate: '', nationality: '', birthCountry: '',
-          state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
-          emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
-          hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: '',
-          aspiredGrade: '',
-        },
-      ],
-    },
+      students: [{
+        fullName: '', identityCard: '', birthDate: '', nationality: '', birthCountry: '',
+        state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
+        emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
+        hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: '',
+        aspiredGrade: ''
+      }]
+    }
   });
 
-  // ✅ Un solo useFieldArray, compartido con FormularioSections
   const { fields, append, remove } = useFieldArray({ control, name: 'students' });
 
   const addStudent = useCallback(() => {
@@ -186,7 +218,7 @@ const SolicitudInscripcion: React.FC = () => {
       state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
       emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
       hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: '',
-      aspiredGrade: '',
+      aspiredGrade: ''
     });
   }, [append]);
 
@@ -198,40 +230,6 @@ const SolicitudInscripcion: React.FC = () => {
       })
       .catch(() => setRegistrationOpen(false));
   }, []);
-  // Descargar automáticamente cuando se reciba el pdfBase64
-useEffect(() => {
-  if (pdfBase64 && !autoDownloadDone.current) {
-    autoDownloadDone.current = true;
-    try {
-      const byteCharacters = atob(pdfBase64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Planilla_Inscripcion.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error al descargar el PDF:', error);
-      toast.error('No se pudo descargar el PDF automáticamente.');
-    }
-  }
-}, [pdfBase64]);
-
-// Reiniciar el flag cuando el usuario regrese al formulario
-useEffect(() => {
-  if (step === 'form') {
-    autoDownloadDone.current = false;
-    setPdfBase64(null);
-  }
-}, [step]);
 
   const generateLogin = () => 'Rep' + Math.floor(1000 + Math.random() * 9000);
 
@@ -246,6 +244,7 @@ useEffect(() => {
   };
 
   const onSubmit = async (data: InscripcionFormData) => {
+    console.log('📨 Iniciando envío del formulario...');
     if (!acuerdoAceptado) {
       toast.error('Debe aceptar el Acuerdo de Convivencia antes de continuar.');
       return;
@@ -256,6 +255,17 @@ useEffect(() => {
     }
 
     const login = data.userlogin.trim() === '' ? generateLogin() : data.userlogin;
+
+    // Generar el PDF y obtener base64
+    let pdfBase64: string | undefined;
+    try {
+      pdfBase64 = await generatePdfBase64(data, planillaNumber, calcularEdad);
+      console.log('✅ PDF base64 generado, longitud:', pdfBase64.length);
+    } catch (err) {
+      console.error('❌ Falló la generación del PDF:', err);
+      toast.error('No se pudo generar el PDF. Intente de nuevo.');
+      return;
+    }
 
     const payload: PublicRegisterPayload = {
       usermail: data.email,
@@ -272,7 +282,6 @@ useEffect(() => {
         parentIdentityCard: data.parentIdentityCard,
         parentPhone: data.parentPhone,
       },
-      // ❗️ Filtramos solo estudiantes con nombre y cédula no vacíos (trim)
       studentsData: data.students
         .filter(s => s.fullName.trim() && s.identityCard.trim())
         .map(s => ({
@@ -298,9 +307,11 @@ useEffect(() => {
           status: 'pendiente',
           balance: 0,
         })),
+      pdfBase64,   // 👈 ¡Aquí va el PDF!
     };
 
     setFormDataForPDF(data);
+    console.log('📦 Enviando payload a registerPublic...');
     await handleRegister(payload);
   };
 
@@ -321,6 +332,9 @@ useEffect(() => {
     setShowAcuerdo(false);
   };
 
+  // ------------------------------------------------------------------
+  // Vistas condicionales
+  // ------------------------------------------------------------------
   if (registrationOpen === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white">
@@ -457,10 +471,7 @@ useEffect(() => {
               className="text-2xl py-3 px-4 border-2 border-gray-300 rounded-lg text-center mb-4"
             />
             <button
-              onClick={async () => {
-                const base64 = await handleVerify(verificationCode);
-                if (base64) setPdfBase64(base64);
-              }}
+              onClick={() => handleVerify(verificationCode)}
               disabled={loading || verificationCode.length !== 5}
               className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50"
             >
