@@ -280,6 +280,7 @@ const AdminRegistrationsList: React.FC = () => {
             <table className="min-w-full border border-gray-200 text-sm">
               <thead className="bg-gray-100">
                 <tr>
+                  <th className="py-2 px-3 text-left">N°</th>
                   <th className="py-2 px-3 text-left">N° Planilla</th>
                   <th className="py-2 px-3 text-left">Representante</th>
                   <th className="py-2 px-3 text-left">Correo</th>
@@ -289,8 +290,13 @@ const AdminRegistrationsList: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {applications.map((app) => (
+                {applications.map((app, index) => (
                   <tr key={app.id} className="border-t hover:bg-gray-50">
+                    {/* Contador secuencial */}
+                    <td className="py-2 px-3 font-semibold">
+                      {(page - 1) * limit + index + 1}
+                    </td>
+                    {/* Número de planilla real */}
                     <td className="py-2 px-3">{app.planillaNumber}</td>
                     <td className="py-2 px-3">{app.representativeName}</td>
                     <td className="py-2 px-3">{app.email}</td>
