@@ -241,142 +241,175 @@ const AdminRegistrationsList: React.FC = () => {
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-8"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="max-w-7xl mx-auto"
     >
-      <h2 className="text-2xl font-bold text-slate-800 mb-6">Gestión de Solicitudes de Inscripción</h2>
-
-      {/* Barra de búsqueda y límite */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre, correo o nº de planilla..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/60 p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 sm:mb-0">
+            Gestión de Solicitudes
+          </h2>
+          <div className="text-sm text-gray-500">
+            Total: {totalRecords} solicitudes
+          </div>
         </div>
-        <select
-          value={limit}
-          onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-          className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value={10}>10 por página</option>
-          <option value={20}>20 por página</option>
-          <option value={50}>50 por página</option>
-        </select>
-      </div>
 
-      {loading ? (
-        <p className="text-center text-gray-500">Cargando...</p>
-      ) : applications.length === 0 ? (
-        <p className="text-center text-gray-500">No hay solicitudes registradas.</p>
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-200 text-sm">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="py-2 px-3 text-left">N°</th>
-                  <th className="py-2 px-3 text-left">N° Planilla</th>
-                  <th className="py-2 px-3 text-left">Representante</th>
-                  <th className="py-2 px-3 text-left">Correo</th>
-                  <th className="py-2 px-3 text-left">Estado</th>
-                  <th className="py-2 px-3 text-left">Fecha</th>
-                  <th className="py-2 px-3 text-center">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {applications.map((app, index) => (
-                  <tr key={app.id} className="border-t hover:bg-gray-50">
-                    {/* Contador secuencial */}
-                    <td className="py-2 px-3 font-semibold">
-                      {(page - 1) * limit + index + 1}
-                    </td>
-                    {/* Número de planilla real */}
-                    <td className="py-2 px-3">{app.planillaNumber}</td>
-                    <td className="py-2 px-3">{app.representativeName}</td>
-                    <td className="py-2 px-3">{app.email}</td>
-                    <td className="py-2 px-3">
-                      {app.userActive ? (
-                        <span className="text-green-600 font-semibold">Activo</span>
-                      ) : (
-                        <span className="text-yellow-600 font-semibold">Pendiente</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3">
-                      {new Date(app.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-2 px-3">
-                      <div className="flex justify-center gap-2">
-                        <button
-                          onClick={() => handleDownload(app.id)}
-                          className="p-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                          title="Descargar PDF"
-                        >
-                          <FaDownload />
-                        </button>
-                        {!app.userActive && (
-                          <button
-                            onClick={() => handleActivate(app.id)}
-                            className="p-2 bg-green-100 text-green-700 rounded hover:bg-green-200"
-                            title="Activar cuenta"
-                          >
-                            <FaCheck />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDelete(app.id)}
-                          className="p-2 bg-red-100 text-red-700 rounded hover:bg-red-200"
-                          title="Eliminar registro"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </td>
+        {/* Barra de búsqueda y límite */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, correo o nº de planilla..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm"
+            />
+          </div>
+          <select
+            value={limit}
+            onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+            className="border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base shadow-sm"
+          >
+            <option value={10}>10 por página</option>
+            <option value={20}>20 por página</option>
+            <option value={50}>50 por página</option>
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
+          </div>
+        ) : applications.length === 0 ? (
+          <div className="text-center py-16 text-gray-500 text-lg">
+            No hay solicitudes registradas.
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+              <table className="min-w-full text-base">
+                <thead>
+                  <tr className="bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 text-lg font-semibold">
+                    <th className="py-4 px-5 text-left">N°</th>
+                    <th className="py-4 px-5 text-left">Planilla</th>
+                    <th className="py-4 px-5 text-left">Representante</th>
+                    <th className="py-4 px-5 text-left">Correo</th>
+                    <th className="py-4 px-5 text-left">Estado</th>
+                    <th className="py-4 px-5 text-left">Fecha</th>
+                    <th className="py-4 px-5 text-center">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {applications.map((app, index) => (
+                    <tr key={app.id} className="hover:bg-blue-50/50 transition-colors duration-200">
+                      <td className="py-4 px-5 font-semibold text-gray-700">
+                        {(page - 1) * limit + index + 1}
+                      </td>
+                      <td className="py-4 px-5 font-mono text-blue-700 font-medium">
+                        {app.planillaNumber}
+                      </td>
+                      <td className="py-4 px-5 font-medium text-gray-800">
+                        {app.representativeName}
+                      </td>
+                      <td className="py-4 px-5 text-gray-600">
+                        {app.email}
+                      </td>
+                      <td className="py-4 px-5">
+                        {app.userActive ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">
+                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                            Activo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-700">
+                            <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                            Pendiente
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-4 px-5 text-gray-600 text-base">
+                        {new Date(app.createdAt).toLocaleDateString('es-VE', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </td>
+                      <td className="py-4 px-5">
+                        <div className="flex justify-center gap-3">
+                          <button
+                            onClick={() => handleDownload(app.id)}
+                            className="p-2.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                            title="Descargar PDF"
+                          >
+                            <FaDownload className="text-lg" />
+                          </button>
+                          {!app.userActive && (
+                            <button
+                              onClick={() => handleActivate(app.id)}
+                              className="p-2.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+                              title="Activar cuenta"
+                            >
+                              <FaCheck className="text-lg" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(app.id)}
+                            className="p-2.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                            title="Eliminar registro"
+                          >
+                            <FaTrash className="text-lg" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          {/* Paginación */}
-          <div className="flex justify-center items-center gap-4 mt-6">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-              className="px-4 py-2 bg-gray-200 rounded-lg disabled:opacity-50 hover:bg-gray-300"
-            >
-              Anterior
-            </button>
-            <span className="text-sm text-gray-600">
-              Página {page} de {totalPages} (Total: {totalRecords} solicitudes)
-            </span>
-            <button
-              disabled={page === totalPages}
-              onClick={() => setPage(page + 1)}
-              className="px-4 py-2 bg-gray-200 rounded-lg disabled:opacity-50 hover:bg-gray-300"
-            >
-              Siguiente
-            </button>
-          </div>
-        </>
-      )}
+            {/* Paginación mejorada */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
+              <div className="text-sm text-gray-500">
+                Mostrando {((page - 1) * limit) + 1} – {Math.min(page * limit, totalRecords)} de {totalRecords} resultados
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage(page - 1)}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Anterior
+                </button>
+                <span className="px-4 py-2 bg-gray-100 rounded-lg text-gray-700 font-semibold">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  disabled={page === totalPages}
+                  onClick={() => setPage(page + 1)}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
-      <ConfirmModal
-        show={showConfirm}
-        onClose={cancelAction}
-        onConfirm={confirmAction}
-        title={action === "activate" ? "Activar Cuenta" : "Eliminar Registro"}
-        message={
-          action === "activate"
-            ? "¿Estás seguro de que deseas activar esta cuenta? El representante podrá iniciar sesión."
-            : "¿Estás seguro de que deseas eliminar completamente este registro? Se borrarán el usuario, representante, estudiantes y la planilla. Esta acción no se puede deshacer."
-        }
-      />
+        <ConfirmModal
+          show={showConfirm}
+          onClose={cancelAction}
+          onConfirm={confirmAction}
+          title={action === "activate" ? "Activar Cuenta" : "Eliminar Registro"}
+          message={
+            action === "activate"
+              ? "¿Estás seguro de que deseas activar esta cuenta? El representante podrá iniciar sesión."
+              : "¿Estás seguro de que deseas eliminar completamente este registro? Se borrarán el usuario, representante, estudiantes y la planilla. Esta acción no se puede deshacer."
+          }
+        />
+      </div>
     </motion.div>
   );
 };
