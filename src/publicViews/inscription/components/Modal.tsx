@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ACUERDO_TEXT } from '../const/constants';
+import { ACUERDO_TEXT } from '../const/constants';  // ajusta la ruta si tu constantes está en otro lado
 
 interface Props {
   isOpen: boolean;
