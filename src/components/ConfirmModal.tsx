@@ -28,4 +28,4 @@ const ConfirmModal: React.FC<Props> = ({ show, onClose, onConfirm, title, messag
   );
 };
 
-export default ConfirmModal;
+export default ConfirmModal; 

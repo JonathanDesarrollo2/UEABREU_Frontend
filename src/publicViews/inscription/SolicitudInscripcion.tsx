@@ -19,7 +19,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
 
 // ------------------------------------------------------------
 // Definición UNIFICADA del documento (se devuelve como any para evitar errores de tipos)
-// ------------------------------------------------------------
+// ------------------------------------------------------------ 
 const buildDocDefinition = (
   data: InscripcionFormData,
   planillaNumber: number | null,
