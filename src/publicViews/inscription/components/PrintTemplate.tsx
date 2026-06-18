@@ -108,3 +108,4 @@ const PrintTemplate: React.FC<Props> = ({ data, planillaNumber, calcularEdad }) 
 };
 
 export default PrintTemplate;
+ 

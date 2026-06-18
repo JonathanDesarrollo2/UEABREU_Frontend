@@ -44,4 +44,4 @@ const AcuerdoModal: React.FC<Props> = ({ isOpen, onClose, onAccept }) => {
   );
 };
 
-export default AcuerdoModal;
+export default AcuerdoModal; 

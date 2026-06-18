@@ -48,7 +48,7 @@ export function usePublicRegistration() {
   const reset = useCallback(() => {
     setStep('form');
     setRegisteredEmail('');
-    setPlanillaNumber(null);
+    setPlanillaNumber(null); 
     setLoading(false);
   }, []);
 
