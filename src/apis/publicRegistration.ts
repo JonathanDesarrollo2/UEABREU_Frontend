@@ -2,7 +2,6 @@ import type { PublicRegisterPayload, VerifyEmailPayload } from "../types/publicR
 
 const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
 
-// Interfaz para la respuesta de registro
 interface RegisterApiResponse {
   result: boolean;
   content?: {
@@ -12,7 +11,6 @@ interface RegisterApiResponse {
   error?: string[];
 }
 
-// Interfaz para la respuesta de verificación
 interface VerifyApiResponse {
   result: boolean;
   content?: {

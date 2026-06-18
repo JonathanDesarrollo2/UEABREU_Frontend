@@ -138,12 +138,10 @@ const downloadPDF = (
   calcularEdad: (fecha: string) => number | string
 ) => {
   try {
-    console.log('⬇️ [downloadPDF] Generando PDF...');
     const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
     pdfMake.createPdf(docDefinition).download(`Planilla_Inscripcion_${planillaNumber ?? 'UEEA'}.pdf`);
-    console.log('✅ [downloadPDF] Descarga iniciada.');
   } catch (error) {
-    console.error('❌ [downloadPDF] Error:', error);
+    console.error('Error al generar PDF:', error);
     toast.error('Error al generar el PDF.');
   }
 };
@@ -158,25 +156,19 @@ const generatePdfBase64 = (
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
-      console.log('🔧 [generatePdfBase64] Generando base64...');
       const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
       const pdfDocGenerator = pdfMake.createPdf(docDefinition);
 
-      // Cast a any para evitar el error de tipado con getBlob
       (pdfDocGenerator as any).getBlob((blob: Blob) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64 = (reader.result as string).split(',')[1];
-          console.log(`📄 [generatePdfBase64] Base64 generado (longitud ${base64.length})`);
           resolve(base64);
         };
-        reader.onerror = () => {
-          reject(new Error('Error al leer el blob del PDF'));
-        };
+        reader.onerror = () => reject(new Error('Error al leer el blob del PDF'));
         reader.readAsDataURL(blob);
       });
     } catch (error) {
-      console.error('❌ [generatePdfBase64] Error:', error);
       reject(error);
     }
   });
@@ -195,9 +187,14 @@ const SolicitudInscripcion: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acuerdoAceptado, setAcuerdoAceptado] = useState(false);
   const [showAcuerdo, setShowAcuerdo] = useState(false);
-  const [submitting, setSubmitting] = useState(false);   // 👈 nuevo estado
+  const [submitting, setSubmitting] = useState(false);
 
-  const { register, handleSubmit, control } = useForm<InscripcionFormData>({
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },       // <-- Capturamos los errores
+  } = useForm<InscripcionFormData>({
     defaultValues: {
       email: '',
       password: '',
@@ -265,7 +262,7 @@ const SolicitudInscripcion: React.FC = () => {
       return;
     }
 
-    setSubmitting(true);   // 👈 deshabilita el botón inmediatamente
+    setSubmitting(true);
     try {
       const login = data.userlogin.trim() === '' ? generateLogin() : data.userlogin;
 
@@ -277,6 +274,7 @@ const SolicitudInscripcion: React.FC = () => {
       } catch (err) {
         console.error('❌ Falló la generación del PDF:', err);
         toast.error('No se pudo generar el PDF. Intente de nuevo.');
+        setSubmitting(false);
         return;
       }
 
@@ -320,14 +318,13 @@ const SolicitudInscripcion: React.FC = () => {
             status: 'pendiente',
             balance: 0,
           })),
-        pdfBase64,   // 👈 ¡Aquí va el PDF!
+        pdfBase64,
       };
 
       setFormDataForPDF(data);
-      console.log('📦 Enviando payload a registerPublic...');
       await handleRegister(payload);
     } finally {
-      setSubmitting(false);   // 👈 re-habilita el botón al terminar
+      setSubmitting(false);
     }
   };
 
@@ -348,9 +345,7 @@ const SolicitudInscripcion: React.FC = () => {
     setShowAcuerdo(false);
   };
 
-  // ------------------------------------------------------------------
   // Vistas condicionales
-  // ------------------------------------------------------------------
   if (registrationOpen === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white">
@@ -440,6 +435,18 @@ const SolicitudInscripcion: React.FC = () => {
               </div>
             </div>
 
+            {/* Resumen de errores del formulario */}
+            {Object.keys(errors).length > 0 && (
+              <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">
+                <p className="font-bold">Corrige los siguientes campos:</p>
+                <ul className="list-disc list-inside text-sm mt-2">
+                  {Object.entries(errors).map(([key, value]) => (
+                    <li key={key}>{value?.message || `Campo requerido: ${key}`}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
               <FormularioSections
                 register={register}
@@ -451,6 +458,7 @@ const SolicitudInscripcion: React.FC = () => {
                 togglePassword={() => setShowPassword(!showPassword)}
                 showConfirmPassword={showConfirmPassword}
                 toggleConfirmPassword={() => setShowConfirmPassword(!showConfirmPassword)}
+                errors={errors}  // <-- Se pasan los errores
               />
 
               <div className="flex flex-col items-center">

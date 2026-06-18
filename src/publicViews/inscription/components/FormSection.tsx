@@ -1,5 +1,5 @@
 import React from 'react';
-import { type Control, type UseFormRegister, type FieldArrayWithId } from 'react-hook-form';
+import { type Control, type UseFormRegister, type FieldArrayWithId, type FieldErrors } from 'react-hook-form';
 import { FiMail, FiUsers, FiEye, FiEyeOff } from 'react-icons/fi';
 import type { InscripcionFormData } from '../../../types/inscripcion';
 import { FormField } from '../../../components/FormField';
@@ -14,6 +14,7 @@ interface Props {
   togglePassword: () => void;
   showConfirmPassword: boolean;
   toggleConfirmPassword: () => void;
+  errors: FieldErrors<InscripcionFormData>;
 }
 
 const FormularioSections: React.FC<Props> = ({
@@ -25,6 +26,7 @@ const FormularioSections: React.FC<Props> = ({
   togglePassword,
   showConfirmPassword,
   toggleConfirmPassword,
+  errors,
 }) => {
   const handleAddStudent = () => {
     onAddStudent({
@@ -50,11 +52,13 @@ const FormularioSections: React.FC<Props> = ({
             type="email"
             required
             register={register}
+            error={errors.email}                     // ✅ Ahora pasamos el objeto FieldError
           />
           <FormField<InscripcionFormData>
             id="userlogin"
             label="Usuario (opcional, se asigna automáticamente)"
             register={register}
+            error={errors.userlogin}
           />
 
           <div>
@@ -64,8 +68,8 @@ const FormularioSections: React.FC<Props> = ({
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
-                {...register('password', { required: true, minLength: 6 })}
-                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm pr-10"
+                {...register('password', { required: 'Contraseña requerida', minLength: 6 })}
+                className={`mt-1 block w-full rounded-lg border-slate-300 shadow-sm pr-10 ${errors.password ? 'border-red-500' : ''}`}
               />
               <button
                 type="button"
@@ -75,6 +79,7 @@ const FormularioSections: React.FC<Props> = ({
                 {showPassword ? <FiEyeOff /> : <FiEye />}
               </button>
             </div>
+            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
           </div>
 
           <div>
@@ -84,8 +89,8 @@ const FormularioSections: React.FC<Props> = ({
             <div className="relative">
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
-                {...register('confirmPassword', { required: true })}
-                className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm pr-10"
+                {...register('confirmPassword', { required: 'Confirma tu contraseña' })}
+                className={`mt-1 block w-full rounded-lg border-slate-300 shadow-sm pr-10 ${errors.confirmPassword ? 'border-red-500' : ''}`}
               />
               <button
                 type="button"
@@ -95,6 +100,7 @@ const FormularioSections: React.FC<Props> = ({
                 {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
               </button>
             </div>
+            {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
           </div>
         </div>
       </div>
@@ -110,12 +116,14 @@ const FormularioSections: React.FC<Props> = ({
             label="Nombre Completo"
             required
             register={register}
+            error={errors.representativeFullName}
           />
           <FormField<InscripcionFormData>
             id="representativeIdentityCard"
             label="Cédula de Identidad"
             required
             register={register}
+            error={errors.representativeIdentityCard}
           />
           <div className="md:col-span-2">
             <FormField<InscripcionFormData>
@@ -123,6 +131,7 @@ const FormularioSections: React.FC<Props> = ({
               label="Dirección"
               required
               register={register}
+              error={errors.representativeAddress}
             />
           </div>
           <FormField<InscripcionFormData>
@@ -130,12 +139,14 @@ const FormularioSections: React.FC<Props> = ({
             label="Teléfono"
             required
             register={register}
+            error={errors.representativePhone}
           />
           <FormField<InscripcionFormData>
             id="relationship"
             label="Relación con el estudiante"
             required
             register={register}
+            error={errors.relationship}
           />
           <FormField<InscripcionFormData>
             id="parentName"
@@ -189,12 +200,14 @@ const FormularioSections: React.FC<Props> = ({
                 label="Nombre Completo"
                 required
                 register={register}
+                error={errors.students?.[index]?.fullName}
               />
               <FormField<InscripcionFormData>
                 id={`students.${index}.identityCard`}
                 label="Cédula"
                 required
                 register={register}
+                error={errors.students?.[index]?.identityCard}
               />
               <FormField<InscripcionFormData>
                 id={`students.${index}.birthDate`}
@@ -202,30 +215,35 @@ const FormularioSections: React.FC<Props> = ({
                 type="date"
                 required
                 register={register}
+                error={errors.students?.[index]?.birthDate}
               />
               <FormField<InscripcionFormData>
                 id={`students.${index}.nationality`}
                 label="Nacionalidad"
                 required
                 register={register}
+                error={errors.students?.[index]?.nationality}
               />
               <FormField<InscripcionFormData>
                 id={`students.${index}.birthCountry`}
                 label="País de Nacimiento"
                 required
                 register={register}
+                error={errors.students?.[index]?.birthCountry}
               />
               <FormField<InscripcionFormData>
                 id={`students.${index}.state`}
                 label="Estado"
                 required
                 register={register}
+                error={errors.students?.[index]?.state}
               />
               <FormField<InscripcionFormData>
                 id={`students.${index}.zone`}
                 label="Zona donde vive"
                 required
                 register={register}
+                error={errors.students?.[index]?.zone}
               />
               <FormField<InscripcionFormData>
                 id={`students.${index}.municipality`}
@@ -251,16 +269,24 @@ const FormularioSections: React.FC<Props> = ({
                   { value: '4to año', text: '4to año' },
                   { value: '5to año', text: '5to año' },
                 ]}
+                error={errors.students?.[index]?.aspiredGrade}
               />
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700">
                   Dirección Completa <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  {...register(`students.${index}.addressDescription`, { required: true })}
-                  className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm"
+                  {...register(`students.${index}.addressDescription`, { required: 'Dirección requerida' })}
+                  className={`mt-1 block w-full rounded-lg border-slate-300 shadow-sm ${
+                    errors.students?.[index]?.addressDescription ? 'border-red-500' : ''
+                  }`}
                   rows={2}
                 />
+                {errors.students?.[index]?.addressDescription && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.students[index]?.addressDescription?.message}
+                  </p>
+                )}
               </div>
               <FormField<InscripcionFormData>
                 id={`students.${index}.phone`}
@@ -272,12 +298,14 @@ const FormularioSections: React.FC<Props> = ({
                 label="Contacto de Emergencia"
                 required
                 register={register}
+                error={errors.students?.[index]?.emergencyContact}
               />
               <FormField<InscripcionFormData>
                 id={`students.${index}.emergencyPhone`}
                 label="Teléfono Emergencia"
                 required
                 register={register}
+                error={errors.students?.[index]?.emergencyPhone}
               />
               <div className="flex items-center space-x-4">
                 <FormField<InscripcionFormData>
@@ -314,4 +342,3 @@ const FormularioSections: React.FC<Props> = ({
 };
 
 export default FormularioSections;
- 

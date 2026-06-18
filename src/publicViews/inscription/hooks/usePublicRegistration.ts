@@ -20,35 +20,37 @@ export function usePublicRegistration() {
       setPlanillaNumber(response.planillaNumber);
       setStep('verify');
     } catch (error: any) {
+      console.error('Error en registro:', error);
       toast.error(error.message || 'Error en el registro');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const handleVerify = useCallback(async (code: string): Promise<string | null> => {
-  if (!code || code.length !== 5) {
-    toast.error('Ingresa un código de 5 dígitos');
-    return null;
-  }
-  setLoading(true);
-  try {
-    const { pdfBase64 } = await verifyEmailCode({ email: registeredEmail, code });
-    toast.success('Correo verificado con éxito.');
-    setStep('success');
-    return pdfBase64;       // ← devuelve el base64
-  } catch (error: any) {
-    toast.error(error.message || 'Código incorrecto o expirado');
-    return null;
-  } finally {
-    setLoading(false);
-  }
-}, [registeredEmail]);
+  const handleVerify = useCallback(async (code: string) => {
+    if (!code || code.length !== 5) {
+      toast.error('Ingresa un código de 5 dígitos');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { pdfBase64 } = await verifyEmailCode({ email: registeredEmail, code });
+      toast.success('Correo verificado con éxito.');
+      setStep('success');
+      // Si quieres descargar el PDF directamente: downloadPDFFromBase64(pdfBase64, planillaNumber);
+      // o simplemente lo guardas para el botón de descarga. Aquí ya lo tenemos en el estado.
+      console.log('PDF recibido:', pdfBase64 ? 'Sí' : 'No');
+    } catch (error: any) {
+      toast.error(error.message || 'Código incorrecto o expirado');
+    } finally {
+      setLoading(false);
+    }
+  }, [registeredEmail]);
 
   const reset = useCallback(() => {
     setStep('form');
     setRegisteredEmail('');
-    setPlanillaNumber(null); 
+    setPlanillaNumber(null);
     setLoading(false);
   }, []);
 
