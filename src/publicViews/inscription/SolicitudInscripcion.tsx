@@ -160,10 +160,20 @@ const generatePdfBase64 = (
     try {
       console.log('🔧 [generatePdfBase64] Generando base64...');
       const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
-      (pdfMake.createPdf(docDefinition) as any).getDataUrl((dataUrl: string) => {
-        const base64 = dataUrl.split(',')[1];
-        console.log(`📄 [generatePdfBase64] Base64 generado (longitud ${base64.length})`);
-        resolve(base64);
+      const pdfDocGenerator = pdfMake.createPdf(docDefinition);
+
+      // Cast a any para evitar el error de tipado con getBlob
+      (pdfDocGenerator as any).getBlob((blob: Blob) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          console.log(`📄 [generatePdfBase64] Base64 generado (longitud ${base64.length})`);
+          resolve(base64);
+        };
+        reader.onerror = () => {
+          reject(new Error('Error al leer el blob del PDF'));
+        };
+        reader.readAsDataURL(blob);
       });
     } catch (error) {
       console.error('❌ [generatePdfBase64] Error:', error);
