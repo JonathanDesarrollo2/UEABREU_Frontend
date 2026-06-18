@@ -10,13 +10,13 @@ import AcuerdoModal from './components/Modal';
 import FormularioSections from './components/FormSection';
 import type { InscripcionFormData } from '../../types/inscripcion';
 
-// pdfmake imports (exactamente como en AdminRegistrationsList)
+// pdfmake imports (CORRECCIÓN AQUÍ)
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 console.log('📄 [pdfmake] pdfFonts importado:', pdfFonts);
-console.log('📄 [pdfmake] ¿tiene vfs?', !!(pdfFonts as any).vfs);
-(pdfMake as any).vfs = pdfFonts.vfs;
-console.log('📄 [pdfmake] Asignación de vfs completada');
+// Asignación directa porque pdfFonts YA ES el objeto que pdfmake necesita en vfs
+(pdfMake as any).vfs = pdfFonts;
+console.log('📄 [pdfmake] vfs asignado correctamente');
 
 const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
 
