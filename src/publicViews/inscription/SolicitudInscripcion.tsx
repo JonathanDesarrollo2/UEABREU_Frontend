@@ -10,27 +10,21 @@ import AcuerdoModal from './components/Modal';
 import FormularioSections from './components/FormSection';
 import type { InscripcionFormData } from '../../types/inscripcion';
 
-// pdfmake imports (CORRECCIÓN AQUÍ)
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-console.log('📄 [pdfmake] pdfFonts importado:', pdfFonts);
-// Asignación directa porque pdfFonts YA ES el objeto que pdfmake necesita en vfs
-(pdfMake as any).vfs = pdfFonts;
-console.log('📄 [pdfmake] vfs asignado correctamente');
+(pdfMake as any).vfs = pdfFonts; // Asignación directa, ya funciona
+console.log('📄 [pdfmake] Fuentes asignadas');
 
 const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
 
 // ------------------------------------------------------------
-// Definición UNIFICADA del documento (idéntica a la del admin)
+// Definición del documento (idéntica a la del admin)
 // -----------------------------------------------------------
 const buildDocDefinition = (
   data: InscripcionFormData,
   planillaNumber: number | null,
   _calcularEdad: (fecha: string) => number | string
 ): any => {
-  console.log('🏗️ [buildDocDefinition] Iniciando construcción del documento...');
-  console.log('🏗️ Datos recibidos:', { email: data.email, planilla: planillaNumber, studentsCount: data.students.length });
-
   const calcEdad = (fecha: string): number | string => {
     if (!fecha) return '';
     const hoy = new Date();
@@ -41,7 +35,7 @@ const buildDocDefinition = (
     return edad;
   };
 
-  const docDef = {
+  return {
     pageSize: 'A4',
     pageMargins: [20, 20, 20, 20],
     content: [
@@ -133,83 +127,69 @@ const buildDocDefinition = (
     },
     defaultStyle: { fontSize: 8, lineHeight: 1.15 },
   };
-
-  console.log('🏗️ [buildDocDefinition] Documento definido correctamente');
-  return docDef;
 };
 
 // ------------------------------------------------------------
-// Descarga directa del PDF (para botón de prueba y éxito)
+// Descarga directa del PDF (para botón de prueba)
 // ------------------------------------------------------------
 const downloadPDF = (
   data: InscripcionFormData,
   planillaNumber: number | null,
   calcularEdad: (fecha: string) => number | string
 ) => {
-  console.log('⬇️ [downloadPDF] Iniciando descarga directa...');
-  try {
-    const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
-    console.log('⬇️ [downloadPDF] Documento construido, llamando a pdfMake.createPdf...');
-    pdfMake.createPdf(docDefinition).download(`Planilla_Inscripcion_${planillaNumber ?? 'UEEA'}.pdf`);
-    console.log('⬇️ [downloadPDF] Descarga invocada');
-  } catch (error) {
-    console.error('❌ [downloadPDF] Error:', error);
-    toast.error('Error al generar el PDF.');
-  }
+  const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
+  pdfMake.createPdf(docDefinition).download(`Planilla_Inscripcion_${planillaNumber ?? 'UEEA'}.pdf`);
 };
 
 // ------------------------------------------------------------
-// Genera el PDF en base64 usando getDataUrl
+// Conversión Blob → base64 (auxiliar)
 // ------------------------------------------------------------
-const generatePdfBase64 = (
+const blobToBase64 = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+// ------------------------------------------------------------
+// Generación del PDF en base64 (doble estrategia)
+// ------------------------------------------------------------
+const generatePdfBase64 = async (
   data: InscripcionFormData,
   planillaNumber: number | null,
   calcularEdad: (fecha: string) => number | string
 ): Promise<string> => {
-  console.log('🧪 [generatePdfBase64] Comienza generación de base64...');
-  return new Promise((resolve, reject) => {
-    let isSettled = false;
+  const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
+  const pdfGenerator = pdfMake.createPdf(docDefinition);
 
-    // Timeout de seguridad: si en 20 segundos no se resuelve, rechazamos automáticamente
-    const timeoutId = setTimeout(() => {
-      if (!isSettled) {
-        isSettled = true;
-        console.error('⏰ [generatePdfBase64] TIMEOUT: getDataUrl nunca respondió');
-        reject(new Error('Timeout: la generación del PDF tardó demasiado (posible error interno de pdfmake)'));
-      }
-    }, 20000);
-
+  // Estrategia 1: getBlob directo como promesa (soportado por versiones modernas)
+  if (typeof (pdfGenerator as any).getBlob === 'function') {
     try {
-      console.log('🧪 [generatePdfBase64] Construyendo docDefinition...');
-      const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
-      console.log('🧪 [generatePdfBase64] docDefinition listo, creando pdfMake.createPdf...');
-      const pdfDocGenerator = pdfMake.createPdf(docDefinition);
-      console.log('🧪 [generatePdfBase64] pdfDocGenerator creado, llamando a getDataUrl...');
-
-      // @ts-ignore - getDataUrl puede no estar en tipos pero existe
-      pdfDocGenerator.getDataUrl((dataUrl: string) => {
-        if (!isSettled) {
-          isSettled = true;
-          clearTimeout(timeoutId);
-          console.log('✅ [generatePdfBase64] getDataUrl respondió exitosamente');
-          try {
-            const base64 = dataUrl.split(',')[1];
-            console.log('📄 Base64 extraído, longitud:', base64.length);
-            resolve(base64);
-          } catch (err) {
-            console.error('❌ [generatePdfBase64] Error al extraer base64 del dataUrl:', err);
-            reject(err);
-          }
-        }
-      });
-    } catch (err) {
-      if (!isSettled) {
-        isSettled = true;
-        clearTimeout(timeoutId);
-        console.error('❌ [generatePdfBase64] Error síncrono al crear PDF:', err);
-        reject(err);
+      const blob: Blob = await (pdfGenerator as any).getBlob();
+      if (blob) {
+        console.log('✅ [PDF] getBlob directo exitoso');
+        return await blobToBase64(blob);
       }
+    } catch (e) {
+      console.warn('⚠️ [PDF] getBlob falló, usando interceptación de download...');
     }
+  }
+
+  // Estrategia 2: Interceptar download / saveAs
+  return new Promise((resolve, reject) => {
+    const originalDownload = (pdfGenerator as any).download.bind(pdfGenerator);
+    (pdfGenerator as any).download = function () {
+      (pdfGenerator as any).saveAs = function (blob: Blob, _name?: string) {
+        console.log('🎯 [PDF] Blob interceptado vía saveAs');
+        blobToBase64(blob).then(resolve).catch(reject);
+      };
+      originalDownload('temp.pdf');
+    };
+    (pdfGenerator as any).download();
   });
 };
 
@@ -247,40 +227,61 @@ const SolicitudInscripcion: React.FC = () => {
       parentName: '',
       parentIdentityCard: '',
       parentPhone: '',
-      students: [{
-        fullName: '', identityCard: '', birthDate: '', nationality: '', birthCountry: '',
-        state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
-        emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
-        hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: '',
-        aspiredGrade: ''
-      }]
-    }
+      students: [
+        {
+          fullName: '',
+          identityCard: '',
+          birthDate: '',
+          nationality: '',
+          birthCountry: '',
+          state: '',
+          zone: '',
+          addressDescription: '',
+          phone: '',
+          emergencyContact: '',
+          emergencyPhone: '',
+          hasAllergies: false,
+          allergiesDescription: '',
+          hasDiseases: false,
+          diseasesDescription: '',
+          previousSchool: '',
+          municipality: '',
+          aspiredGrade: '',
+        },
+      ],
+    },
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'students' });
 
   const addStudent = useCallback(() => {
     append({
-      fullName: '', identityCard: '', birthDate: '', nationality: '', birthCountry: '',
-      state: '', zone: '', addressDescription: '', phone: '', emergencyContact: '',
-      emergencyPhone: '', hasAllergies: false, allergiesDescription: '',
-      hasDiseases: false, diseasesDescription: '', previousSchool: '', municipality: '',
-      aspiredGrade: ''
+      fullName: '',
+      identityCard: '',
+      birthDate: '',
+      nationality: '',
+      birthCountry: '',
+      state: '',
+      zone: '',
+      addressDescription: '',
+      phone: '',
+      emergencyContact: '',
+      emergencyPhone: '',
+      hasAllergies: false,
+      allergiesDescription: '',
+      hasDiseases: false,
+      diseasesDescription: '',
+      previousSchool: '',
+      municipality: '',
+      aspiredGrade: '',
     });
   }, [append]);
 
   useEffect(() => {
-    console.log('🌐 [SolicitudInscripcion] Verificando estado de registro...');
     fetch(`${API_BASE}/public/registration-status`)
       .then(res => res.json())
-      .then(data => {
-        console.log('🌐 Estado de registro recibido:', data);
-        setRegistrationOpen(data.result ? data.content.registrationsEnabled : false);
-      })
-      .catch(err => {
-        console.error('🌐 Error al verificar registro:', err);
-        setRegistrationOpen(false);
-      });
+      .then(data => setRegistrationOpen(data.result ? data.content.registrationsEnabled : false))
+      .catch(() => setRegistrationOpen(false));
   }, []);
 
   const generateLogin = () => 'Rep' + Math.floor(1000 + Math.random() * 9000);
@@ -296,28 +297,22 @@ const SolicitudInscripcion: React.FC = () => {
   };
 
   const onSubmit = async (data: InscripcionFormData) => {
-    console.log('📨 [onSubmit] Iniciando envío del formulario...');
-    console.log('📨 Datos del formulario:', data);
-
+    console.log('📨 [onSubmit] Iniciando envío...');
     if (!acuerdoAceptado) {
-      console.log('❌ Acuerdo no aceptado');
       toast.error('Debe aceptar el Acuerdo de Convivencia antes de continuar.');
       return;
     }
     if (data.password !== data.confirmPassword) {
-      console.log('❌ Contraseñas no coinciden');
       toast.error('Las contraseñas no coinciden');
       return;
     }
 
     setSubmitting(true);
-    console.log('✅ Validaciones pasadas, generando PDF...');
-
     try {
       const login = data.userlogin.trim() === '' ? generateLogin() : data.userlogin;
-      console.log('🔑 Login generado:', login);
+      console.log('🔑 Login:', login);
 
-      console.log('🔧 Llamando a generatePdfBase64...');
+      console.log('🔧 Generando PDF...');
       const pdfBase64 = await generatePdfBase64(data, planillaNumber, calcularEdad);
       console.log('✅ PDF base64 generado, longitud:', pdfBase64.length);
 
@@ -364,23 +359,19 @@ const SolicitudInscripcion: React.FC = () => {
         pdfBase64,
       };
 
-      console.log('📦 Payload listo, guardando datos para PDF posterior...');
       setFormDataForPDF(data);
-
-      console.log('🚀 Enviando payload a handleRegister...');
+      console.log('📦 Enviando a handleRegister...');
       await handleRegister(payload);
-      console.log('✅ handleRegister completado');
+      console.log('✅ Registro completado');
     } catch (error: any) {
-      console.error('❌ [onSubmit] Error:', error);
+      console.error('❌ Error:', error);
       toast.error(error?.message || 'Error al procesar el formulario');
     } finally {
-      console.log('🏁 [onSubmit] Finalizando...');
       setSubmitting(false);
     }
   };
 
   const handlePrint = () => {
-    console.log('🖨️ [handlePrint] Solicitando descarga...');
     if (formDataForPDF) {
       downloadPDF(formDataForPDF, planillaNumber, calcularEdad);
     } else {
@@ -389,17 +380,15 @@ const SolicitudInscripcion: React.FC = () => {
   };
 
   const handleTestPrint = useCallback(() => {
-    console.log('🧪 [handleTestPrint] Descargando PDF de prueba...');
     downloadPDF(MOCK_DATA, 9999, calcularEdad);
   }, [calcularEdad]);
 
   const aceptarAcuerdo = () => {
-    console.log('📝 Acuerdo aceptado');
     setAcuerdoAceptado(true);
     setShowAcuerdo(false);
   };
 
-  // Vistas condicionales...
+  // Vistas condicionales (sin cambios)
   if (registrationOpen === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white">
@@ -542,8 +531,10 @@ const SolicitudInscripcion: React.FC = () => {
               Introdúcelo para continuar.
             </p>
             <input
-              type="text" maxLength={5} value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+              type="text"
+              maxLength={5}
+              value={verificationCode}
+              onChange={e => setVerificationCode(e.target.value.replace(/\D/g, ''))}
               placeholder="Código de 5 dígitos"
               className="text-2xl py-3 px-4 border-2 border-gray-300 rounded-lg text-center mb-4"
             />
@@ -568,8 +559,10 @@ const SolicitudInscripcion: React.FC = () => {
               Tu cuenta ha sido creada (aún inactiva hasta la entrevista).
               Ahora puedes descargar la planilla con tus datos. Recuerda llevarla a la entrevista presencial.
             </p>
-            <button onClick={handlePrint}
-              className="bg-green-600 text-white px-10 py-4 rounded-lg hover:bg-green-700 transition font-bold text-lg flex items-center justify-center mx-auto shadow-lg mt-8">
+            <button
+              onClick={handlePrint}
+              className="bg-green-600 text-white px-10 py-4 rounded-lg hover:bg-green-700 transition font-bold text-lg flex items-center justify-center mx-auto shadow-lg mt-8"
+            >
               <FiPrinter className="mr-2" /> Descargar PDF
             </button>
           </motion.div>
