@@ -185,6 +185,7 @@ const SolicitudInscripcion: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acuerdoAceptado, setAcuerdoAceptado] = useState(false);
   const [showAcuerdo, setShowAcuerdo] = useState(false);
+  const [submitting, setSubmitting] = useState(false);   // 👈 nuevo estado
 
   const { register, handleSubmit, control } = useForm<InscripcionFormData>({
     defaultValues: {
@@ -254,65 +255,70 @@ const SolicitudInscripcion: React.FC = () => {
       return;
     }
 
-    const login = data.userlogin.trim() === '' ? generateLogin() : data.userlogin;
-
-    // Generar el PDF y obtener base64
-    let pdfBase64: string | undefined;
+    setSubmitting(true);   // 👈 deshabilita el botón inmediatamente
     try {
-      pdfBase64 = await generatePdfBase64(data, planillaNumber, calcularEdad);
-      console.log('✅ PDF base64 generado, longitud:', pdfBase64.length);
-    } catch (err) {
-      console.error('❌ Falló la generación del PDF:', err);
-      toast.error('No se pudo generar el PDF. Intente de nuevo.');
-      return;
+      const login = data.userlogin.trim() === '' ? generateLogin() : data.userlogin;
+
+      // Generar el PDF y obtener base64
+      let pdfBase64: string | undefined;
+      try {
+        pdfBase64 = await generatePdfBase64(data, planillaNumber, calcularEdad);
+        console.log('✅ PDF base64 generado, longitud:', pdfBase64.length);
+      } catch (err) {
+        console.error('❌ Falló la generación del PDF:', err);
+        toast.error('No se pudo generar el PDF. Intente de nuevo.');
+        return;
+      }
+
+      const payload: PublicRegisterPayload = {
+        usermail: data.email,
+        userlogin: login,
+        userpass: data.password,
+        userrepass: data.confirmPassword,
+        representativeData: {
+          fullName: data.representativeFullName,
+          identityCard: data.representativeIdentityCard,
+          address: data.representativeAddress,
+          phone: data.representativePhone,
+          relationship: data.relationship,
+          parentName: data.parentName,
+          parentIdentityCard: data.parentIdentityCard,
+          parentPhone: data.parentPhone,
+        },
+        studentsData: data.students
+          .filter(s => s.fullName.trim() && s.identityCard.trim())
+          .map(s => ({
+            fullName: s.fullName,
+            identityCard: s.identityCard,
+            birthDate: s.birthDate,
+            nationality: s.nationality,
+            birthCountry: s.birthCountry,
+            state: s.state,
+            zone: s.zone,
+            addressDescription: s.addressDescription,
+            phone: s.phone || '',
+            emergencyContact: s.emergencyContact,
+            emergencyPhone: s.emergencyPhone,
+            hasAllergies: s.hasAllergies || false,
+            allergiesDescription: s.allergiesDescription || '',
+            hasDiseases: s.hasDiseases || false,
+            diseasesDescription: s.diseasesDescription || '',
+            previousSchool: s.previousSchool || '',
+            municipality: s.municipality || '',
+            currentGrade: s.aspiredGrade || 'En asignar',
+            section: 'Pendiente',
+            status: 'pendiente',
+            balance: 0,
+          })),
+        pdfBase64,   // 👈 ¡Aquí va el PDF!
+      };
+
+      setFormDataForPDF(data);
+      console.log('📦 Enviando payload a registerPublic...');
+      await handleRegister(payload);
+    } finally {
+      setSubmitting(false);   // 👈 re-habilita el botón al terminar
     }
-
-    const payload: PublicRegisterPayload = {
-      usermail: data.email,
-      userlogin: login,
-      userpass: data.password,
-      userrepass: data.confirmPassword,
-      representativeData: {
-        fullName: data.representativeFullName,
-        identityCard: data.representativeIdentityCard,
-        address: data.representativeAddress,
-        phone: data.representativePhone,
-        relationship: data.relationship,
-        parentName: data.parentName,
-        parentIdentityCard: data.parentIdentityCard,
-        parentPhone: data.parentPhone,
-      },
-      studentsData: data.students
-        .filter(s => s.fullName.trim() && s.identityCard.trim())
-        .map(s => ({
-          fullName: s.fullName,
-          identityCard: s.identityCard,
-          birthDate: s.birthDate,
-          nationality: s.nationality,
-          birthCountry: s.birthCountry,
-          state: s.state,
-          zone: s.zone,
-          addressDescription: s.addressDescription,
-          phone: s.phone || '',
-          emergencyContact: s.emergencyContact,
-          emergencyPhone: s.emergencyPhone,
-          hasAllergies: s.hasAllergies || false,
-          allergiesDescription: s.allergiesDescription || '',
-          hasDiseases: s.hasDiseases || false,
-          diseasesDescription: s.diseasesDescription || '',
-          previousSchool: s.previousSchool || '',
-          municipality: s.municipality || '',
-          currentGrade: s.aspiredGrade || 'En asignar',
-          section: 'Pendiente',
-          status: 'pendiente',
-          balance: 0,
-        })),
-      pdfBase64,   // 👈 ¡Aquí va el PDF!
-    };
-
-    setFormDataForPDF(data);
-    console.log('📦 Enviando payload a registerPublic...');
-    await handleRegister(payload);
   };
 
   const handlePrint = () => {
@@ -328,10 +334,9 @@ const SolicitudInscripcion: React.FC = () => {
   }, [calcularEdad]);
 
   const aceptarAcuerdo = () => {
-  console.log('Acuerdo aceptado');   // 👈 añade esto
-  setAcuerdoAceptado(true);
-  setShowAcuerdo(false);
-};
+    setAcuerdoAceptado(true);
+    setShowAcuerdo(false);
+  };
 
   // ------------------------------------------------------------------
   // Vistas condicionales
@@ -441,11 +446,11 @@ const SolicitudInscripcion: React.FC = () => {
               <div className="flex flex-col items-center">
                 <button
                   type="submit"
-                  disabled={loading || !acuerdoAceptado}
+                  disabled={loading || submitting || !acuerdoAceptado}
                   className={`bg-blue-800 text-white px-8 py-3 rounded-lg hover:bg-blue-900 transition font-semibold disabled:opacity-50 ${!acuerdoAceptado ? 'cursor-not-allowed' : ''}`}
                   title={!acuerdoAceptado ? 'Debe aceptar el Acuerdo de Convivencia' : ''}
                 >
-                  {loading ? 'Registrando...' : 'Crear cuenta y enviar código'}
+                  {loading || submitting ? 'Registrando...' : 'Crear cuenta y enviar código'}
                 </button>
                 {!acuerdoAceptado && (
                   <p className="text-red-600 text-sm mt-2">
