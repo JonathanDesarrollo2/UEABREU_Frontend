@@ -147,7 +147,7 @@ const downloadPDF = (
 };
 
 // ------------------------------------------------------------
-// Genera el PDF en base64 para enviar al backend
+// Genera el PDF en base64 para enviar al backend (usando getBase64)
 // ------------------------------------------------------------
 const generatePdfBase64 = (
   data: InscripcionFormData,
@@ -159,14 +159,11 @@ const generatePdfBase64 = (
       const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
       const pdfDocGenerator = pdfMake.createPdf(docDefinition);
 
-      (pdfDocGenerator as any).getBlob((blob: Blob) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(',')[1];
-          resolve(base64);
-        };
-        reader.onerror = () => reject(new Error('Error al leer el blob del PDF'));
-        reader.readAsDataURL(blob);
+      // Usamos getBase64 en lugar de getBlob para evitar problemas de compatibilidad
+      (pdfDocGenerator as any).getBase64((base64: string) => {
+        resolve(base64);
+      }, (error: any) => {
+        reject(error);
       });
     } catch (error) {
       reject(error);
@@ -193,7 +190,7 @@ const SolicitudInscripcion: React.FC = () => {
     register,
     handleSubmit,
     control,
-    formState: { errors },       // <-- Capturamos los errores
+    formState: { errors },
   } = useForm<InscripcionFormData>({
     defaultValues: {
       email: '',
@@ -268,6 +265,7 @@ const SolicitudInscripcion: React.FC = () => {
 
       // Generar el PDF y obtener base64
       let pdfBase64: string | undefined;
+      console.log('🔧 Intentando generar PDF...');
       try {
         pdfBase64 = await generatePdfBase64(data, planillaNumber, calcularEdad);
         console.log('✅ PDF base64 generado, longitud:', pdfBase64.length);
@@ -322,7 +320,11 @@ const SolicitudInscripcion: React.FC = () => {
       };
 
       setFormDataForPDF(data);
+      console.log('📦 Enviando payload a handleRegister...');
       await handleRegister(payload);
+    } catch (error: any) {
+      console.error('❌ Error inesperado en onSubmit:', error);
+      toast.error(error?.message || 'Error al procesar el formulario');
     } finally {
       setSubmitting(false);
     }
@@ -458,7 +460,7 @@ const SolicitudInscripcion: React.FC = () => {
                 togglePassword={() => setShowPassword(!showPassword)}
                 showConfirmPassword={showConfirmPassword}
                 toggleConfirmPassword={() => setShowConfirmPassword(!showConfirmPassword)}
-                errors={errors}  // <-- Se pasan los errores
+                errors={errors}
               />
 
               <div className="flex flex-col items-center">
