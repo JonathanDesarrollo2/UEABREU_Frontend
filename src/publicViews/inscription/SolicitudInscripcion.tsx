@@ -12,8 +12,7 @@ import type { InscripcionFormData } from '../../types/inscripcion';
 
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-(pdfMake as any).vfs = pdfFonts; // Asignación directa, ya funciona
-console.log('📄 [pdfmake] Fuentes asignadas');
+(pdfMake as any).vfs = pdfFonts;
 
 const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
 
@@ -171,11 +170,10 @@ const generatePdfBase64 = async (
     try {
       const blob: Blob = await (pdfGenerator as any).getBlob();
       if (blob) {
-        console.log('✅ [PDF] getBlob directo exitoso');
         return await blobToBase64(blob);
       }
     } catch (e) {
-      console.warn('⚠️ [PDF] getBlob falló, usando interceptación de download...');
+      // Fallback silencioso
     }
   }
 
@@ -183,8 +181,7 @@ const generatePdfBase64 = async (
   return new Promise((resolve, reject) => {
     const originalDownload = (pdfGenerator as any).download.bind(pdfGenerator);
     (pdfGenerator as any).download = function () {
-      (pdfGenerator as any).saveAs = function (blob: Blob, _name?: string) {
-        console.log('🎯 [PDF] Blob interceptado vía saveAs');
+      (pdfGenerator as any).saveAs = function (blob: Blob) {
         blobToBase64(blob).then(resolve).catch(reject);
       };
       originalDownload('temp.pdf');
@@ -296,8 +293,15 @@ const SolicitudInscripcion: React.FC = () => {
     return edad;
   };
 
+  // Obtener el próximo número de planilla desde el backend
+  const fetchNextPlanillaNumber = async (): Promise<number> => {
+    const res = await fetch(`${API_BASE}/public/next-planilla-number`);
+    const data = await res.json();
+    if (!data.result) throw new Error(data.error?.[0] || 'No se pudo obtener el número de planilla');
+    return data.content.planillaNumber;
+  };
+
   const onSubmit = async (data: InscripcionFormData) => {
-    console.log('📨 [onSubmit] Iniciando envío...');
     if (!acuerdoAceptado) {
       toast.error('Debe aceptar el Acuerdo de Convivencia antes de continuar.');
       return;
@@ -310,17 +314,19 @@ const SolicitudInscripcion: React.FC = () => {
     setSubmitting(true);
     try {
       const login = data.userlogin.trim() === '' ? generateLogin() : data.userlogin;
-      console.log('🔑 Login:', login);
 
-      console.log('🔧 Generando PDF...');
-      const pdfBase64 = await generatePdfBase64(data, planillaNumber, calcularEdad);
-      console.log('✅ PDF base64 generado, longitud:', pdfBase64.length);
+      // Obtener el número de planilla real antes de generar el PDF
+      const nextNumber = await fetchNextPlanillaNumber();
+
+      // Generar el PDF con ese número
+      const pdfBase64 = await generatePdfBase64(data, nextNumber, calcularEdad);
 
       const payload: PublicRegisterPayload = {
         usermail: data.email,
         userlogin: login,
         userpass: data.password,
         userrepass: data.confirmPassword,
+        planillaNumber: nextNumber, // Se envía al backend para que lo use
         representativeData: {
           fullName: data.representativeFullName,
           identityCard: data.representativeIdentityCard,
@@ -360,11 +366,8 @@ const SolicitudInscripcion: React.FC = () => {
       };
 
       setFormDataForPDF(data);
-      console.log('📦 Enviando a handleRegister...');
       await handleRegister(payload);
-      console.log('✅ Registro completado');
     } catch (error: any) {
-      console.error('❌ Error:', error);
       toast.error(error?.message || 'Error al procesar el formulario');
     } finally {
       setSubmitting(false);
@@ -373,6 +376,7 @@ const SolicitudInscripcion: React.FC = () => {
 
   const handlePrint = () => {
     if (formDataForPDF) {
+      // Usar el planillaNumber del hook (que ya se actualizó después del registro)
       downloadPDF(formDataForPDF, planillaNumber, calcularEdad);
     } else {
       toast.error('No hay datos de planilla para descargar.');
@@ -388,7 +392,6 @@ const SolicitudInscripcion: React.FC = () => {
     setShowAcuerdo(false);
   };
 
-  // Vistas condicionales (sin cambios)
   if (registrationOpen === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white">

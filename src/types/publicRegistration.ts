@@ -45,6 +45,7 @@ export interface PublicRegisterPayload {
   representativeData: PublicRepresentative;
   studentsData: PublicStudent[];
   pdfBase64?: string;   // ← NUEVO
+  planillaNumber?: number;           // siempre 0
 }
 
 // Respuesta genérica de la API
