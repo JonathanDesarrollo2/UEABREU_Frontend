@@ -10,15 +10,15 @@ import AcuerdoModal from './components/Modal';
 import FormularioSections from './components/FormSection';
 import type { InscripcionFormData } from '../../types/inscripcion';
 
-// pdfmake imports
+// pdfmake imports (EXACTAMENTE IGUAL QUE EN ADMIN)
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-(pdfMake as any).vfs = pdfFonts.vfs;
+(pdfMake as any).vfs = pdfFonts.vfs; // ← Tal cual como en AdminRegistrationsList
 
 const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
 
 // ------------------------------------------------------------
-// Definición UNIFICADA del documento (se devuelve como any para evitar errores de tipos)
+// Definición UNIFICADA del documento (igual que en admin)
 // -----------------------------------------------------------
 const buildDocDefinition = (
   data: InscripcionFormData,
@@ -37,7 +37,7 @@ const buildDocDefinition = (
 
   return {
     pageSize: 'A4',
-    pageMargins: [20, 20, 20, 20] as [number, number, number, number],
+    pageMargins: [20, 20, 20, 20],
     content: [
       { text: 'PLANILLA DE SOLICITUD DE INSCRIPCIÓN', style: 'title' },
       { text: 'U.E. José Antonio Abreu - Naguanagua', style: 'subtitle' },
@@ -61,7 +61,7 @@ const buildDocDefinition = (
                   { text: `Cédula Padre/Madre: ${data.parentIdentityCard || '-'}` },
                   { text: `Teléfono Padre/Madre: ${data.parentPhone || '-'}` },
                 ],
-                margin: [0, 0, 5, 0] as [number, number, number, number],
+                margin: [0, 0, 5, 0],
               },
               {
                 stack: [
@@ -86,7 +86,7 @@ const buildDocDefinition = (
                       { text: `Alergias: ${est.hasAllergies ? est.allergiesDescription : 'No'}` },
                       { text: `Enfermedades: ${est.hasDiseases ? est.diseasesDescription : 'No'}` },
                     ],
-                    margin: [0, 0, 0, 8] as [number, number, number, number],
+                    margin: [0, 0, 0, 8],
                   })),
                 ],
               },
@@ -117,12 +117,12 @@ const buildDocDefinition = (
       },
     ],
     styles: {
-      title: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 5, 0, 0] as [number, number, number, number] },
-      subtitle: { fontSize: 10, alignment: 'center', margin: [0, 0, 0, 5] as [number, number, number, number] },
-      date: { fontSize: 9, alignment: 'center', margin: [0, 0, 0, 10] as [number, number, number, number] },
-      sectionHeader: { fontSize: 11, bold: true, decoration: 'underline', margin: [0, 0, 0, 4] as [number, number, number, number] },
-      studentTitle: { fontSize: 10, bold: true, margin: [0, 4, 0, 2] as [number, number, number, number] },
-      note: { fontSize: 8, alignment: 'center', color: 'red', margin: [0, 10, 0, 0] as [number, number, number, number] },
+      title: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 5, 0, 0] },
+      subtitle: { fontSize: 10, alignment: 'center', margin: [0, 0, 0, 5] },
+      date: { fontSize: 9, alignment: 'center', margin: [0, 0, 0, 10] },
+      sectionHeader: { fontSize: 11, bold: true, decoration: 'underline', margin: [0, 0, 0, 4] },
+      studentTitle: { fontSize: 10, bold: true, margin: [0, 4, 0, 2] },
+      note: { fontSize: 8, alignment: 'center', color: 'red', margin: [0, 10, 0, 0] },
       bold: { bold: true, fontSize: 9 },
     },
     defaultStyle: { fontSize: 8, lineHeight: 1.15 },
@@ -147,7 +147,7 @@ const downloadPDF = (
 };
 
 // ------------------------------------------------------------
-// Genera el PDF en base64 para enviar al backend (usando getBase64)
+// Genera el PDF en base64 usando getDataUrl (más fiable)
 // ------------------------------------------------------------
 const generatePdfBase64 = (
   data: InscripcionFormData,
@@ -159,11 +159,11 @@ const generatePdfBase64 = (
       const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
       const pdfDocGenerator = pdfMake.createPdf(docDefinition);
 
-      // Usamos getBase64 en lugar de getBlob para evitar problemas de compatibilidad
-      (pdfDocGenerator as any).getBase64((base64: string) => {
+      // Usamos getDataUrl en lugar de getBase64 (mismo método interno que download)
+      (pdfDocGenerator as any).getDataUrl((dataUrl: string) => {
+        // dataUrl viene en formato "data:application/pdf;base64,..."
+        const base64 = dataUrl.split(',')[1];
         resolve(base64);
-      }, (error: any) => {
-        reject(error);
       });
     } catch (error) {
       reject(error);
