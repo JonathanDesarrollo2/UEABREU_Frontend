@@ -328,9 +328,10 @@ const SolicitudInscripcion: React.FC = () => {
   }, [calcularEdad]);
 
   const aceptarAcuerdo = () => {
-    setAcuerdoAceptado(true);
-    setShowAcuerdo(false);
-  };
+  console.log('Acuerdo aceptado');   // 👈 añade esto
+  setAcuerdoAceptado(true);
+  setShowAcuerdo(false);
+};
 
   // ------------------------------------------------------------------
   // Vistas condicionales
