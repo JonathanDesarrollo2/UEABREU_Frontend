@@ -1,7 +1,16 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
-import { FaDownload, FaCheck, FaTrash, FaSearch } from "react-icons/fa";
+import {
+  FaDownload,
+  FaCheck,
+  FaTrash,
+  FaSearch,
+  FaAngleDoubleLeft,
+  FaAngleLeft,
+  FaAngleRight,
+  FaAngleDoubleRight,
+} from "react-icons/fa";
 import ConfirmModal from "../../components/ConfirmModal";
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -18,6 +27,39 @@ interface Application {
   userActive: boolean;
   createdAt: string;
 }
+
+// Helper para construir la lista de páginas con ellipsis
+const buildPageNumbers = (current: number, total: number): (number | "...")[] => {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  const pages: (number | "...")[] = [];
+
+  // Siempre mostrar primera página
+  pages.push(1);
+
+  if (current > 3) {
+    pages.push("...");
+  }
+
+  // Páginas alrededor de la actual
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+
+  if (current < total - 2) {
+    pages.push("...");
+  }
+
+  // Siempre mostrar última página
+  pages.push(total);
+
+  return pages;
+};
 
 const AdminRegistrationsList: React.FC = () => {
   const [applications, setApplications] = useState<Application[]>([]);
@@ -239,6 +281,9 @@ const AdminRegistrationsList: React.FC = () => {
     setAction(null);
   };
 
+  // Construir la lista de páginas a mostrar
+  const pageNumbers = buildPageNumbers(page, totalPages);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -370,28 +415,72 @@ const AdminRegistrationsList: React.FC = () => {
               </table>
             </div>
 
-            {/* Paginación mejorada */}
+            {/* Paginación avanzada */}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
               <div className="text-sm text-gray-500">
                 Mostrando {((page - 1) * limit) + 1} – {Math.min(page * limit, totalRecords)} de {totalRecords} resultados
               </div>
-              <div className="flex items-center gap-2">
+
+              <div className="flex items-center gap-1">
+                {/* Primera página */}
                 <button
+                  onClick={() => setPage(1)}
                   disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="px-2 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Primera página"
                 >
-                  Anterior
+                  <FaAngleDoubleLeft className="text-lg" />
                 </button>
-                <span className="px-4 py-2 bg-gray-100 rounded-lg text-gray-700 font-semibold">
-                  {page} / {totalPages}
-                </span>
+
+                {/* Anterior */}
                 <button
-                  disabled={page === totalPages}
-                  onClick={() => setPage(page + 1)}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1}
+                  className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
+                  title="Página anterior"
                 >
-                  Siguiente
+                  <FaAngleLeft className="text-lg" />
+                </button>
+
+                {/* Números de página */}
+                {pageNumbers.map((num, idx) =>
+                  num === "..." ? (
+                    <span key={`ellipsis-${idx}`} className="px-3 py-2 text-gray-500 select-none">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={num}
+                      onClick={() => setPage(num as number)}
+                      className={`min-w-[2.5rem] px-3 py-2 rounded-lg font-medium transition-colors ${
+                        page === num
+                          ? "bg-blue-600 text-white shadow-md"
+                          : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  )
+                )}
+
+                {/* Siguiente */}
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={page === totalPages}
+                  className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
+                  title="Página siguiente"
+                >
+                  <FaAngleRight className="text-lg" />
+                </button>
+
+                {/* Última página */}
+                <button
+                  onClick={() => setPage(totalPages)}
+                  disabled={page === totalPages}
+                  className="px-2 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Última página"
+                >
+                  <FaAngleDoubleRight className="text-lg" />
                 </button>
               </div>
             </div>
