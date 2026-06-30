@@ -1,578 +1,506 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { useForm, useFieldArray } from 'react-hook-form';
-import { FiClipboard, FiPrinter, FiMail, FiFileText } from 'react-icons/fi';
-import type { PublicRegisterPayload } from '../../types/publicRegistration';
-import { toast } from 'react-toastify';
-import { usePublicRegistration } from './hooks/usePublicRegistration';
-import { MOCK_DATA } from './const/constants';
-import AcuerdoModal from './components/Modal';
-import FormularioSections from './components/FormSection';
-import type { InscripcionFormData } from '../../types/inscripcion';
+import React, { useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
+import { toast } from "react-toastify";
+import {
+  FaDownload,
+  FaCheck,
+  FaTrash,
+  FaSearch,
+  FaAngleDoubleLeft,
+  FaAngleLeft,
+  FaAngleRight,
+  FaAngleDoubleRight,
+} from "react-icons/fa";
+import ConfirmModal from "../../components/ConfirmModal";
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
 
-import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
-(pdfMake as any).vfs = pdfFonts;
+(pdfMake as any).vfs = pdfFonts.vfs;
 
-const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
+const API_BASE = import.meta.env.VITE_API_URL || "https://appservices.ueabreu.com";
 
-// ------------------------------------------------------------
-// Definición del documento (idéntica a la del admin)
-// -----------------------------------------------------------
-const buildDocDefinition = (
-  data: InscripcionFormData,
-  planillaNumber: number | null,
-  _calcularEdad: (fecha: string) => number | string
-): any => {
-  const calcEdad = (fecha: string): number | string => {
-    if (!fecha) return '';
-    const hoy = new Date();
-    const nac = new Date(fecha);
-    let edad = hoy.getFullYear() - nac.getFullYear();
-    const mes = hoy.getMonth() - nac.getMonth();
-    if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--;
-    return edad;
-  };
+interface Application {
+  id: string;
+  planillaNumber: number;
+  email: string;
+  representativeName: string;
+  userActive: boolean;
+  createdAt: string;
+}
 
-  return {
-    pageSize: 'A4',
-    pageMargins: [20, 20, 20, 20],
-    content: [
-      { text: 'PLANILLA DE SOLICITUD DE INSCRIPCIÓN', style: 'title' },
-      { text: 'U.E. José Antonio Abreu - Naguanagua', style: 'subtitle' },
-      { text: `N° de Planilla: ${planillaNumber ?? '—'}    |    Fecha: ${new Date().toLocaleDateString()}`, style: 'date' },
-      { text: '\n' },
-      {
-        layout: 'noBorders',
-        table: {
-          widths: ['*', '*'],
-          body: [
-            [
-              {
-                stack: [
-                  { text: '1. DATOS DEL REPRESENTANTE', style: 'sectionHeader' },
-                  { text: `Nombre y Apellido: ${data.representativeFullName}` },
-                  { text: `Cédula de Identidad: ${data.representativeIdentityCard}` },
-                  { text: `Dirección: ${data.representativeAddress}` },
-                  { text: `Teléfono: ${data.representativePhone}` },
-                  { text: `Relación con el estudiante: ${data.relationship}` },
-                  { text: `Nombre del Padre/Madre: ${data.parentName || '-'}` },
-                  { text: `Cédula Padre/Madre: ${data.parentIdentityCard || '-'}` },
-                  { text: `Teléfono Padre/Madre: ${data.parentPhone || '-'}` },
-                ],
-                margin: [0, 0, 5, 0],
-              },
-              {
-                stack: [
-                  { text: '2. DATOS DE LOS SOLICITANTES', style: 'sectionHeader' },
-                  ...data.students.map((est, idx) => ({
-                    stack: [
-                      { text: `Solicitante ${idx + 1}`, style: 'studentTitle' },
-                      { text: `Nombre: ${est.fullName}` },
-                      { text: `Edad: ${calcEdad(est.birthDate)}` },
-                      { text: `Fecha Nac.: ${est.birthDate}` },
-                      { text: `Nacionalidad: ${est.nationality}` },
-                      { text: `País Nac.: ${est.birthCountry}` },
-                      { text: `Estado: ${est.state}` },
-                      { text: `Zona donde vive: ${est.zone}` },
-                      { text: `Municipio: ${est.municipality || '-'}` },
-                      { text: `Escuela de procedencia: ${est.previousSchool || '-'}` },
-                      { text: `Año que aspira: ${est.aspiredGrade}` },
-                      { text: `Dirección: ${est.addressDescription}` },
-                      { text: `Teléfono: ${est.phone || '-'}` },
-                      { text: `Emergencia: ${est.emergencyContact}` },
-                      { text: `Tel. Emerg.: ${est.emergencyPhone}` },
-                      { text: `Alergias: ${est.hasAllergies ? est.allergiesDescription : 'No'}` },
-                      { text: `Enfermedades: ${est.hasDiseases ? est.diseasesDescription : 'No'}` },
-                    ],
-                    margin: [0, 0, 0, 8],
-                  })),
-                ],
-              },
-            ],
-          ],
-        },
-      },
-      { text: '\n' },
-      { text: 'Para uso del representante:', style: 'bold' },
-      {
-        layout: 'noBorders',
-        table: {
-          widths: ['*', '*', '*', '*'],
-          body: [
-            [
-              '_________________\nFirma del Representante',
-              '_________________\nFirma de quien recibe',
-              '_________________\nSello',
-              'Fecha y hora: ________\n(Uso interno)',
-            ],
-          ],
-        },
-      },
-      { text: '\n' },
-      {
-        text: 'Nota: Esta planilla es solo una solicitud de preinscripción, no asegura ni garantiza un cupo definitivo. La aprobación está sujeta a disponibilidad y evaluación de la U.E. José Antonio Abreu.',
-        style: 'note',
-      },
-    ],
-    styles: {
-      title: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 5, 0, 0] },
-      subtitle: { fontSize: 10, alignment: 'center', margin: [0, 0, 0, 5] },
-      date: { fontSize: 9, alignment: 'center', margin: [0, 0, 0, 10] },
-      sectionHeader: { fontSize: 11, bold: true, decoration: 'underline', margin: [0, 0, 0, 4] },
-      studentTitle: { fontSize: 10, bold: true, margin: [0, 4, 0, 2] },
-      note: { fontSize: 8, alignment: 'center', color: 'red', margin: [0, 10, 0, 0] },
-      bold: { bold: true, fontSize: 9 },
-    },
-    defaultStyle: { fontSize: 8, lineHeight: 1.15 },
-  };
-};
-
-// ------------------------------------------------------------
-// Descarga directa del PDF (para botón de prueba)
-// ------------------------------------------------------------
-const downloadPDF = (
-  data: InscripcionFormData,
-  planillaNumber: number | null,
-  calcularEdad: (fecha: string) => number | string
-) => {
-  const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
-  pdfMake.createPdf(docDefinition).download(`Planilla_Inscripcion_${planillaNumber ?? 'UEEA'}.pdf`);
-};
-
-// ------------------------------------------------------------
-// Conversión Blob → base64 (auxiliar)
-// ------------------------------------------------------------
-const blobToBase64 = (blob: Blob): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = (reader.result as string).split(',')[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-
-// ------------------------------------------------------------
-// Generación del PDF en base64 (doble estrategia)
-// ------------------------------------------------------------
-const generatePdfBase64 = async (
-  data: InscripcionFormData,
-  planillaNumber: number | null,
-  calcularEdad: (fecha: string) => number | string
-): Promise<string> => {
-  const docDefinition = buildDocDefinition(data, planillaNumber, calcularEdad);
-  const pdfGenerator = pdfMake.createPdf(docDefinition);
-
-  // Estrategia 1: getBlob directo como promesa (soportado por versiones modernas)
-  if (typeof (pdfGenerator as any).getBlob === 'function') {
-    try {
-      const blob: Blob = await (pdfGenerator as any).getBlob();
-      if (blob) {
-        return await blobToBase64(blob);
-      }
-    } catch (e) {
-      // Fallback silencioso
-    }
+// Helper para construir la lista de páginas con ellipsis
+const buildPageNumbers = (current: number, total: number): (number | "...")[] => {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
   }
 
-  // Estrategia 2: Interceptar download / saveAs
-  return new Promise((resolve, reject) => {
-    const originalDownload = (pdfGenerator as any).download.bind(pdfGenerator);
-    (pdfGenerator as any).download = function () {
-      (pdfGenerator as any).saveAs = function (blob: Blob) {
-        blobToBase64(blob).then(resolve).catch(reject);
-      };
-      originalDownload('temp.pdf');
-    };
-    (pdfGenerator as any).download();
-  });
+  const pages: (number | "...")[] = [];
+
+  // Siempre mostrar primera página
+  pages.push(1);
+
+  if (current > 3) {
+    pages.push("...");
+  }
+
+  // Páginas alrededor de la actual
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+
+  if (current < total - 2) {
+    pages.push("...");
+  }
+
+  // Siempre mostrar última página
+  pages.push(total);
+
+  return pages;
 };
 
-// ------------------------------------------------------------
-// Componente principal
-// ------------------------------------------------------------
-const SolicitudInscripcion: React.FC = () => {
-  const { step, loading, registeredEmail, planillaNumber, handleRegister, handleVerify } = usePublicRegistration();
+const AdminRegistrationsList: React.FC = () => {
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [action, setAction] = useState<"activate" | "delete" | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
 
-  const [formDataForPDF, setFormDataForPDF] = useState<InscripcionFormData | null>(null);
-  const [verificationCode, setVerificationCode] = useState('');
-  const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [acuerdoAceptado, setAcuerdoAceptado] = useState(false);
-  const [showAcuerdo, setShowAcuerdo] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const token = localStorage.getItem("tokcattleraising_inCattleRanchCloud") || "";
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    formState: { errors },
-  } = useForm<InscripcionFormData>({
-    defaultValues: {
-      email: '',
-      password: '',
-      confirmPassword: '',
-      userlogin: '',
-      representativeFullName: '',
-      representativeIdentityCard: '',
-      representativeAddress: '',
-      representativePhone: '',
-      relationship: '',
-      parentName: '',
-      parentIdentityCard: '',
-      parentPhone: '',
-      students: [
-        {
-          fullName: '',
-          identityCard: '',
-          birthDate: '',
-          nationality: '',
-          birthCountry: '',
-          state: '',
-          zone: '',
-          addressDescription: '',
-          phone: '',
-          emergencyContact: '',
-          emergencyPhone: '',
-          hasAllergies: false,
-          allergiesDescription: '',
-          hasDiseases: false,
-          diseasesDescription: '',
-          previousSchool: '',
-          municipality: '',
-          aspiredGrade: '',
-        },
-      ],
-    },
-  });
-
-  const { fields, append, remove } = useFieldArray({ control, name: 'students' });
-
-  const addStudent = useCallback(() => {
-    append({
-      fullName: '',
-      identityCard: '',
-      birthDate: '',
-      nationality: '',
-      birthCountry: '',
-      state: '',
-      zone: '',
-      addressDescription: '',
-      phone: '',
-      emergencyContact: '',
-      emergencyPhone: '',
-      hasAllergies: false,
-      allergiesDescription: '',
-      hasDiseases: false,
-      diseasesDescription: '',
-      previousSchool: '',
-      municipality: '',
-      aspiredGrade: '',
-    });
-  }, [append]);
+  const fetchApplications = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        search: search.trim(),
+      });
+      const res = await fetch(`${API_BASE}/api/private/registrations/list?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.result) {
+        setApplications(data.content);
+        setTotalPages(data.pagination.totalPages);
+        setTotalRecords(data.pagination.totalRecords);
+      } else {
+        toast.error(data.error?.[0] || "Error al cargar solicitudes");
+      }
+    } catch (error) {
+      toast.error("Error de conexión al cargar solicitudes");
+    } finally {
+      setLoading(false);
+    }
+  }, [token, page, limit, search]);
 
   useEffect(() => {
-    fetch(`${API_BASE}/public/registration-status`)
-      .then(res => res.json())
-      .then(data => setRegistrationOpen(data.result ? data.content.registrationsEnabled : false))
-      .catch(() => setRegistrationOpen(false));
-  }, []);
+    fetchApplications();
+  }, [fetchApplications]);
 
-  const generateLogin = () => 'Rep' + Math.floor(1000 + Math.random() * 9000);
-
-  const calcularEdad = (fecha: string): number | string => {
-    if (!fecha) return '';
-    const hoy = new Date();
-    const nac = new Date(fecha);
-    let edad = hoy.getFullYear() - nac.getFullYear();
-    const mes = hoy.getMonth() - nac.getMonth();
-    if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--;
-    return edad;
-  };
-
-  // Obtener el próximo número de planilla desde el backend
-  const fetchNextPlanillaNumber = async (): Promise<number> => {
-    const res = await fetch(`${API_BASE}/public/next-planilla-number`);
-    const data = await res.json();
-    if (!data.result) throw new Error(data.error?.[0] || 'No se pudo obtener el número de planilla');
-    return data.content.planillaNumber;
-  };
-
-  const onSubmit = async (data: InscripcionFormData) => {
-    if (!acuerdoAceptado) {
-      toast.error('Debe aceptar el Acuerdo de Convivencia antes de continuar.');
-      return;
-    }
-    if (data.password !== data.confirmPassword) {
-      toast.error('Las contraseñas no coinciden');
-      return;
-    }
-
-    setSubmitting(true);
+  // --- Handlers igual que antes (descarga, activar, eliminar) ---
+  const handleDownload = async (id: string) => {
     try {
-      const login = data.userlogin.trim() === '' ? generateLogin() : data.userlogin;
+      const res = await fetch(`${API_BASE}/api/private/registrations/${id}/data`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        toast.error(errorData.error?.[0] || "Error al obtener datos de la solicitud");
+        return;
+      }
+      const json = await res.json();
+      if (!json.result) {
+        toast.error(json.error?.[0] || "Error al obtener datos");
+        return;
+      }
+      const appData = json.content;
 
-      // Obtener el número de planilla real antes de generar el PDF
-      const nextNumber = await fetchNextPlanillaNumber();
-
-      // Generar el PDF con ese número
-      const pdfBase64 = await generatePdfBase64(data, nextNumber, calcularEdad);
-
-      const payload: PublicRegisterPayload = {
-        usermail: data.email,
-        userlogin: login,
-        userpass: data.password,
-        userrepass: data.confirmPassword,
-        planillaNumber: nextNumber, // Se envía al backend para que lo use
-        representativeData: {
-          fullName: data.representativeFullName,
-          identityCard: data.representativeIdentityCard,
-          address: data.representativeAddress,
-          phone: data.representativePhone,
-          relationship: data.relationship,
-          parentName: data.parentName,
-          parentIdentityCard: data.parentIdentityCard,
-          parentPhone: data.parentPhone,
-        },
-        studentsData: data.students
-          .filter(s => s.fullName.trim() && s.identityCard.trim())
-          .map(s => ({
-            fullName: s.fullName,
-            identityCard: s.identityCard,
-            birthDate: s.birthDate,
-            nationality: s.nationality,
-            birthCountry: s.birthCountry,
-            state: s.state,
-            zone: s.zone,
-            addressDescription: s.addressDescription,
-            phone: s.phone || '',
-            emergencyContact: s.emergencyContact,
-            emergencyPhone: s.emergencyPhone,
-            hasAllergies: s.hasAllergies || false,
-            allergiesDescription: s.allergiesDescription || '',
-            hasDiseases: s.hasDiseases || false,
-            diseasesDescription: s.diseasesDescription || '',
-            previousSchool: s.previousSchool || '',
-            municipality: s.municipality || '',
-            currentGrade: s.aspiredGrade || 'En asignar',
-            section: 'Pendiente',
-            status: 'pendiente',
-            balance: 0,
-          })),
-        pdfBase64,
+      const calcEdad = (fecha: string) => {
+        if (!fecha) return '';
+        const hoy = new Date();
+        const nac = new Date(fecha);
+        let edad = hoy.getFullYear() - nac.getFullYear();
+        const mes = hoy.getMonth() - nac.getMonth();
+        if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--;
+        return edad;
       };
 
-      setFormDataForPDF(data);
-      await handleRegister(payload);
-    } catch (error: any) {
-      toast.error(error?.message || 'Error al procesar el formulario');
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageMargins: [20, 20, 20, 20],
+        content: [
+          { text: 'PLANILLA DE SOLICITUD DE INSCRIPCIÓN', style: 'title' },
+          { text: 'U.E. José Antonio Abreu - Naguanagua', style: 'subtitle' },
+          { text: `N° de Planilla: ${appData.planillaNumber}    |    Fecha: ${new Date().toLocaleDateString()}`, style: 'date' },
+          { text: '\n' },
+          {
+            layout: 'noBorders',
+            table: {
+              widths: ['*', '*'],
+              body: [
+                [
+                  {
+                    stack: [
+                      { text: '1. DATOS DEL REPRESENTANTE', style: 'sectionHeader' },
+                      { text: `Nombre y Apellido: ${appData.representativeFullName}` },
+                      { text: `Cédula de Identidad: ${appData.representativeIdentityCard}` },
+                      { text: `Dirección: ${appData.representativeAddress}` },
+                      { text: `Teléfono: ${appData.representativePhone}` },
+                      { text: `Relación con el estudiante: ${appData.relationship}` },
+                      { text: `Nombre del Padre/Madre: ${appData.parentName || '-'}` },
+                      { text: `Cédula Padre/Madre: ${appData.parentIdentityCard || '-'}` },
+                      { text: `Teléfono Padre/Madre: ${appData.parentPhone || '-'}` },
+                    ],
+                    margin: [0, 0, 5, 0],
+                  },
+                  {
+                    stack: [
+                      { text: '2. DATOS DE LOS SOLICITANTES', style: 'sectionHeader' },
+                      ...appData.students.map((est: any, idx: number) => ({
+                        stack: [
+                          { text: `Solicitante ${idx + 1}`, style: 'studentTitle' },
+                          { text: `Nombre: ${est.fullName}` },
+                          { text: `Edad: ${calcEdad(est.birthDate)}` },
+                          { text: `Fecha Nac.: ${est.birthDate}` },
+                          { text: `Nacionalidad: ${est.nationality}` },
+                          { text: `País Nac.: ${est.birthCountry}` },
+                          { text: `Estado: ${est.state}` },
+                          { text: `Zona donde vive: ${est.zone}` },
+                          { text: `Municipio: ${est.municipality || '-'}` },
+                          { text: `Escuela de procedencia: ${est.previousSchool || '-'}` },
+                          { text: `Año que aspira: ${est.aspiredGrade}` },
+                          { text: `Dirección: ${est.addressDescription}` },
+                          { text: `Teléfono: ${est.phone || '-'}` },
+                          { text: `Emergencia: ${est.emergencyContact}` },
+                          { text: `Tel. Emerg.: ${est.emergencyPhone}` },
+                          { text: `Alergias: ${est.hasAllergies ? est.allergiesDescription : 'No'}` },
+                          { text: `Enfermedades: ${est.hasDiseases ? est.diseasesDescription : 'No'}` },
+                        ],
+                        margin: [0, 0, 0, 8],
+                      })),
+                    ],
+                  },
+                ],
+              ],
+            },
+          },
+          { text: '\n' },
+          { text: 'Para uso del representante:', style: 'bold' },
+          {
+            layout: 'noBorders',
+            table: {
+              widths: ['*', '*', '*', '*'],
+              body: [
+                [
+                  '_________________\nFirma del Representante',
+                  '_________________\nFirma de quien recibe',
+                  '_________________\nSello',
+                  'Fecha y hora: ________\n(Uso interno)',
+                ],
+              ],
+            },
+          },
+          { text: '\n' },
+          {
+            text: 'Nota: Esta planilla es solo una solicitud de preinscripción, no asegura ni garantiza un cupo definitivo. La aprobación está sujeta a disponibilidad y evaluación de la U.E. José Antonio Abreu.',
+            style: 'note',
+          },
+        ],
+        styles: {
+          title: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 5, 0, 0] },
+          subtitle: { fontSize: 10, alignment: 'center', margin: [0, 0, 0, 5] },
+          date: { fontSize: 9, alignment: 'center', margin: [0, 0, 0, 10] },
+          sectionHeader: { fontSize: 11, bold: true, decoration: 'underline', margin: [0, 0, 0, 4] },
+          studentTitle: { fontSize: 10, bold: true, margin: [0, 4, 0, 2] },
+          note: { fontSize: 8, alignment: 'center', color: 'red', margin: [0, 10, 0, 0] },
+          bold: { bold: true, fontSize: 9 },
+        },
+        defaultStyle: { fontSize: 8, lineHeight: 1.15 },
+      };
+
+      pdfMake.createPdf(docDefinition).download(`Planilla_${appData.planillaNumber}.pdf`);
+    } catch (error) {
+      toast.error("Error al generar el PDF.");
+    }
+  };
+
+  const handleActivate = (id: string) => {
+    setSelectedId(id);
+    setAction("activate");
+    setShowConfirm(true);
+  };
+
+  const handleDelete = (id: string) => {
+    setSelectedId(id);
+    setAction("delete");
+    setShowConfirm(true);
+  };
+
+  const confirmAction = async () => {
+    if (!selectedId || !action) return;
+    try {
+      const url =
+        action === "activate"
+          ? `${API_BASE}/api/private/registrations/${selectedId}/activate`
+          : `${API_BASE}/api/private/registrations/${selectedId}`;
+      const method = action === "activate" ? "POST" : "DELETE";
+      const res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await res.json();
+      if (data.result) {
+        toast.success(data.content[0]);
+        fetchApplications();
+      } else {
+        toast.error(data.error?.[0] || "Error al ejecutar acción");
+      }
+    } catch (error) {
+      toast.error("Error de conexión");
     } finally {
-      setSubmitting(false);
+      setShowConfirm(false);
+      setSelectedId(null);
+      setAction(null);
     }
   };
 
-  const handlePrint = () => {
-    if (formDataForPDF) {
-      // Usar el planillaNumber del hook (que ya se actualizó después del registro)
-      downloadPDF(formDataForPDF, planillaNumber, calcularEdad);
-    } else {
-      toast.error('No hay datos de planilla para descargar.');
-    }
+  const cancelAction = () => {
+    setShowConfirm(false);
+    setSelectedId(null);
+    setAction(null);
   };
 
-  const handleTestPrint = useCallback(() => {
-    downloadPDF(MOCK_DATA, 9999, calcularEdad);
-  }, [calcularEdad]);
-
-  const aceptarAcuerdo = () => {
-    setAcuerdoAceptado(true);
-    setShowAcuerdo(false);
-  };
-
-  if (registrationOpen === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-800 mx-auto mb-4" />
-          <p className="text-slate-600">Verificando disponibilidad de inscripciones...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!registrationOpen) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md mx-auto text-center bg-white p-8 rounded-2xl shadow-xl"
-        >
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">Inscripciones Cerradas</h2>
-          <p className="text-slate-600 mb-6">
-            En este momento no estamos recibiendo nuevas solicitudes. Por favor, comunícate con nosotros para más información.
-          </p>
-          <div className="text-blue-800">
-            <p>Teléfonos: 0412-208.84.51 / 0412-341.87.73</p>
-            <p>Correo: uejantonioabre@gmail.com</p>
-            <p>Dirección: Av. Universidad sector la Campiña # 192-50, Naguanagua</p>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
+  // --- Barra de paginación mejorada ---
+  const pageNumbers = buildPageNumbers(page, totalPages);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
-      <AcuerdoModal
-        isOpen={showAcuerdo}
-        onClose={() => setShowAcuerdo(false)}
-        onAccept={aceptarAcuerdo}
-      />
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="max-w-7xl mx-auto"
+    >
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/60 p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 sm:mb-0">
+            Gestión de Solicitudes
+          </h2>
+          <div className="text-sm text-gray-500">
+            Total: {totalRecords} solicitudes
+          </div>
+        </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl p-8 border border-slate-200"
-      >
-        {step === 'form' && (
+        {/* Barra de búsqueda y límite */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, correo o nº de planilla..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm"
+            />
+          </div>
+          <select
+            value={limit}
+            onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+            className="border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base shadow-sm"
+          >
+            <option value={10}>10 por página</option>
+            <option value={20}>20 por página</option>
+            <option value={50}>50 por página</option>
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
+          </div>
+        ) : applications.length === 0 ? (
+          <div className="text-center py-16 text-gray-500 text-lg">
+            No hay solicitudes registradas.
+          </div>
+        ) : (
           <>
-            <div className="text-center mb-10">
-              <FiClipboard className="mx-auto h-16 w-16 text-blue-800 mb-4" />
-              <h1 className="text-3xl font-bold text-slate-800 mb-2">Solicitud de Inscripción</h1>
-              <p className="text-slate-600 max-w-2xl mx-auto">
-                Complete todos los datos. Recibirá un código de verificación en su correo.
-                Su cuenta quedará pendiente de activación hasta la entrevista presencial.
-              </p>
-
-              <div className="mt-6">
-                <button
-                  onClick={handleTestPrint}
-                  className="inline-flex items-center gap-2 bg-amber-500 text-white px-6 py-3 rounded-lg hover:bg-amber-600 transition font-semibold shadow-md"
-                >
-                  <FiFileText /> Generar PDF de prueba (2 estudiantes)
-                </button>
-                <p className="text-xs text-slate-500 mt-2">
-                  Crea una planilla de ejemplo para ver cómo quedará.
-                </p>
-              </div>
-
-              <div className="mt-6">
-                {!acuerdoAceptado ? (
-                  <>
-                    <button
-                      onClick={() => setShowAcuerdo(true)}
-                      className="inline-flex items-center gap-2 bg-indigo-500 text-white px-6 py-3 rounded-lg hover:bg-indigo-600 transition font-semibold shadow-md"
-                    >
-                      <FiFileText /> Leer Acuerdo de Convivencia
-                    </button>
-                    <p className="text-xs text-red-600 mt-2 font-medium">
-                      Debe leer y aceptar el Acuerdo de Convivencia para completar la inscripción.
-                    </p>
-                  </>
-                ) : (
-                  <div className="text-green-600 font-semibold mt-2 flex items-center justify-center gap-2">
-                    <span>✔ Acuerdo de Convivencia aceptado</span>
-                  </div>
-                )}
-              </div>
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+              <table className="min-w-full text-base">
+                <thead>
+                  <tr className="bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 text-lg font-semibold">
+                    <th className="py-4 px-5 text-left">N°</th>
+                    <th className="py-4 px-5 text-left">Planilla</th>
+                    <th className="py-4 px-5 text-left">Representante</th>
+                    <th className="py-4 px-5 text-left">Correo</th>
+                    <th className="py-4 px-5 text-left">Estado</th>
+                    <th className="py-4 px-5 text-left">Fecha</th>
+                    <th className="py-4 px-5 text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {applications.map((app, index) => (
+                    <tr key={app.id} className="hover:bg-blue-50/50 transition-colors duration-200">
+                      <td className="py-4 px-5 font-semibold text-gray-700">
+                        {(page - 1) * limit + index + 1}
+                      </td>
+                      <td className="py-4 px-5 font-mono text-blue-700 font-medium">
+                        {app.planillaNumber}
+                      </td>
+                      <td className="py-4 px-5 font-medium text-gray-800">
+                        {app.representativeName}
+                      </td>
+                      <td className="py-4 px-5 text-gray-600">
+                        {app.email}
+                      </td>
+                      <td className="py-4 px-5">
+                        {app.userActive ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">
+                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                            Activo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-700">
+                            <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                            Pendiente
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-4 px-5 text-gray-600 text-base">
+                        {new Date(app.createdAt).toLocaleDateString('es-VE', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </td>
+                      <td className="py-4 px-5">
+                        <div className="flex justify-center gap-3">
+                          <button
+                            onClick={() => handleDownload(app.id)}
+                            className="p-2.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                            title="Descargar PDF"
+                          >
+                            <FaDownload className="text-lg" />
+                          </button>
+                          {!app.userActive && (
+                            <button
+                              onClick={() => handleActivate(app.id)}
+                              className="p-2.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+                              title="Activar cuenta"
+                            >
+                              <FaCheck className="text-lg" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(app.id)}
+                            className="p-2.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                            title="Eliminar registro"
+                          >
+                            <FaTrash className="text-lg" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
-            {Object.keys(errors).length > 0 && (
-              <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">
-                <p className="font-bold">Corrige los siguientes campos:</p>
-                <ul className="list-disc list-inside text-sm mt-2">
-                  {Object.entries(errors).map(([key, value]) => (
-                    <li key={key}>{value?.message || `Campo requerido: ${key}`}</li>
-                  ))}
-                </ul>
+            {/* Paginación avanzada */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
+              <div className="text-sm text-gray-500">
+                Mostrando {((page - 1) * limit) + 1} – {Math.min(page * limit, totalRecords)} de {totalRecords} resultados
               </div>
-            )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-              <FormularioSections
-                register={register}
-                control={control}
-                fields={fields}
-                onRemoveStudent={remove}
-                onAddStudent={addStudent}
-                showPassword={showPassword}
-                togglePassword={() => setShowPassword(!showPassword)}
-                showConfirmPassword={showConfirmPassword}
-                toggleConfirmPassword={() => setShowConfirmPassword(!showConfirmPassword)}
-                errors={errors}
-              />
-
-              <div className="flex flex-col items-center">
+              <div className="flex items-center gap-1">
+                {/* Primera página */}
                 <button
-                  type="submit"
-                  disabled={loading || submitting || !acuerdoAceptado}
-                  className={`bg-blue-800 text-white px-8 py-3 rounded-lg hover:bg-blue-900 transition font-semibold disabled:opacity-50 ${!acuerdoAceptado ? 'cursor-not-allowed' : ''}`}
-                  title={!acuerdoAceptado ? 'Debe aceptar el Acuerdo de Convivencia' : ''}
+                  onClick={() => setPage(1)}
+                  disabled={page === 1}
+                  className="px-2 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Primera página"
                 >
-                  {loading || submitting ? 'Registrando...' : 'Crear cuenta y enviar código'}
+                  <FaAngleDoubleLeft className="text-lg" />
                 </button>
-                {!acuerdoAceptado && (
-                  <p className="text-red-600 text-sm mt-2">
-                    * Debe leer y aceptar el Acuerdo de Convivencia antes de enviar el formulario.
-                  </p>
+
+                {/* Anterior */}
+                <button
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1}
+                  className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
+                  title="Página anterior"
+                >
+                  <FaAngleLeft className="text-lg" />
+                </button>
+
+                {/* Números de página */}
+                {pageNumbers.map((num, idx) =>
+                  num === "..." ? (
+                    <span key={`ellipsis-${idx}`} className="px-3 py-2 text-gray-500 select-none">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={num}
+                      onClick={() => setPage(num as number)}
+                      className={`min-w-[2.5rem] px-3 py-2 rounded-lg font-medium transition-colors ${
+                        page === num
+                          ? "bg-blue-600 text-white shadow-md"
+                          : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  )
                 )}
+
+                {/* Siguiente */}
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={page === totalPages}
+                  className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
+                  title="Página siguiente"
+                >
+                  <FaAngleRight className="text-lg" />
+                </button>
+
+                {/* Última página */}
+                <button
+                  onClick={() => setPage(totalPages)}
+                  disabled={page === totalPages}
+                  className="px-2 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Última página"
+                >
+                  <FaAngleDoubleRight className="text-lg" />
+                </button>
               </div>
-            </form>
+            </div>
           </>
         )}
 
-        {step === 'verify' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
-            <FiMail className="mx-auto h-16 w-16 text-blue-800 mb-4" />
-            <h2 className="text-3xl font-bold mb-4">Verifica tu correo</h2>
-            <p className="text-lg mb-6">
-              Hemos enviado un código de 5 dígitos a <strong>{registeredEmail}</strong>.
-              Introdúcelo para continuar.
-            </p>
-            <input
-              type="text"
-              maxLength={5}
-              value={verificationCode}
-              onChange={e => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="Código de 5 dígitos"
-              className="text-2xl py-3 px-4 border-2 border-gray-300 rounded-lg text-center mb-4"
-            />
-            <button
-              onClick={() => handleVerify(verificationCode)}
-              disabled={loading || verificationCode.length !== 5}
-              className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50"
-            >
-              {loading ? 'Verificando...' : 'Verificar código'}
-            </button>
-            <p className="mt-4 text-sm text-gray-500">
-              ¿No recibiste el código? Revisa la carpeta de spam.
-            </p>
-          </motion.div>
-        )}
-
-        {step === 'success' && (
-          <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-center">
-            <FiPrinter className="mx-auto h-20 w-20 text-green-500 mb-6" />
-            <h2 className="text-3xl font-bold text-slate-800 mb-4">¡Correo verificado!</h2>
-            <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
-              Tu cuenta ha sido creada (aún inactiva hasta la entrevista).
-              Ahora puedes descargar la planilla con tus datos. Recuerda llevarla a la entrevista presencial.
-            </p>
-            <button
-              onClick={handlePrint}
-              className="bg-green-600 text-white px-10 py-4 rounded-lg hover:bg-green-700 transition font-bold text-lg flex items-center justify-center mx-auto shadow-lg mt-8"
-            >
-              <FiPrinter className="mr-2" /> Descargar PDF
-            </button>
-          </motion.div>
-        )}
-      </motion.div>
-    </div>
+        <ConfirmModal
+          show={showConfirm}
+          onClose={cancelAction}
+          onConfirm={confirmAction}
+          title={action === "activate" ? "Activar Cuenta" : "Eliminar Registro"}
+          message={
+            action === "activate"
+              ? "¿Estás seguro de que deseas activar esta cuenta? El representante podrá iniciar sesión."
+              : "¿Estás seguro de que deseas eliminar completamente este registro? Se borrarán el usuario, representante, estudiantes y la planilla. Esta acción no se puede deshacer."
+          }
+        />
+      </div>
+    </motion.div>
   );
 };
 
-export default SolicitudInscripcion;
+export default AdminRegistrationsList;
