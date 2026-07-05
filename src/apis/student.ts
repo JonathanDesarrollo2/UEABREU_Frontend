@@ -74,3 +74,26 @@ export async function addStudentToRepresentativeAPI(
     throw new Error(mensaje);
   }
 }
+// Actualizar porcentaje de exoneración
+export async function updateStudentExonerationAPI(
+  studentId: string,
+  exonerationPercent: number
+): Promise<TypeStudentGenericResponse> {
+  try {
+    const { data } = await api.put<TypeStudentGenericResponse>(
+      `/private/user/students/${studentId}/exoneration`,
+      { exonerationPercent }
+    );
+    return data;
+  } catch (error) {
+    let mensaje = 'Error Desconocido';
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) {
+        mensaje = errores.join(', ');
+      }
+      throw new Error(mensaje);
+    }
+    throw new Error(mensaje);
+  }
+}

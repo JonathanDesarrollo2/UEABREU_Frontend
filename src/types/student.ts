@@ -26,7 +26,9 @@ export interface TypeStudent {
   updatedAt?: Date;
   balance?: number;
   previousSchool?: string;   // nuevo
-  municipality?: string;     // nuevo
+  municipality?: string;     // nuevo  // 🔽 NUEVOS CAMPOS 🔽
+  exonerationPercent?: number;
+  hasPaidInscription?: boolean;
   representative?: {
     id?: string;
     fullName?: string;

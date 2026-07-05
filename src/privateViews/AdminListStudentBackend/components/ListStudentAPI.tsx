@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from "react-router-dom";
-import { 
-  FaEdit, 
-  FaTrash, 
+import {
+  FaEdit,
+  FaTrash,
   FaUserTie,
+  FaMoneyBillWave,
 } from 'react-icons/fa';
 import ConfirmDeleteModal from '../../../components/ConfirmDeleteModal';
+import ExonerationModal from '../../../components/ExonerationModal';
 import type { TypeStudent } from '../../../types/student';
 import { useDeleteStudent } from '../../../hooks/teacher/useDeteleStudent';
+import { updateStudentExonerationAPI } from '../../../apis/student';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-toastify';
 import GenericModal from '../../../components/GenricModal';
 
 interface ListStudentsAPIProps {
@@ -16,10 +21,34 @@ interface ListStudentsAPIProps {
 
 export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const [selectedStudent, setSelectedStudent] = useState<TypeStudent | null>(null);
-  const [deleteCandidate, setDeleteCandidate] = useState<{ studentId: string, representativeId: string, studentName: string } | null>(null);
-  
+  const [deleteCandidate, setDeleteCandidate] = useState<{
+    studentId: string;
+    representativeId: string;
+    studentName: string;
+  } | null>(null);
+  const [exonerationTarget, setExonerationTarget] = useState<TypeStudent | null>(null);
+
   const { mutate: deleteStudent, isPending: isDeleting } = useDeleteStudent();
+
+  const exonerationMutation = useMutation({
+    mutationFn: ({ studentId, percent }: { studentId: string; percent: number }) =>
+      updateStudentExonerationAPI(studentId, percent),
+    onSuccess: (data) => {
+      if (data.result) {
+        toast.success(data.content[0]);
+        queryClient.invalidateQueries({ queryKey: ['students'] });
+        setExonerationTarget(null);
+      } else {
+        toast.error(data.error?.[0] || 'Error al actualizar exoneración');
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Error al actualizar exoneración');
+    },
+  });
 
   const handleDelete = () => {
     if (deleteCandidate) {
@@ -27,13 +56,19 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
         onSuccess: () => {
           setDeleteCandidate(null);
           setSelectedStudent(null);
-        }
+        },
       });
     }
   };
 
   const handleUpdate = (student: TypeStudent) => {
     navigate('/admin/students/edit', { state: { studentData: student } });
+  };
+
+  const handleSaveExoneration = (percent: number) => {
+    if (exonerationTarget?.id) {
+      exonerationMutation.mutate({ studentId: exonerationTarget.id, percent });
+    }
   };
 
   const formatDate = (date?: Date) => {
@@ -54,7 +89,6 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
 
   return (
     <>
-      {/* Tabla de estudiantes */}
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white border border-gray-300">
           <thead>
@@ -64,6 +98,7 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
               <th className="py-3 px-4 text-left border-b">Grado</th>
               <th className="py-3 px-4 text-left border-b">Sección</th>
               <th className="py-3 px-4 text-left border-b">Estado</th>
+              <th className="py-3 px-4 text-left border-b">Exoneración</th>
               <th className="py-3 px-4 text-left border-b">Fecha Admisión</th>
               <th className="py-3 px-4 text-left border-b">Representante</th>
               <th className="py-3 px-4 text-left border-b">Acciones</th>
@@ -71,8 +106,8 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
           </thead>
           <tbody>
             {data.map((student) => (
-              <tr 
-                key={student.id} 
+              <tr
+                key={student.id}
                 className="border-b hover:bg-gray-50 cursor-pointer"
                 onClick={() => setSelectedStudent(student)}
               >
@@ -86,6 +121,24 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
                   <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(student.status)}`}>
                     {student.status ? student.status.charAt(0).toUpperCase() + student.status.slice(1) : 'Pendiente'}
                   </span>
+                </td>
+                {/* Columna de exoneración */}
+                <td className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-700">
+                      {student.exonerationPercent ?? 0}%
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExonerationTarget(student);
+                      }}
+                      className="p-1 text-green-600 hover:text-green-800 rounded-full hover:bg-green-100"
+                      title="Editar exoneración"
+                    >
+                      <FaMoneyBillWave className="text-lg" />
+                    </button>
+                  </div>
                 </td>
                 <td className="py-3 px-4 text-sm text-gray-500">
                   {formatDate(student.admissionDate)}
@@ -110,11 +163,13 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
                       <FaEdit />
                     </button>
                     <button
-                      onClick={() => setDeleteCandidate({ 
-                        studentId: student.id!, 
-                        representativeId: student.representativeId!,
-                        studentName: student.fullName!
-                      })}
+                      onClick={() =>
+                        setDeleteCandidate({
+                          studentId: student.id!,
+                          representativeId: student.representativeId!,
+                          studentName: student.fullName!,
+                        })
+                      }
                       className="p-2 text-red-600 hover:bg-red-50 rounded"
                       title="Eliminar"
                     >
@@ -145,7 +200,9 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
             },
             {
               label: 'Fecha de Nacimiento',
-              value: selectedStudent.birthDate ? new Date(selectedStudent.birthDate).toLocaleDateString('es-ES') : 'No disponible',
+              value: selectedStudent.birthDate
+                ? new Date(selectedStudent.birthDate).toLocaleDateString('es-ES')
+                : 'No disponible',
               type: 'text'
             },
             {
@@ -160,7 +217,9 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
             },
             {
               label: 'Estado Académico',
-              value: selectedStudent.status ? selectedStudent.status.charAt(0).toUpperCase() + selectedStudent.status.slice(1) : 'Pendiente',
+              value: selectedStudent.status
+                ? selectedStudent.status.charAt(0).toUpperCase() + selectedStudent.status.slice(1)
+                : 'Pendiente',
               type: 'text'
             },
             {
@@ -205,8 +264,8 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
             setSelectedStudent(null);
           }}
           onDelete={() => {
-            setDeleteCandidate({ 
-              studentId: selectedStudent.id!, 
+            setDeleteCandidate({
+              studentId: selectedStudent.id!,
               representativeId: selectedStudent.representativeId!,
               studentName: selectedStudent.fullName!
             });
@@ -224,6 +283,16 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
         title="Confirmar Eliminación"
         message={`¿Estás seguro que deseas eliminar al estudiante "${deleteCandidate?.studentName}"? Esta acción no se puede deshacer.`}
         isLoading={isDeleting}
+      />
+
+      {/* Modal de Exoneración */}
+      <ExonerationModal
+        show={!!exonerationTarget}
+        studentName={exonerationTarget?.fullName || ''}
+        currentPercent={exonerationTarget?.exonerationPercent || 0}
+        onClose={() => setExonerationTarget(null)}
+        onSave={handleSaveExoneration}
+        isSaving={exonerationMutation.isPending}
       />
     </>
   );
