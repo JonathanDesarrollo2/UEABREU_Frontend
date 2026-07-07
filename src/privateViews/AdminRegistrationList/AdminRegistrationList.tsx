@@ -11,12 +11,14 @@ import {
   FaAngleRight,
   FaAngleDoubleRight,
   FaFilePdf,
+  FaFileExcel,
   FaSortAmountDown,
   FaSortAmountUp,
 } from "react-icons/fa";
 import ConfirmModal from "../../components/ConfirmModal";
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
+import ExcelJS from 'exceljs';
 
 (pdfMake as any).vfs = pdfFonts.vfs;
 
@@ -59,7 +61,7 @@ const buildPageNumbers = (current: number, total: number): (number | "...")[] =>
   return pages;
 };
 
-// Función que construye el contenido de una planilla individual
+// Función que construye el contenido de una planilla individual (para PDF)
 const buildSinglePlanillaContent = (appData: any) => {
   const calcEdad = (fecha: string) => {
     if (!fecha) return '';
@@ -163,7 +165,7 @@ const AdminRegistrationsList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [exporting, setExporting] = useState(false);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");  // ← cambiado a "asc"
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   const token = localStorage.getItem("tokcattleraising_inCattleRanchCloud") || "";
 
@@ -312,6 +314,158 @@ const AdminRegistrationsList: React.FC = () => {
     }
   };
 
+  // 🔽 NUEVA FUNCIÓN DE EXPORTACIÓN A EXCEL
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({
+        page: '1',
+        limit: '99999',
+        search: search.trim(),
+        sortOrder: sortOrder,
+      });
+      const listRes = await fetch(`${API_BASE}/api/private/registrations/list?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const listData = await listRes.json();
+      if (!listData.result) {
+        toast.error(listData.error?.[0] || "Error al obtener la lista de solicitudes");
+        setExporting(false);
+        return;
+      }
+
+      const allApps: Application[] = listData.content;
+      if (allApps.length === 0) {
+        toast.error("No hay solicitudes para exportar con los filtros actuales.");
+        setExporting(false);
+        return;
+      }
+
+      // Crear libro Excel
+      const workbook = new ExcelJS.Workbook();
+      const sheetSolicitudes = workbook.addWorksheet('Solicitudes');
+      const sheetEstudiantes = workbook.addWorksheet('Detalle Estudiantes');
+
+      // Hoja Solicitudes
+      sheetSolicitudes.columns = [
+        { header: 'N°', key: 'index', width: 5 },
+        { header: 'Planilla', key: 'planillaNumber', width: 10 },
+        { header: 'Representante', key: 'representativeName', width: 30 },
+        { header: 'Correo', key: 'email', width: 30 },
+        { header: 'Estado', key: 'userActive', width: 12 },
+        { header: 'Fecha', key: 'createdAt', width: 15 },
+      ];
+
+      // Aplicar estilo a la primera fila (encabezado)
+      sheetSolicitudes.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
+      });
+
+      // Hoja Detalle Estudiantes
+      sheetEstudiantes.columns = [
+        { header: 'Planilla', key: 'planillaNumber', width: 10 },
+        { header: 'Representante', key: 'representativeName', width: 30 },
+        { header: 'Estudiante', key: 'studentName', width: 30 },
+        { header: 'Edad', key: 'age', width: 5 },
+        { header: 'Fecha Nac.', key: 'birthDate', width: 12 },
+        { header: 'Nacionalidad', key: 'nationality', width: 15 },
+        { header: 'País Nac.', key: 'birthCountry', width: 15 },
+        { header: 'Estado', key: 'state', width: 15 },
+        { header: 'Zona', key: 'zone', width: 15 },
+        { header: 'Dirección', key: 'addressDescription', width: 25 },
+        { header: 'Teléfono', key: 'phone', width: 15 },
+        { header: 'Emergencia', key: 'emergencyContact', width: 20 },
+        { header: 'Tel. Emerg.', key: 'emergencyPhone', width: 15 },
+        { header: 'Alergias', key: 'allergies', width: 20 },
+        { header: 'Enfermedades', key: 'diseases', width: 20 },
+        { header: 'Escuela Proc.', key: 'previousSchool', width: 20 },
+        { header: 'Municipio', key: 'municipality', width: 20 },
+        { header: 'Año Aspira', key: 'aspiredGrade', width: 10 },
+      ];
+
+      sheetEstudiantes.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
+      });
+
+      // Llenar datos
+      for (let i = 0; i < allApps.length; i++) {
+        const app = allApps[i];
+        // Obtener datos completos de la solicitud
+        const dataRes = await fetch(`${API_BASE}/api/private/registrations/${app.id}/data`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const dataJson = await dataRes.json();
+        if (!dataJson.result) continue;
+        const appData = dataJson.content;
+
+        // Fila en Solicitudes
+        sheetSolicitudes.addRow({
+          index: i + 1,
+          planillaNumber: app.planillaNumber,
+          representativeName: appData.representativeFullName,
+          email: app.email,
+          userActive: app.userActive ? 'Activo' : 'Pendiente',
+          createdAt: new Date(app.createdAt).toLocaleDateString('es-VE'),
+        });
+
+        // Filas de estudiantes
+        if (appData.students && Array.isArray(appData.students)) {
+          for (const est of appData.students) {
+            const edad = est.birthDate ? (() => {
+              const hoy = new Date();
+              const nac = new Date(est.birthDate);
+              let e = hoy.getFullYear() - nac.getFullYear();
+              const mes = hoy.getMonth() - nac.getMonth();
+              if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) e--;
+              return e;
+            })() : '';
+            sheetEstudiantes.addRow({
+              planillaNumber: app.planillaNumber,
+              representativeName: appData.representativeFullName,
+              studentName: est.fullName,
+              age: edad,
+              birthDate: est.birthDate,
+              nationality: est.nationality,
+              birthCountry: est.birthCountry,
+              state: est.state,
+              zone: est.zone,
+              addressDescription: est.addressDescription,
+              phone: est.phone,
+              emergencyContact: est.emergencyContact,
+              emergencyPhone: est.emergencyPhone,
+              allergies: est.hasAllergies ? est.allergiesDescription : 'No',
+              diseases: est.hasDiseases ? est.diseasesDescription : 'No',
+              previousSchool: est.previousSchool,
+              municipality: est.municipality,
+              aspiredGrade: est.aspiredGrade,
+            });
+          }
+        }
+      }
+
+      // Generar archivo
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Solicitudes_Inscripcion.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Excel generado con ${allApps.length} solicitudes.`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al exportar a Excel.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleActivate = (id: string) => {
     setSelectedId(id);
     setAction("activate");
@@ -380,7 +534,7 @@ const AdminRegistrationsList: React.FC = () => {
           </div>
         </div>
 
-        {/* Barra de búsqueda, límite, orden y botón de exportar */}
+        {/* Barra de búsqueda, límite, orden y botones de exportar */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
@@ -420,7 +574,16 @@ const AdminRegistrationsList: React.FC = () => {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-3 text-base font-semibold text-white shadow-md transition-all hover:from-blue-700 hover:to-blue-800 disabled:opacity-50"
           >
             <FaFilePdf className="text-lg" />
-            {exporting ? "Exportando..." : "Exportar Todo"}
+            {exporting ? "Exportando..." : "Exportar PDF"}
+          </button>
+
+          <button
+            onClick={handleExportExcel}
+            disabled={exporting}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-green-700 px-5 py-3 text-base font-semibold text-white shadow-md transition-all hover:from-green-700 hover:to-green-800 disabled:opacity-50"
+          >
+            <FaFileExcel className="text-lg" />
+            {exporting ? "Exportando..." : "Exportar Excel"}
           </button>
         </div>
 
