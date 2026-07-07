@@ -11,6 +11,8 @@ import {
   FaAngleRight,
   FaAngleDoubleRight,
   FaFilePdf,
+  FaSortAmountDown,
+  FaSortAmountUp,
 } from "react-icons/fa";
 import ConfirmModal from "../../components/ConfirmModal";
 import pdfMake from 'pdfmake/build/pdfmake';
@@ -57,7 +59,7 @@ const buildPageNumbers = (current: number, total: number): (number | "...")[] =>
   return pages;
 };
 
-// Función auxiliar que construye el contenido de una planilla individual (para reutilizar)
+// Función que construye el contenido de una planilla individual
 const buildSinglePlanillaContent = (appData: any) => {
   const calcEdad = (fecha: string) => {
     if (!fecha) return '';
@@ -161,6 +163,7 @@ const AdminRegistrationsList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [exporting, setExporting] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const token = localStorage.getItem("tokcattleraising_inCattleRanchCloud") || "";
 
@@ -171,6 +174,7 @@ const AdminRegistrationsList: React.FC = () => {
         page: page.toString(),
         limit: limit.toString(),
         search: search.trim(),
+        sortOrder: sortOrder,
       });
       const res = await fetch(`${API_BASE}/api/private/registrations/list?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -188,7 +192,7 @@ const AdminRegistrationsList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, page, limit, search]);
+  }, [token, page, limit, search, sortOrder]);
 
   useEffect(() => {
     fetchApplications();
@@ -234,15 +238,14 @@ const AdminRegistrationsList: React.FC = () => {
     }
   };
 
-  // Exportación masiva (todas las solicitudes que cumplen el filtro de búsqueda)
   const handleExportAll = async () => {
     setExporting(true);
     try {
-      // Obtener TODAS las solicitudes (sin límite de paginación) con el filtro actual
       const params = new URLSearchParams({
         page: '1',
-        limit: '99999', // valor suficientemente grande
+        limit: '99999',
         search: search.trim(),
+        sortOrder: sortOrder,
       });
       const listRes = await fetch(`${API_BASE}/api/private/registrations/list?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -261,29 +264,25 @@ const AdminRegistrationsList: React.FC = () => {
         return;
       }
 
-      // Construir el contenido del PDF juntando todas las planillas, cada una en una página nueva
       const pdfContent: any[] = [];
 
       for (let i = 0; i < allApps.length; i++) {
         const app = allApps[i];
-        // Obtener los datos completos de cada solicitud
         const dataRes = await fetch(`${API_BASE}/api/private/registrations/${app.id}/data`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const dataJson = await dataRes.json();
         if (!dataJson.result) {
           console.warn(`No se pudieron obtener datos de la planilla ${app.planillaNumber}`);
-          continue; // omitir esta solicitud y continuar con la siguiente
+          continue;
         }
 
         const appData = dataJson.content;
 
-        // Si no es la primera planilla, agregar un salto de página
         if (i > 0) {
           pdfContent.push({ text: '', pageBreak: 'before' });
         }
 
-        // Agregar el contenido de esta planilla
         pdfContent.push(...buildSinglePlanillaContent(appData));
       }
 
@@ -381,7 +380,7 @@ const AdminRegistrationsList: React.FC = () => {
           </div>
         </div>
 
-        {/* Barra de búsqueda, límite y botón de exportar */}
+        {/* Barra de búsqueda, límite, orden y botón de exportar */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
@@ -402,6 +401,19 @@ const AdminRegistrationsList: React.FC = () => {
             <option value={20}>20 por página</option>
             <option value={50}>50 por página</option>
           </select>
+
+          <button
+            onClick={() => {
+              setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+              setPage(1);
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-3 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            title={sortOrder === 'asc' ? 'Orden ascendente (más antiguos primero)' : 'Orden descendente (más recientes primero)'}
+          >
+            {sortOrder === 'asc' ? <FaSortAmountDown className="text-lg" /> : <FaSortAmountUp className="text-lg" />}
+            {sortOrder === 'asc' ? 'Más antiguos' : 'Más recientes'}
+          </button>
+
           <button
             onClick={handleExportAll}
             disabled={exporting}
