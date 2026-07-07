@@ -163,7 +163,7 @@ const AdminRegistrationsList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [exporting, setExporting] = useState(false);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");  // ← cambiado a "asc"
 
   const token = localStorage.getItem("tokcattleraising_inCattleRanchCloud") || "";
 
