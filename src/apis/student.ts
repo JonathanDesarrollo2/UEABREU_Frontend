@@ -1,6 +1,6 @@
 import { isAxiosError } from "axios";
 import api from "../library/axios";
-import type { TypeStudent, TypeStudentGenericResponse, TypeStudentListResponse } from "../types/student";
+import type { TypeStudentGenericResponse, TypeStudentListResponse } from "../types/student";
 
 // Listar estudiantes paginados
 export async function getPaginatedStudentsAPI(
@@ -85,32 +85,6 @@ export async function updateStudentExonerationAPI(
       { exonerationPercent }
     );
     return data;
-  } catch (error) {
-    let mensaje = 'Error Desconocido';
-    if (isAxiosError(error) && error.response) {
-      const errores = error.response.data.error;
-      if (errores && errores.length > 0) {
-        mensaje = errores.join(', ');
-      }
-      throw new Error(mensaje);
-    }
-    throw new Error(mensaje);
-  }
-}
-// Exportar todos los estudiantes (sin límite de paginación)
-export async function exportAllStudentsAPI(
-  search: string,
-  status?: string
-): Promise<TypeStudent[]> {
-  try {
-    // Usamos un límite muy grande para obtener todos los registros
-    const params: any = { page: 1, limit: 99999, search };
-    if (status && status !== 'all') params.status = status;
-
-    const { data } = await api.get<TypeStudentListResponse>('/private/user/students/list', {
-      params,
-    });
-    return data.content;
   } catch (error) {
     let mensaje = 'Error Desconocido';
     if (isAxiosError(error) && error.response) {
