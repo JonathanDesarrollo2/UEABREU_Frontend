@@ -10,6 +10,7 @@ import {
   FaAngleLeft,
   FaAngleRight,
   FaAngleDoubleRight,
+  FaFilePdf,
 } from "react-icons/fa";
 import ConfirmModal from "../../components/ConfirmModal";
 import pdfMake from 'pdfmake/build/pdfmake';
@@ -35,15 +36,12 @@ const buildPageNumbers = (current: number, total: number): (number | "...")[] =>
   }
 
   const pages: (number | "...")[] = [];
-
-  // Siempre mostrar primera página
   pages.push(1);
 
   if (current > 3) {
     pages.push("...");
   }
 
-  // Páginas alrededor de la actual
   const start = Math.max(2, current - 1);
   const end = Math.min(total - 1, current + 1);
 
@@ -55,10 +53,100 @@ const buildPageNumbers = (current: number, total: number): (number | "...")[] =>
     pages.push("...");
   }
 
-  // Siempre mostrar última página
   pages.push(total);
-
   return pages;
+};
+
+// Función auxiliar que construye el contenido de una planilla individual (para reutilizar)
+const buildSinglePlanillaContent = (appData: any) => {
+  const calcEdad = (fecha: string) => {
+    if (!fecha) return '';
+    const hoy = new Date();
+    const nac = new Date(fecha);
+    let edad = hoy.getFullYear() - nac.getFullYear();
+    const mes = hoy.getMonth() - nac.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--;
+    return edad;
+  };
+
+  return [
+    { text: 'PLANILLA DE SOLICITUD DE INSCRIPCIÓN', style: 'title' },
+    { text: 'U.E. José Antonio Abreu - Naguanagua', style: 'subtitle' },
+    { text: `N° de Planilla: ${appData.planillaNumber}    |    Fecha: ${new Date().toLocaleDateString()}`, style: 'date' },
+    { text: '\n' },
+    {
+      layout: 'noBorders',
+      table: {
+        widths: ['*', '*'],
+        body: [
+          [
+            {
+              stack: [
+                { text: '1. DATOS DEL REPRESENTANTE', style: 'sectionHeader' },
+                { text: `Nombre y Apellido: ${appData.representativeFullName}` },
+                { text: `Cédula de Identidad: ${appData.representativeIdentityCard}` },
+                { text: `Dirección: ${appData.representativeAddress}` },
+                { text: `Teléfono: ${appData.representativePhone}` },
+                { text: `Relación con el estudiante: ${appData.relationship}` },
+                { text: `Nombre del Padre/Madre: ${appData.parentName || '-'}` },
+                { text: `Cédula Padre/Madre: ${appData.parentIdentityCard || '-'}` },
+                { text: `Teléfono Padre/Madre: ${appData.parentPhone || '-'}` },
+              ],
+              margin: [0, 0, 5, 0],
+            },
+            {
+              stack: [
+                { text: '2. DATOS DE LOS SOLICITANTES', style: 'sectionHeader' },
+                ...(appData.students || []).map((est: any, idx: number) => ({
+                  stack: [
+                    { text: `Solicitante ${idx + 1}`, style: 'studentTitle' },
+                    { text: `Nombre: ${est.fullName}` },
+                    { text: `Edad: ${calcEdad(est.birthDate)}` },
+                    { text: `Fecha Nac.: ${est.birthDate}` },
+                    { text: `Nacionalidad: ${est.nationality}` },
+                    { text: `País Nac.: ${est.birthCountry}` },
+                    { text: `Estado: ${est.state}` },
+                    { text: `Zona donde vive: ${est.zone}` },
+                    { text: `Municipio: ${est.municipality || '-'}` },
+                    { text: `Escuela de procedencia: ${est.previousSchool || '-'}` },
+                    { text: `Año que aspira: ${est.aspiredGrade}` },
+                    { text: `Dirección: ${est.addressDescription}` },
+                    { text: `Teléfono: ${est.phone || '-'}` },
+                    { text: `Emergencia: ${est.emergencyContact}` },
+                    { text: `Tel. Emerg.: ${est.emergencyPhone}` },
+                    { text: `Alergias: ${est.hasAllergies ? est.allergiesDescription : 'No'}` },
+                    { text: `Enfermedades: ${est.hasDiseases ? est.diseasesDescription : 'No'}` },
+                  ],
+                  margin: [0, 0, 0, 8],
+                })),
+              ],
+            },
+          ],
+        ],
+      },
+    },
+    { text: '\n' },
+    { text: 'Para uso del representante:', style: 'bold' },
+    {
+      layout: 'noBorders',
+      table: {
+        widths: ['*', '*', '*', '*'],
+        body: [
+          [
+            '_________________\nFirma del Representante',
+            '_________________\nFirma de quien recibe',
+            '_________________\nSello',
+            'Fecha y hora: ________\n(Uso interno)',
+          ],
+        ],
+      },
+    },
+    { text: '\n' },
+    {
+      text: 'Nota: Esta planilla es solo una solicitud de preinscripción, no asegura ni garantiza un cupo definitivo. La aprobación está sujeta a disponibilidad y evaluación de la U.E. José Antonio Abreu.',
+      style: 'note',
+    },
+  ];
 };
 
 const AdminRegistrationsList: React.FC = () => {
@@ -72,6 +160,7 @@ const AdminRegistrationsList: React.FC = () => {
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   const token = localStorage.getItem("tokcattleraising_inCattleRanchCloud") || "";
 
@@ -123,97 +212,10 @@ const AdminRegistrationsList: React.FC = () => {
       }
       const appData = json.content;
 
-      const calcEdad = (fecha: string) => {
-        if (!fecha) return '';
-        const hoy = new Date();
-        const nac = new Date(fecha);
-        let edad = hoy.getFullYear() - nac.getFullYear();
-        const mes = hoy.getMonth() - nac.getMonth();
-        if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--;
-        return edad;
-      };
-
       const docDefinition: any = {
         pageSize: 'A4',
         pageMargins: [20, 20, 20, 20],
-        content: [
-          { text: 'PLANILLA DE SOLICITUD DE INSCRIPCIÓN', style: 'title' },
-          { text: 'U.E. José Antonio Abreu - Naguanagua', style: 'subtitle' },
-          { text: `N° de Planilla: ${appData.planillaNumber}    |    Fecha: ${new Date().toLocaleDateString()}`, style: 'date' },
-          { text: '\n' },
-          {
-            layout: 'noBorders',
-            table: {
-              widths: ['*', '*'],
-              body: [
-                [
-                  {
-                    stack: [
-                      { text: '1. DATOS DEL REPRESENTANTE', style: 'sectionHeader' },
-                      { text: `Nombre y Apellido: ${appData.representativeFullName}` },
-                      { text: `Cédula de Identidad: ${appData.representativeIdentityCard}` },
-                      { text: `Dirección: ${appData.representativeAddress}` },
-                      { text: `Teléfono: ${appData.representativePhone}` },
-                      { text: `Relación con el estudiante: ${appData.relationship}` },
-                      { text: `Nombre del Padre/Madre: ${appData.parentName || '-'}` },
-                      { text: `Cédula Padre/Madre: ${appData.parentIdentityCard || '-'}` },
-                      { text: `Teléfono Padre/Madre: ${appData.parentPhone || '-'}` },
-                    ],
-                    margin: [0, 0, 5, 0],
-                  },
-                  {
-                    stack: [
-                      { text: '2. DATOS DE LOS SOLICITANTES', style: 'sectionHeader' },
-                      ...appData.students.map((est: any, idx: number) => ({
-                        stack: [
-                          { text: `Solicitante ${idx + 1}`, style: 'studentTitle' },
-                          { text: `Nombre: ${est.fullName}` },
-                          { text: `Edad: ${calcEdad(est.birthDate)}` },
-                          { text: `Fecha Nac.: ${est.birthDate}` },
-                          { text: `Nacionalidad: ${est.nationality}` },
-                          { text: `País Nac.: ${est.birthCountry}` },
-                          { text: `Estado: ${est.state}` },
-                          { text: `Zona donde vive: ${est.zone}` },
-                          { text: `Municipio: ${est.municipality || '-'}` },
-                          { text: `Escuela de procedencia: ${est.previousSchool || '-'}` },
-                          { text: `Año que aspira: ${est.aspiredGrade}` },
-                          { text: `Dirección: ${est.addressDescription}` },
-                          { text: `Teléfono: ${est.phone || '-'}` },
-                          { text: `Emergencia: ${est.emergencyContact}` },
-                          { text: `Tel. Emerg.: ${est.emergencyPhone}` },
-                          { text: `Alergias: ${est.hasAllergies ? est.allergiesDescription : 'No'}` },
-                          { text: `Enfermedades: ${est.hasDiseases ? est.diseasesDescription : 'No'}` },
-                        ],
-                        margin: [0, 0, 0, 8],
-                      })),
-                    ],
-                  },
-                ],
-              ],
-            },
-          },
-          { text: '\n' },
-          { text: 'Para uso del representante:', style: 'bold' },
-          {
-            layout: 'noBorders',
-            table: {
-              widths: ['*', '*', '*', '*'],
-              body: [
-                [
-                  '_________________\nFirma del Representante',
-                  '_________________\nFirma de quien recibe',
-                  '_________________\nSello',
-                  'Fecha y hora: ________\n(Uso interno)',
-                ],
-              ],
-            },
-          },
-          { text: '\n' },
-          {
-            text: 'Nota: Esta planilla es solo una solicitud de preinscripción, no asegura ni garantiza un cupo definitivo. La aprobación está sujeta a disponibilidad y evaluación de la U.E. José Antonio Abreu.',
-            style: 'note',
-          },
-        ],
+        content: buildSinglePlanillaContent(appData),
         styles: {
           title: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 5, 0, 0] },
           subtitle: { fontSize: 10, alignment: 'center', margin: [0, 0, 0, 5] },
@@ -229,6 +231,85 @@ const AdminRegistrationsList: React.FC = () => {
       pdfMake.createPdf(docDefinition).download(`Planilla_${appData.planillaNumber}.pdf`);
     } catch (error) {
       toast.error("Error al generar el PDF.");
+    }
+  };
+
+  // Exportación masiva (todas las solicitudes que cumplen el filtro de búsqueda)
+  const handleExportAll = async () => {
+    setExporting(true);
+    try {
+      // Obtener TODAS las solicitudes (sin límite de paginación) con el filtro actual
+      const params = new URLSearchParams({
+        page: '1',
+        limit: '99999', // valor suficientemente grande
+        search: search.trim(),
+      });
+      const listRes = await fetch(`${API_BASE}/api/private/registrations/list?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const listData = await listRes.json();
+      if (!listData.result) {
+        toast.error(listData.error?.[0] || "Error al obtener la lista de solicitudes");
+        setExporting(false);
+        return;
+      }
+
+      const allApps: Application[] = listData.content;
+      if (allApps.length === 0) {
+        toast.error("No hay solicitudes para exportar con los filtros actuales.");
+        setExporting(false);
+        return;
+      }
+
+      // Construir el contenido del PDF juntando todas las planillas, cada una en una página nueva
+      const pdfContent: any[] = [];
+
+      for (let i = 0; i < allApps.length; i++) {
+        const app = allApps[i];
+        // Obtener los datos completos de cada solicitud
+        const dataRes = await fetch(`${API_BASE}/api/private/registrations/${app.id}/data`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const dataJson = await dataRes.json();
+        if (!dataJson.result) {
+          console.warn(`No se pudieron obtener datos de la planilla ${app.planillaNumber}`);
+          continue; // omitir esta solicitud y continuar con la siguiente
+        }
+
+        const appData = dataJson.content;
+
+        // Si no es la primera planilla, agregar un salto de página
+        if (i > 0) {
+          pdfContent.push({ text: '', pageBreak: 'before' });
+        }
+
+        // Agregar el contenido de esta planilla
+        pdfContent.push(...buildSinglePlanillaContent(appData));
+      }
+
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageMargins: [20, 20, 20, 20],
+        content: pdfContent,
+        styles: {
+          title: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 5, 0, 0] },
+          subtitle: { fontSize: 10, alignment: 'center', margin: [0, 0, 0, 5] },
+          date: { fontSize: 9, alignment: 'center', margin: [0, 0, 0, 10] },
+          sectionHeader: { fontSize: 11, bold: true, decoration: 'underline', margin: [0, 0, 0, 4] },
+          studentTitle: { fontSize: 10, bold: true, margin: [0, 4, 0, 2] },
+          note: { fontSize: 8, alignment: 'center', color: 'red', margin: [0, 10, 0, 0] },
+          bold: { bold: true, fontSize: 9 },
+        },
+        defaultStyle: { fontSize: 8, lineHeight: 1.15 },
+      };
+
+      pdfMake.createPdf(docDefinition).download('Planillas_Solicitudes.pdf');
+      toast.success(`PDF generado con ${allApps.length} solicitudes.`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al exportar las solicitudes.");
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -281,7 +362,6 @@ const AdminRegistrationsList: React.FC = () => {
     setAction(null);
   };
 
-  // Construir la lista de páginas a mostrar
   const pageNumbers = buildPageNumbers(page, totalPages);
 
   return (
@@ -301,7 +381,7 @@ const AdminRegistrationsList: React.FC = () => {
           </div>
         </div>
 
-        {/* Barra de búsqueda y límite */}
+        {/* Barra de búsqueda, límite y botón de exportar */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
@@ -322,6 +402,14 @@ const AdminRegistrationsList: React.FC = () => {
             <option value={20}>20 por página</option>
             <option value={50}>50 por página</option>
           </select>
+          <button
+            onClick={handleExportAll}
+            disabled={exporting}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-3 text-base font-semibold text-white shadow-md transition-all hover:from-blue-700 hover:to-blue-800 disabled:opacity-50"
+          >
+            <FaFilePdf className="text-lg" />
+            {exporting ? "Exportando..." : "Exportar Todo"}
+          </button>
         </div>
 
         {loading ? (
@@ -422,7 +510,6 @@ const AdminRegistrationsList: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-1">
-                {/* Primera página */}
                 <button
                   onClick={() => setPage(1)}
                   disabled={page === 1}
@@ -432,7 +519,6 @@ const AdminRegistrationsList: React.FC = () => {
                   <FaAngleDoubleLeft className="text-lg" />
                 </button>
 
-                {/* Anterior */}
                 <button
                   onClick={() => setPage(page - 1)}
                   disabled={page === 1}
@@ -442,7 +528,6 @@ const AdminRegistrationsList: React.FC = () => {
                   <FaAngleLeft className="text-lg" />
                 </button>
 
-                {/* Números de página */}
                 {pageNumbers.map((num, idx) =>
                   num === "..." ? (
                     <span key={`ellipsis-${idx}`} className="px-3 py-2 text-gray-500 select-none">
@@ -463,7 +548,6 @@ const AdminRegistrationsList: React.FC = () => {
                   )
                 )}
 
-                {/* Siguiente */}
                 <button
                   onClick={() => setPage(page + 1)}
                   disabled={page === totalPages}
@@ -473,7 +557,6 @@ const AdminRegistrationsList: React.FC = () => {
                   <FaAngleRight className="text-lg" />
                 </button>
 
-                {/* Última página */}
                 <button
                   onClick={() => setPage(totalPages)}
                   disabled={page === totalPages}
