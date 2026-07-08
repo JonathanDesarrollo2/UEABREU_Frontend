@@ -314,7 +314,7 @@ const AdminRegistrationsList: React.FC = () => {
     }
   };
 
-  // 🔽 NUEVA FUNCIÓN DE EXPORTACIÓN A EXCEL
+  // 🔽 NUEVA FUNCIÓN DE EXPORTACIÓN A EXCEL – INFORMACIÓN COMPLETA (REPRESENTANTE + ESTUDIANTE)
   const handleExportExcel = async () => {
     setExporting(true);
     try {
@@ -343,56 +343,46 @@ const AdminRegistrationsList: React.FC = () => {
 
       // Crear libro Excel
       const workbook = new ExcelJS.Workbook();
-      const sheetSolicitudes = workbook.addWorksheet('Solicitudes');
-      const sheetEstudiantes = workbook.addWorksheet('Detalle Estudiantes');
+      const sheet = workbook.addWorksheet('Datos Completos');
 
-      // Hoja Solicitudes
-      sheetSolicitudes.columns = [
-        { header: 'N°', key: 'index', width: 5 },
-        { header: 'Planilla', key: 'planillaNumber', width: 10 },
-        { header: 'Representante', key: 'representativeName', width: 30 },
-        { header: 'Correo', key: 'email', width: 30 },
-        { header: 'Estado', key: 'userActive', width: 12 },
-        { header: 'Fecha', key: 'createdAt', width: 15 },
-      ];
-
-      // Aplicar estilo a la primera fila (encabezado)
-      sheetSolicitudes.getRow(1).eachCell((cell) => {
-        cell.font = { bold: true };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
-      });
-
-      // Hoja Detalle Estudiantes
-      sheetEstudiantes.columns = [
-        { header: 'Planilla', key: 'planillaNumber', width: 10 },
-        { header: 'Representante', key: 'representativeName', width: 30 },
-        { header: 'Estudiante', key: 'studentName', width: 30 },
-        { header: 'Edad', key: 'age', width: 5 },
+      // Definir columnas – todos los campos del representante y del estudiante
+      sheet.columns = [
+        { header: 'N° Planilla', key: 'planillaNumber', width: 12 },
+        { header: 'Nombre Representante', key: 'repFullName', width: 25 },
+        { header: 'Cédula Representante', key: 'repIdentityCard', width: 15 },
+        { header: 'Dirección Representante', key: 'repAddress', width: 25 },
+        { header: 'Teléfono Representante', key: 'repPhone', width: 15 },
+        { header: 'Relación', key: 'relationship', width: 15 },
+        { header: 'Nombre Padre/Madre', key: 'parentName', width: 25 },
+        { header: 'Cédula Padre/Madre', key: 'parentIdentityCard', width: 15 },
+        { header: 'Teléfono Padre/Madre', key: 'parentPhone', width: 15 },
+        { header: 'Nombre Estudiante', key: 'studentFullName', width: 25 },
+        { header: 'Edad', key: 'age', width: 6 },
         { header: 'Fecha Nac.', key: 'birthDate', width: 12 },
         { header: 'Nacionalidad', key: 'nationality', width: 15 },
         { header: 'País Nac.', key: 'birthCountry', width: 15 },
         { header: 'Estado', key: 'state', width: 15 },
         { header: 'Zona', key: 'zone', width: 15 },
-        { header: 'Dirección', key: 'addressDescription', width: 25 },
-        { header: 'Teléfono', key: 'phone', width: 15 },
-        { header: 'Emergencia', key: 'emergencyContact', width: 20 },
-        { header: 'Tel. Emerg.', key: 'emergencyPhone', width: 15 },
+        { header: 'Municipio', key: 'municipality', width: 15 },
+        { header: 'Escuela Procedencia', key: 'previousSchool', width: 20 },
+        { header: 'Año Aspira', key: 'aspiredGrade', width: 10 },
+        { header: 'Dirección Estudiante', key: 'studentAddress', width: 25 },
+        { header: 'Teléfono Estudiante', key: 'studentPhone', width: 15 },
+        { header: 'Contacto Emergencia', key: 'emergencyContact', width: 20 },
+        { header: 'Tel. Emergencia', key: 'emergencyPhone', width: 15 },
         { header: 'Alergias', key: 'allergies', width: 20 },
         { header: 'Enfermedades', key: 'diseases', width: 20 },
-        { header: 'Escuela Proc.', key: 'previousSchool', width: 20 },
-        { header: 'Municipio', key: 'municipality', width: 20 },
-        { header: 'Año Aspira', key: 'aspiredGrade', width: 10 },
       ];
 
-      sheetEstudiantes.getRow(1).eachCell((cell) => {
+      // Estilo de encabezado
+      sheet.getRow(1).eachCell((cell) => {
         cell.font = { bold: true };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
       });
 
-      // Llenar datos
+      // Llenar filas
       for (let i = 0; i < allApps.length; i++) {
         const app = allApps[i];
-        // Obtener datos completos de la solicitud
         const dataRes = await fetch(`${API_BASE}/api/private/registrations/${app.id}/data`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -400,58 +390,86 @@ const AdminRegistrationsList: React.FC = () => {
         if (!dataJson.result) continue;
         const appData = dataJson.content;
 
-        // Fila en Solicitudes
-        sheetSolicitudes.addRow({
-          index: i + 1,
-          planillaNumber: app.planillaNumber,
-          representativeName: appData.representativeFullName,
-          email: app.email,
-          userActive: app.userActive ? 'Activo' : 'Pendiente',
-          createdAt: new Date(app.createdAt).toLocaleDateString('es-VE'),
-        });
+        // Si no hay estudiantes, agregar una fila solo con los datos del representante
+        if (!appData.students || appData.students.length === 0) {
+          sheet.addRow({
+            planillaNumber: app.planillaNumber,
+            repFullName: appData.representativeFullName,
+            repIdentityCard: appData.representativeIdentityCard,
+            repAddress: appData.representativeAddress,
+            repPhone: appData.representativePhone,
+            relationship: appData.relationship,
+            parentName: appData.parentName || '',
+            parentIdentityCard: appData.parentIdentityCard || '',
+            parentPhone: appData.parentPhone || '',
+            studentFullName: '',
+            age: '',
+            birthDate: '',
+            nationality: '',
+            birthCountry: '',
+            state: '',
+            zone: '',
+            municipality: '',
+            previousSchool: '',
+            aspiredGrade: '',
+            studentAddress: '',
+            studentPhone: '',
+            emergencyContact: '',
+            emergencyPhone: '',
+            allergies: '',
+            diseases: '',
+          });
+          continue;
+        }
 
-        // Filas de estudiantes
-        if (appData.students && Array.isArray(appData.students)) {
-          for (const est of appData.students) {
-            const edad = est.birthDate ? (() => {
-              const hoy = new Date();
-              const nac = new Date(est.birthDate);
-              let e = hoy.getFullYear() - nac.getFullYear();
-              const mes = hoy.getMonth() - nac.getMonth();
-              if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) e--;
-              return e;
-            })() : '';
-            sheetEstudiantes.addRow({
-              planillaNumber: app.planillaNumber,
-              representativeName: appData.representativeFullName,
-              studentName: est.fullName,
-              age: edad,
-              birthDate: est.birthDate,
-              nationality: est.nationality,
-              birthCountry: est.birthCountry,
-              state: est.state,
-              zone: est.zone,
-              addressDescription: est.addressDescription,
-              phone: est.phone,
-              emergencyContact: est.emergencyContact,
-              emergencyPhone: est.emergencyPhone,
-              allergies: est.hasAllergies ? est.allergiesDescription : 'No',
-              diseases: est.hasDiseases ? est.diseasesDescription : 'No',
-              previousSchool: est.previousSchool,
-              municipality: est.municipality,
-              aspiredGrade: est.aspiredGrade,
-            });
-          }
+        // Una fila por cada estudiante, repitiendo los datos del representante
+        for (const est of appData.students) {
+          const edad = est.birthDate ? (() => {
+            const hoy = new Date();
+            const nac = new Date(est.birthDate);
+            let e = hoy.getFullYear() - nac.getFullYear();
+            const mes = hoy.getMonth() - nac.getMonth();
+            if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) e--;
+            return e;
+          })() : '';
+
+          sheet.addRow({
+            planillaNumber: app.planillaNumber,
+            repFullName: appData.representativeFullName,
+            repIdentityCard: appData.representativeIdentityCard,
+            repAddress: appData.representativeAddress,
+            repPhone: appData.representativePhone,
+            relationship: appData.relationship,
+            parentName: appData.parentName || '',
+            parentIdentityCard: appData.parentIdentityCard || '',
+            parentPhone: appData.parentPhone || '',
+            studentFullName: est.fullName,
+            age: edad,
+            birthDate: est.birthDate,
+            nationality: est.nationality,
+            birthCountry: est.birthCountry,
+            state: est.state,
+            zone: est.zone,
+            municipality: est.municipality || '',
+            previousSchool: est.previousSchool || '',
+            aspiredGrade: est.aspiredGrade,
+            studentAddress: est.addressDescription,
+            studentPhone: est.phone || '',
+            emergencyContact: est.emergencyContact,
+            emergencyPhone: est.emergencyPhone,
+            allergies: est.hasAllergies ? est.allergiesDescription : 'No',
+            diseases: est.hasDiseases ? est.diseasesDescription : 'No',
+          });
         }
       }
 
-      // Generar archivo
+      // Generar archivo y descargar
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'Solicitudes_Inscripcion.xlsx';
+      a.download = 'Solicitudes_Completas.xlsx';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
