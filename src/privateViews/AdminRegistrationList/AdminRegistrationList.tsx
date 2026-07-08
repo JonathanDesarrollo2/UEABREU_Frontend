@@ -314,7 +314,7 @@ const AdminRegistrationsList: React.FC = () => {
     }
   };
 
-  // 🔽 NUEVA FUNCIÓN DE EXPORTACIÓN A EXCEL – INFORMACIÓN COMPLETA (REPRESENTANTE + ESTUDIANTE)
+  // 🔽 FUNCIÓN DE EXPORTACIÓN A EXCEL – INFORMACIÓN COMPLETA + CONTADOR
   const handleExportExcel = async () => {
     setExporting(true);
     try {
@@ -345,8 +345,9 @@ const AdminRegistrationsList: React.FC = () => {
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Datos Completos');
 
-      // Definir columnas – todos los campos del representante y del estudiante
+      // Definir columnas – se añade el contador "N°" al inicio
       sheet.columns = [
+        { header: 'N°', key: 'counter', width: 5 },
         { header: 'N° Planilla', key: 'planillaNumber', width: 12 },
         { header: 'Nombre Representante', key: 'repFullName', width: 25 },
         { header: 'Cédula Representante', key: 'repIdentityCard', width: 15 },
@@ -380,6 +381,8 @@ const AdminRegistrationsList: React.FC = () => {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
       });
 
+      let counter = 0;
+
       // Llenar filas
       for (let i = 0; i < allApps.length; i++) {
         const app = allApps[i];
@@ -392,7 +395,9 @@ const AdminRegistrationsList: React.FC = () => {
 
         // Si no hay estudiantes, agregar una fila solo con los datos del representante
         if (!appData.students || appData.students.length === 0) {
+          counter++;
           sheet.addRow({
+            counter,
             planillaNumber: app.planillaNumber,
             repFullName: appData.representativeFullName,
             repIdentityCard: appData.representativeIdentityCard,
@@ -424,6 +429,7 @@ const AdminRegistrationsList: React.FC = () => {
 
         // Una fila por cada estudiante, repitiendo los datos del representante
         for (const est of appData.students) {
+          counter++;
           const edad = est.birthDate ? (() => {
             const hoy = new Date();
             const nac = new Date(est.birthDate);
@@ -434,6 +440,7 @@ const AdminRegistrationsList: React.FC = () => {
           })() : '';
 
           sheet.addRow({
+            counter,
             planillaNumber: app.planillaNumber,
             repFullName: appData.representativeFullName,
             repIdentityCard: appData.representativeIdentityCard,
