@@ -15,6 +15,7 @@ import {
   FaClipboardList,
   FaHistory
 } from 'react-icons/fa';
+import { FaDollarSign } from 'react-icons/fa6';
 
 interface SessionContext {
   sesionUser?: string;
@@ -49,6 +50,7 @@ export default function AdminLayout() {
     { name: 'Estudiantes', icon: FaGraduationCap, path: '/admin/listStudents' },
     { name: 'Profesores', icon: FaChalkboardTeacher, path: '/admin/teachers/list' },
     { name: 'Solicitudes', icon: FaClipboardList, path: '/admin/registrations' },
+    { name: 'Tarifas Escolares', icon: FaDollarSign, path: '/admin/school-fees' },
   ];
 
   return (
