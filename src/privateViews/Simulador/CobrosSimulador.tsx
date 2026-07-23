@@ -13,7 +13,9 @@ import {
 interface SimulatedTransaction {
   id: string;
   type: 'fee' | 'deposit' | 'adjustment';
-  amount: number;
+  amountBS: number;        // monto en bolívares
+  amountUSD: number;       // monto equivalente en dólares
+  bcvRate: number;         // tasa BCV del día
   description: string;
   date: Date;
   balanceBefore: number;
@@ -56,7 +58,7 @@ const DEFAULT_FEES: SimulatedFeeConfig = {
   inscriptionEndDate: '2026-10-01',
 };
 
-// Tasa BCV simulada (puede editarse)
+// Tasa BCV simulada inicial
 const SIMULATED_BCV_RATE = 40;
 
 const monthNames = [
@@ -65,7 +67,7 @@ const monthNames = [
 ];
 
 // ---------------------------------------------------------------------------
-// Lógica de simulación (idéntica a BillingService)
+// Lógica de simulación
 // ---------------------------------------------------------------------------
 const useSimulation = () => {
   const [students, setStudents] = useState<SimulatedStudent[]>([]);
@@ -106,45 +108,54 @@ const useSimulation = () => {
 
         // Inscripción
         if (!s.hasPaidInscription) {
-          const amount = Math.round(feeConfig.inscriptionFeeUSD * bcv * 100) / 100;
+          const usd = feeConfig.inscriptionFeeUSD;
+          const bs = Math.round(usd * bcv * 100) / 100;
           txs.push({
             id: Date.now().toString(36) + Math.random().toString(36),
             type: 'fee',
-            amount,
+            amountBS: bs,
+            amountUSD: usd,
+            bcvRate: bcv,
             description: 'Inscripción año escolar',
             date: new Date(now),
             balanceBefore: bal,
-            balanceAfter: bal - amount,
+            balanceAfter: bal - bs,
           });
-          bal -= amount;
+          bal -= bs;
         }
         // Gasto administrativo (nuevo ingreso)
         if (!s.hasPaidInscription && s.transactions.length === 0) {
-          const admin = Math.round(feeConfig.administrativeFeeUSD * bcv * 100) / 100;
+          const usd = feeConfig.administrativeFeeUSD;
+          const bs = Math.round(usd * bcv * 100) / 100;
           txs.push({
             id: Date.now().toString(36) + Math.random().toString(36),
             type: 'fee',
-            amount: admin,
+            amountBS: bs,
+            amountUSD: usd,
+            bcvRate: bcv,
             description: 'Gasto administrativo (nuevo ingreso)',
             date: new Date(now),
             balanceBefore: bal,
-            balanceAfter: bal - admin,
+            balanceAfter: bal - bs,
           });
-          bal -= admin;
+          bal -= bs;
         }
         // 50% agosto 2027
         if (!s.hasPaidInscription) {
-          const half = Math.round(feeConfig.august2027HalfPaymentUSD * bcv * 100) / 100;
+          const usd = feeConfig.august2027HalfPaymentUSD;
+          const bs = Math.round(usd * bcv * 100) / 100;
           txs.push({
             id: Date.now().toString(36) + Math.random().toString(36),
             type: 'fee',
-            amount: half,
+            amountBS: bs,
+            amountUSD: usd,
+            bcvRate: bcv,
             description: 'Anticipo 50% mensualidad Agosto 2027',
             date: new Date(now),
             balanceBefore: bal,
-            balanceAfter: bal - half,
+            balanceAfter: bal - bs,
           });
-          bal -= half;
+          bal -= bs;
         }
         // Mensualidad del mes en curso si ya comenzaron las mensualidades
         const monthlyStart = new Date(feeConfig.monthlyFeeStartDate);
@@ -155,19 +166,20 @@ const useSimulation = () => {
           const exists = s.transactions.find(tx => tx.description === desc);
           if (!exists) {
             const exon = s.exonerationPercent / 100;
-            let monthlyUSD = feeConfig.monthlyFeeUSD * (1 - exon);
-            monthlyUSD = Math.round(monthlyUSD * 100) / 100;
-            const monthlyBS = Math.round(monthlyUSD * bcv * 100) / 100;
+            const usd = Math.round(feeConfig.monthlyFeeUSD * (1 - exon) * 100) / 100;
+            const bs = Math.round(usd * bcv * 100) / 100;
             txs.push({
               id: Date.now().toString(36) + Math.random().toString(36),
               type: 'fee',
-              amount: monthlyBS,
+              amountBS: bs,
+              amountUSD: usd,
+              bcvRate: bcv,
               description: desc,
               date: new Date(now),
               balanceBefore: bal,
-              balanceAfter: bal - monthlyBS,
+              balanceAfter: bal - bs,
             });
-            bal -= monthlyBS;
+            bal -= bs;
           }
         }
 
@@ -184,14 +196,15 @@ const useSimulation = () => {
   }, [currentDate, feeConfig, bcvRate]);
 
   // --------------------------------------------------
-  // Avanzar un mes (aplica mensualidad a todos los regulares)
+  // Avanzar una semana (7 días) – aplica mensualidad si cambia de mes
   // --------------------------------------------------
-  const advanceMonth = useCallback(() => {
+  const advanceWeek = useCallback(() => {
     setCurrentDate(prev => {
       const next = new Date(prev);
-      next.setMonth(next.getMonth() + 1);
+      next.setDate(next.getDate() + 7);
       return next;
     });
+    // Aplicar mensualidad si la nueva fecha está en un mes distinto y ya comenzaron las mensualidades
     setStudents(prev =>
       prev.map(s => {
         if (s.status !== 'regular') return s;
@@ -203,22 +216,23 @@ const useSimulation = () => {
         const desc = `Mensualidad ${monthNames[month]} ${year}`;
         if (s.transactions.find(tx => tx.description === desc)) return s;
         const exon = s.exonerationPercent / 100;
-        let monthlyUSD = feeConfig.monthlyFeeUSD * (1 - exon);
-        monthlyUSD = Math.round(monthlyUSD * 100) / 100;
+        const usd = Math.round(feeConfig.monthlyFeeUSD * (1 - exon) * 100) / 100;
         const bcv = bcvRate;
-        const amount = Math.round(monthlyUSD * bcv * 100) / 100;
+        const bs = Math.round(usd * bcv * 100) / 100;
         const tx: SimulatedTransaction = {
           id: Date.now().toString(36) + Math.random().toString(36),
           type: 'fee',
-          amount,
+          amountBS: bs,
+          amountUSD: usd,
+          bcvRate: bcv,
           description: desc,
           date: new Date(now),
           balanceBefore: s.balance,
-          balanceAfter: s.balance - amount,
+          balanceAfter: s.balance - bs,
         };
         return {
           ...s,
-          balance: s.balance - amount,
+          balance: s.balance - bs,
           transactions: [...s.transactions, tx],
         };
       })
@@ -229,14 +243,17 @@ const useSimulation = () => {
   // Simular un depósito (pago)
   // --------------------------------------------------
   const simulatePayment = useCallback((studentId: string, amountUSD: number) => {
+    const bcv = bcvRate;
+    const amountBS = Math.round(amountUSD * bcv * 100) / 100;
     setStudents(prev =>
       prev.map(s => {
         if (s.id !== studentId) return s;
-        const amountBS = Math.round(amountUSD * bcvRate * 100) / 100;
         const tx: SimulatedTransaction = {
           id: Date.now().toString(36) + Math.random().toString(36),
           type: 'deposit',
-          amount: amountBS,
+          amountBS,
+          amountUSD,
+          bcvRate: bcv,
           description: `Depósito manual ($${amountUSD})`,
           date: new Date(currentDate),
           balanceBefore: s.balance,
@@ -260,11 +277,14 @@ const useSimulation = () => {
         const desc = `Mensualidad ${monthNames[month]} ${year}`;
         const feeTx = s.transactions.find(tx => tx.description === desc);
         if (feeTx) {
-          const discountBS = Math.round(feeConfig.prontoPagoDiscount * bcvRate * 100) / 100;
+          const discountUSD = feeConfig.prontoPagoDiscount;
+          const discountBS = Math.round(discountUSD * bcv * 100) / 100;
           const discTx: SimulatedTransaction = {
             id: Date.now().toString(36) + Math.random().toString(36),
             type: 'adjustment',
-            amount: discountBS,
+            amountBS: discountBS,
+            amountUSD: discountUSD,
+            bcvRate: bcv,
             description: `Descuento Pronto Pago ${monthNames[month]} ${year}`,
             date: new Date(currentDate),
             balanceBefore: s.balance,
@@ -304,7 +324,7 @@ const useSimulation = () => {
     addStudent,
     removeStudent,
     activateStudent,
-    advanceMonth,
+    advanceWeek,
     simulatePayment,
     checkDepositLimit,
     setCurrentDate,
@@ -325,7 +345,7 @@ const SimuladorCobros: React.FC = () => {
     addStudent,
     removeStudent,
     activateStudent,
-    advanceMonth,
+    advanceWeek,
     simulatePayment,
     checkDepositLimit,
     setCurrentDate,
@@ -382,10 +402,10 @@ const SimuladorCobros: React.FC = () => {
             />
           </div>
           <button
-            onClick={advanceMonth}
+            onClick={advanceWeek}
             className="flex items-center gap-3 bg-white/20 rounded-lg px-5 py-3 hover:bg-white/30 transition text-lg font-semibold"
           >
-            <FaForward className="text-xl" /> Avanzar mes
+            <FaForward className="text-xl" /> Avanzar semana
           </button>
           <button
             onClick={() => setShowFeeEditor(!showFeeEditor)}
@@ -606,8 +626,10 @@ const SimuladorCobros: React.FC = () => {
                       <th className="py-4 px-4 text-left font-bold text-gray-700">Fecha</th>
                       <th className="py-4 px-4 text-left font-bold text-gray-700">Tipo</th>
                       <th className="py-4 px-4 text-left font-bold text-gray-700">Descripción</th>
-                      <th className="py-4 px-4 text-right font-bold text-gray-700">Monto</th>
-                      <th className="py-4 px-4 text-right font-bold text-gray-700">Balance</th>
+                      <th className="py-4 px-4 text-right font-bold text-gray-700">Monto Bs</th>
+                      <th className="py-4 px-4 text-right font-bold text-gray-700">Monto USD</th>
+                      <th className="py-4 px-4 text-right font-bold text-gray-700">Tasa BCV</th>
+                      <th className="py-4 px-4 text-right font-bold text-gray-700">Balance Bs</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -628,14 +650,21 @@ const SimuladorCobros: React.FC = () => {
                           tx.type === 'deposit' || tx.type === 'adjustment' ? 'text-green-600' : 'text-red-600'
                         }`}>
                           {tx.type === 'deposit' || tx.type === 'adjustment' ? '+' : '-'}
-                          {Math.abs(tx.amount).toFixed(2)} Bs
+                          {Math.abs(tx.amountBS).toFixed(2)} Bs
+                        </td>
+                        <td className="py-3 px-4 text-right text-gray-700 font-semibold">
+                          {tx.type === 'deposit' || tx.type === 'adjustment' ? '+' : '-'}
+                          ${Math.abs(tx.amountUSD).toFixed(2)}
+                        </td>
+                        <td className="py-3 px-4 text-right text-gray-600">
+                          {tx.bcvRate.toFixed(4)}
                         </td>
                         <td className="py-3 px-4 text-right text-gray-700 font-semibold">{tx.balanceAfter.toFixed(2)} Bs</td>
                       </tr>
                     ))}
                     {selected.transactions.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="text-center py-6 text-gray-500 text-lg">Sin transacciones</td>
+                        <td colSpan={7} className="text-center py-6 text-gray-500 text-lg">Sin transacciones</td>
                       </tr>
                     )}
                   </tbody>
