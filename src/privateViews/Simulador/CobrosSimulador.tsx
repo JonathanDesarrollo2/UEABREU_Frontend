@@ -365,61 +365,130 @@ const SimuladorCobros: React.FC = () => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
+      className="max-w-full mx-auto px-6 sm:px-10 lg:px-14 py-8"
     >
       {/* Cabecera */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-2xl shadow-xl p-6 mb-8 text-white">
-        <h2 className="text-3xl font-bold">Simulador de Cobros</h2>
-        <p className="text-purple-100 mt-1">Prueba la lógica de facturación en tiempo real</p>
-        <div className="flex flex-wrap gap-4 mt-4">
-          <div className="flex items-center gap-2 bg-white/20 rounded-lg px-4 py-2">
-            <FaCalendarAlt />
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-2xl shadow-xl p-8 mb-10 text-white">
+        <h2 className="text-4xl font-extrabold tracking-tight">Simulador de Cobros</h2>
+        <p className="text-purple-100 mt-2 text-xl">Prueba la lógica de facturación en tiempo real</p>
+        <div className="flex flex-wrap gap-5 mt-6">
+          <div className="flex items-center gap-3 bg-white/20 rounded-lg px-5 py-3">
+            <FaCalendarAlt className="text-2xl" />
             <input
               type="date"
               value={currentDate.toISOString().split('T')[0]}
               onChange={(e) => handleDateChange(e.target.value)}
-              className="bg-transparent text-white font-semibold focus:outline-none"
+              className="bg-transparent text-white font-bold text-lg focus:outline-none"
             />
           </div>
           <button
             onClick={advanceMonth}
-            className="flex items-center gap-2 bg-white/20 rounded-lg px-4 py-2 hover:bg-white/30 transition"
+            className="flex items-center gap-3 bg-white/20 rounded-lg px-5 py-3 hover:bg-white/30 transition text-lg font-semibold"
           >
-            <FaForward /> Avanzar mes
+            <FaForward className="text-xl" /> Avanzar mes
           </button>
           <button
             onClick={() => setShowFeeEditor(!showFeeEditor)}
-            className="flex items-center gap-2 bg-white/20 rounded-lg px-4 py-2 hover:bg-white/30 transition"
+            className="flex items-center gap-3 bg-white/20 rounded-lg px-5 py-3 hover:bg-white/30 transition text-lg font-semibold"
           >
-            <FaCog /> {showFeeEditor ? 'Ocultar tarifas' : 'Editar tarifas'}
+            <FaCog className="text-xl" /> {showFeeEditor ? 'Ocultar tarifas' : 'Editar tarifas'}
           </button>
         </div>
         {showFeeEditor && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mt-4 bg-white/10 rounded-xl p-4">
-            {Object.entries(feeConfig).map(([key, value]) => (
-              <div key={key}>
-                <label className="text-xs text-purple-200 block">{key}</label>
+          <div className="mt-6 bg-white/10 rounded-xl p-6">
+            <h4 className="text-xl font-bold mb-4 text-white">Configuración de tarifas simuladas</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div>
+                <label className="text-white font-semibold block mb-1 text-lg">Inscripción (USD)</label>
                 <input
-                  type={typeof value === 'number' ? 'number' : 'date'}
-                  value={value}
-                  onChange={(e) =>
-                    setFeeConfig(prev => ({
-                      ...prev,
-                      [key]: typeof value === 'number' ? parseFloat(e.target.value) || 0 : e.target.value,
-                    }))
-                  }
-                  className="w-full bg-white/20 rounded px-2 py-1 text-white text-sm"
+                  type="number"
+                  value={feeConfig.inscriptionFeeUSD}
+                  onChange={(e) => setFeeConfig(prev => ({ ...prev, inscriptionFeeUSD: parseFloat(e.target.value) || 0 }))}
+                  className="w-full bg-white/20 rounded-lg px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-white"
                 />
               </div>
-            ))}
-            <div>
-              <label className="text-xs text-purple-200">Tasa BCV (Bs/USD)</label>
-              <input
-                type="number"
-                value={bcvRate}
-                onChange={(e) => setBcvRate(parseFloat(e.target.value) || 1)}
-                className="w-full bg-white/20 rounded px-2 py-1 text-white text-sm"
-              />
+              <div>
+                <label className="text-white font-semibold block mb-1 text-lg">Mensualidad (USD)</label>
+                <input
+                  type="number"
+                  value={feeConfig.monthlyFeeUSD}
+                  onChange={(e) => setFeeConfig(prev => ({ ...prev, monthlyFeeUSD: parseFloat(e.target.value) || 0 }))}
+                  className="w-full bg-white/20 rounded-lg px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+                />
+              </div>
+              <div>
+                <label className="text-white font-semibold block mb-1 text-lg">Descuento pronto pago (USD)</label>
+                <input
+                  type="number"
+                  value={feeConfig.prontoPagoDiscount}
+                  onChange={(e) => setFeeConfig(prev => ({ ...prev, prontoPagoDiscount: parseFloat(e.target.value) || 0 }))}
+                  className="w-full bg-white/20 rounded-lg px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+                />
+              </div>
+              <div>
+                <label className="text-white font-semibold block mb-1 text-lg">Día límite pronto pago</label>
+                <input
+                  type="number"
+                  min="1" max="31"
+                  value={feeConfig.prontoPagoDeadlineDay}
+                  onChange={(e) => setFeeConfig(prev => ({ ...prev, prontoPagoDeadlineDay: parseInt(e.target.value) || 1 }))}
+                  className="w-full bg-white/20 rounded-lg px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+                />
+              </div>
+              <div>
+                <label className="text-white font-semibold block mb-1 text-lg">Gasto administrativo (USD)</label>
+                <input
+                  type="number"
+                  value={feeConfig.administrativeFeeUSD}
+                  onChange={(e) => setFeeConfig(prev => ({ ...prev, administrativeFeeUSD: parseFloat(e.target.value) || 0 }))}
+                  className="w-full bg-white/20 rounded-lg px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+                />
+              </div>
+              <div>
+                <label className="text-white font-semibold block mb-1 text-lg">Anticipo agosto 2027 (USD)</label>
+                <input
+                  type="number"
+                  value={feeConfig.august2027HalfPaymentUSD}
+                  onChange={(e) => setFeeConfig(prev => ({ ...prev, august2027HalfPaymentUSD: parseFloat(e.target.value) || 0 }))}
+                  className="w-full bg-white/20 rounded-lg px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+                />
+              </div>
+              <div>
+                <label className="text-white font-semibold block mb-1 text-lg">Inicio mensualidades</label>
+                <input
+                  type="date"
+                  value={feeConfig.monthlyFeeStartDate}
+                  onChange={(e) => setFeeConfig(prev => ({ ...prev, monthlyFeeStartDate: e.target.value }))}
+                  className="w-full bg-white/20 rounded-lg px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+                />
+              </div>
+              <div>
+                <label className="text-white font-semibold block mb-1 text-lg">Inicio inscripciones</label>
+                <input
+                  type="date"
+                  value={feeConfig.inscriptionStartDate}
+                  onChange={(e) => setFeeConfig(prev => ({ ...prev, inscriptionStartDate: e.target.value }))}
+                  className="w-full bg-white/20 rounded-lg px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+                />
+              </div>
+              <div>
+                <label className="text-white font-semibold block mb-1 text-lg">Fin inscripciones</label>
+                <input
+                  type="date"
+                  value={feeConfig.inscriptionEndDate}
+                  onChange={(e) => setFeeConfig(prev => ({ ...prev, inscriptionEndDate: e.target.value }))}
+                  className="w-full bg-white/20 rounded-lg px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+                />
+              </div>
+              <div>
+                <label className="text-white font-semibold block mb-1 text-lg">Tasa BCV (Bs/USD)</label>
+                <input
+                  type="number"
+                  value={bcvRate}
+                  onChange={(e) => setBcvRate(parseFloat(e.target.value) || 1)}
+                  className="w-full bg-white/20 rounded-lg px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -427,122 +496,126 @@ const SimuladorCobros: React.FC = () => {
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Panel izquierdo: lista de estudiantes */}
-        <div className="lg:w-1/3 bg-white rounded-2xl shadow-lg p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">Estudiantes</h3>
+        <div className="lg:w-1/3 bg-white rounded-2xl shadow-xl p-8">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-extrabold text-gray-800">Estudiantes</h3>
             <button
               onClick={addStudent}
-              className="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition"
+              className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition transform hover:scale-105"
             >
-              <FaPlus />
+              <FaPlus className="text-xl" />
             </button>
           </div>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
             {students.map(s => (
               <div
                 key={s.id}
                 onClick={() => setSelectedStudent(s.id)}
-                className={`p-3 rounded-xl cursor-pointer transition border ${
+                className={`p-5 rounded-2xl cursor-pointer transition border-2 ${
                   selected?.id === s.id
-                    ? 'border-indigo-500 bg-indigo-50'
+                    ? 'border-indigo-500 bg-indigo-50 shadow-md'
                     : 'border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                <div className="flex justify-between">
-                  <span className="font-semibold">{s.fullName}</span>
-                  <span className={`text-sm px-2 py-0.5 rounded-full ${
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-xl text-gray-800">{s.fullName}</span>
+                  <span className={`text-base px-3 py-1 rounded-full font-semibold ${
                     s.status === 'regular' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                   }`}>
-                    {s.status}
+                    {s.status === 'regular' ? 'Activo' : 'Pendiente'}
                   </span>
                 </div>
-                <div className="text-sm text-gray-600 mt-1">
-                  Balance: {s.balance.toFixed(2)} Bs
+                <div className="text-lg text-gray-600 mt-2">
+                  Balance: <span className="font-bold">{s.balance.toFixed(2)} Bs</span>
                 </div>
               </div>
             ))}
             {students.length === 0 && (
-              <p className="text-gray-500 text-center py-8">Agrega un estudiante para comenzar</p>
+              <p className="text-gray-500 text-center py-12 text-xl">Agrega un estudiante para comenzar</p>
             )}
           </div>
         </div>
 
         {/* Panel derecho: detalle y acciones */}
-        <div className="lg:w-2/3 bg-white rounded-2xl shadow-lg p-6">
+        <div className="lg:w-2/3 bg-white rounded-2xl shadow-xl p-8">
           {selected ? (
             <>
-              <div className="flex justify-between items-start mb-6">
+              <div className="flex justify-between items-start mb-8">
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-800">{selected.fullName}</h3>
-                  <p className="text-gray-500">
-                    Estado: <span className={selected.status === 'regular' ? 'text-green-600' : 'text-yellow-600'}>{selected.status}</span>
-                    {selected.activationDate && ` · Activado: ${formatDate(selected.activationDate)}`}
-                  </p>
-                  <p className="text-gray-500">
-                    Exoneración: {selected.exonerationPercent}% · Inscripción pagada: {selected.hasPaidInscription ? 'Sí' : 'No'}
-                  </p>
-                  <p className="text-lg font-bold mt-2">
-                    Balance: <span className={selected.balance < 0 ? 'text-red-600' : 'text-green-600'}>
-                      {selected.balance.toFixed(2)} Bs
-                    </span>
-                  </p>
+                  <h3 className="text-3xl font-extrabold text-gray-800">{selected.fullName}</h3>
+                  <div className="text-xl text-gray-600 mt-2 space-y-1">
+                    <p>
+                      Estado: <span className={`font-bold ${selected.status === 'regular' ? 'text-green-600' : 'text-yellow-600'}`}>
+                        {selected.status === 'regular' ? 'Activo' : 'Pendiente'}
+                      </span>
+                      {selected.activationDate && ` · Activado: ${formatDate(selected.activationDate)}`}
+                    </p>
+                    <p>
+                      Exoneración: {selected.exonerationPercent}% · Inscripción pagada: {selected.hasPaidInscription ? 'Sí' : 'No'}
+                    </p>
+                    <p className="text-2xl font-bold mt-3">
+                      Balance: <span className={selected.balance < 0 ? 'text-red-600' : 'text-green-600'}>
+                        {selected.balance.toFixed(2)} Bs
+                      </span>
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => removeStudent(selected.id)}
-                  className="text-red-500 hover:text-red-700 p-2"
+                  className="text-red-500 hover:text-red-700 p-3 transition"
                 >
-                  <FaTrash />
+                  <FaTrash className="text-2xl" />
                 </button>
               </div>
 
               {/* Acciones */}
-              <div className="flex flex-wrap gap-3 mb-6">
+              <div className="flex flex-wrap gap-4 mb-8">
                 {selected.status === 'pendiente' && (
                   <button
                     onClick={() => activateStudent(selected.id)}
-                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                    className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition text-lg font-bold shadow-md"
                   >
-                    <FaUserCheck /> Activar estudiante
+                    <FaUserCheck className="text-xl" /> Activar estudiante
                   </button>
                 )}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <input
                     type="number"
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    className="w-24 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-28 border-2 border-gray-300 rounded-xl px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="$"
                   />
                   <button
                     onClick={handlePay}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                    className="flex items-center gap-3 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition text-lg font-bold shadow-md"
                   >
-                    <FaMoneyBillWave /> Pagar
+                    <FaMoneyBillWave className="text-xl" /> Pagar
                   </button>
                 </div>
               </div>
 
               {/* Historial de transacciones */}
-              <h4 className="font-semibold text-gray-700 flex items-center gap-2 mb-3">
-                <FaHistory /> Historial de transacciones
+              <h4 className="font-extrabold text-2xl text-gray-800 flex items-center gap-3 mb-4">
+                <FaHistory className="text-indigo-600" /> Historial de transacciones
               </h4>
-              <div className="overflow-x-auto max-h-64">
-                <table className="min-w-full text-sm">
+              <div className="overflow-x-auto max-h-80 rounded-xl border border-gray-200">
+                <table className="min-w-full text-lg">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="py-2 px-3 text-left">Fecha</th>
-                      <th className="py-2 px-3 text-left">Tipo</th>
-                      <th className="py-2 px-3 text-left">Descripción</th>
-                      <th className="py-2 px-3 text-right">Monto</th>
-                      <th className="py-2 px-3 text-right">Balance</th>
+                      <th className="py-4 px-4 text-left font-bold text-gray-700">Fecha</th>
+                      <th className="py-4 px-4 text-left font-bold text-gray-700">Tipo</th>
+                      <th className="py-4 px-4 text-left font-bold text-gray-700">Descripción</th>
+                      <th className="py-4 px-4 text-right font-bold text-gray-700">Monto</th>
+                      <th className="py-4 px-4 text-right font-bold text-gray-700">Balance</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {selected.transactions.slice().reverse().map(tx => (
                       <tr key={tx.id} className="hover:bg-gray-50">
-                        <td className="py-2 px-3">{formatDate(new Date(tx.date))}</td>
-                        <td className="py-2 px-3">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        <td className="py-3 px-4 text-gray-600">{formatDate(new Date(tx.date))}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-3 py-1 rounded-full text-base font-semibold ${
                             tx.type === 'fee' ? 'bg-red-100 text-red-700' :
                             tx.type === 'deposit' ? 'bg-green-100 text-green-700' :
                             'bg-blue-100 text-blue-700'
@@ -550,19 +623,19 @@ const SimuladorCobros: React.FC = () => {
                             {tx.type === 'fee' ? 'Cargo' : tx.type === 'deposit' ? 'Pago' : 'Ajuste'}
                           </span>
                         </td>
-                        <td className="py-2 px-3">{tx.description}</td>
-                        <td className={`py-2 px-3 text-right font-semibold ${
+                        <td className="py-3 px-4 text-gray-800">{tx.description}</td>
+                        <td className={`py-3 px-4 text-right font-bold ${
                           tx.type === 'deposit' || tx.type === 'adjustment' ? 'text-green-600' : 'text-red-600'
                         }`}>
                           {tx.type === 'deposit' || tx.type === 'adjustment' ? '+' : '-'}
                           {Math.abs(tx.amount).toFixed(2)} Bs
                         </td>
-                        <td className="py-2 px-3 text-right">{tx.balanceAfter.toFixed(2)} Bs</td>
+                        <td className="py-3 px-4 text-right text-gray-700 font-semibold">{tx.balanceAfter.toFixed(2)} Bs</td>
                       </tr>
                     ))}
                     {selected.transactions.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="text-center py-4 text-gray-500">Sin transacciones</td>
+                        <td colSpan={5} className="text-center py-6 text-gray-500 text-lg">Sin transacciones</td>
                       </tr>
                     )}
                   </tbody>
@@ -570,7 +643,7 @@ const SimuladorCobros: React.FC = () => {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center h-64 text-gray-500">
+            <div className="flex items-center justify-center h-80 text-gray-500 text-xl">
               Selecciona un estudiante para ver sus detalles
             </div>
           )}
