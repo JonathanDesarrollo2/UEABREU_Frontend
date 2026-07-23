@@ -31,6 +31,7 @@ import InscriptionSettings from './privateViews/inscription/inscriptionSettings'
 import PaymentHistory from './privateViews/PaymentHistory/PaymentHistoryAdmin'
 import AdminRegistrationsList from './privateViews/AdminRegistrationList/AdminRegistrationList'
 import SchoolFeeSettings from './privateViews/SchoolFeeSettings/SchoolFeeSettings'
+import SimuladorCobros from './privateViews/Simulador/CobrosSimulador'
 
 function ListRoutes() {
   return (
@@ -73,6 +74,7 @@ function ListRoutes() {
           <Route path="transactions" element={<PaymentHistory />} />   // NUEVA RUTA
           <Route path="registrations" element={<AdminRegistrationsList />} />
           <Route path="school-fees" element={<SchoolFeeSettings />} />
+          <Route path="simulador-cobros" element={<SimuladorCobros/>} />
           
           {/* ✅ NUEVAS RUTAS PARA PROFESORES (estructura modular) */}
           <Route path="teachers">

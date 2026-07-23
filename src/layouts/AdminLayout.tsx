@@ -13,7 +13,8 @@ import {
   FaGraduationCap,
   FaChalkboardTeacher,
   FaClipboardList,
-  FaHistory
+  FaHistory,
+  FaFlask
 } from 'react-icons/fa';
 import { FaDollarSign } from 'react-icons/fa6';
 
@@ -51,6 +52,7 @@ export default function AdminLayout() {
     { name: 'Profesores', icon: FaChalkboardTeacher, path: '/admin/teachers/list' },
     { name: 'Solicitudes', icon: FaClipboardList, path: '/admin/registrations' },
     { name: 'Tarifas Escolares', icon: FaDollarSign, path: '/admin/school-fees' },
+    { name: 'Simulador Cobros', icon: FaFlask, path: '/admin/simulador-cobros' },
   ];
 
   return (
