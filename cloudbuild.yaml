@@ -3,21 +3,22 @@ steps:
     args:
       - 'build'
       - '--no-cache'
-      - '-f', 'dockerfile'
-      - '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:${_IMAGE_TAG}'
-      - '--build-arg', 'VITE_API_BASE_LOCAL=${_API_BASE_URL}'
+      - '-f'
+      - 'dockerfile'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:${_IMAGE_TAG}'
+      - '--build-arg'
+      - 'VITE_API_BASE_LOCAL=${_API_BASE_URL}'
       - '.'
-
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:${_IMAGE_TAG}'
-
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'run'
       - 'deploy'
-      - '${_SERVICE_NAME}'             # ← directamente el nombre del servicio
+      - '${_SERVICE_NAME}'
       - '--image'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:${_IMAGE_TAG}'
       - '--region'
@@ -27,6 +28,5 @@ steps:
       - '--allow-unauthenticated'
       - '--port'
       - '8080'
-
 options:
   logging: CLOUD_LOGGING_ONLY
