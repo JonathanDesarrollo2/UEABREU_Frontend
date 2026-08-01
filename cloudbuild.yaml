@@ -3,9 +3,12 @@ steps:
     args:
       - 'build'
       - '--no-cache'
-      - '-f', 'dockerfile'                       # ← busca "dockerfile" (minúsculas)
-      - '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:${_ENV}'
-      - '--build-arg', 'VITE_API_BASE_LOCAL=${_API_BASE_URL}'
+      - '-f'
+      - 'dockerfile'                                     # ← nombre exacto del archivo (minúsculas)
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:${_ENV}'
+      - '--build-arg'
+      - 'VITE_API_BASE_LOCAL=${_API_BASE_URL}'
       - '.'
 
   - name: 'gcr.io/cloud-builders/docker'
@@ -17,7 +20,7 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'ueabreu-frontend-${_ENV}'               # ← despliega en el servicio correcto según entorno
+      - 'ueabreu-frontend-${_ENV}'                        # ← servicio dinámico
       - '--image'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:${_ENV}'
       - '--region'
