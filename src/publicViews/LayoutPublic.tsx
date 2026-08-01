@@ -234,7 +234,7 @@ const LayoutPublic = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold">U.E. José Antonio Abreu</h3>
-                  <p className="text-slate-300 text-sm">Formando líderes del mañana</p>
+                  <p className="text-slate-300 text-sm">AMBIENTE DE PRUEBA</p>
                 </div>
               </div>
               <div className="space-y-4">
