@@ -8,18 +8,30 @@ import { PrivacyPolicy } from './publicViews/Polity/Polity'
 import { TermsAndConditions } from './publicViews/TermsAndConditions/TAC'
 import { JoinUsView } from './publicViews/JoinUs'
 import PrivateRoutes from './auth/privateRoutes'
-import RepresLayout from './layouts/RepresLayout'  // ✅ Layout corregido
+import RepresLayout from './layouts/RepresLayout'
 import AdminLayout from './layouts/AdminLayout'
-import RepresDashboard from './layouts/RepresDashboard'  // ✅ Dashboard corregido
+import RepresDashboard from './layouts/RepresDashboard'
 import AdminDashboard from './layouts/AdminDashboard'
 import AuthRedirector from './publicViews/Components/Redirector'
 import LayoutUsers from './layouts/UserLayout'
 import InsertUser from './privateViews/insertUser/insertUser'
-import UserList from './privateViews/userList/UserList'
 import UserDashboard from './layouts/UserLayout'
-import PaymentValidation from './privateViews/payment/paymentValidation'  // ✅ Nueva vista agregada
-import ClassSchedule from './privateViews/Schedule/ClassSchedule'
 import ManualBalance from './privateViews/balance/ManualBalance'
+import AdminListUsersBackend from './privateViews/userList/UserList'
+import ScheduleView from './privateViews/Schedule/ClassSchedule'
+import AdminListSubjectsBackend from './privateViews/ListSubject/AdminLIstSubjectBackend'
+import AdminListStudentsBackend from './privateViews/AdminListStudentBackend/AdminListStudentBackend'
+import AdminListTeachersBackend from './privateViews/TeacherList/AdminTeacherListBackend'
+import TeacherListPage from './privateViews/TeacherList/AdminTeacherListBackend'
+import EditTeacherPage from './privateViews/TeacherEdit/EditTeacherView'
+import ChildrenScheduleView from './privateViews/ChildrenSchedule/ChildrenSchedule'
+import PaymentValidationPage from './privateViews/PaymentValidation/PaymentValidationPage'
+import SolicitudInscripcion from './publicViews/inscription/SolicitudInscripcion'
+import InscriptionSettings from './privateViews/inscription/inscriptionSettings'
+import PaymentHistory from './privateViews/PaymentHistory/PaymentHistoryAdmin'
+import AdminRegistrationsList from './privateViews/AdminRegistrationList/AdminRegistrationList'
+import SchoolFeeSettings from './privateViews/SchoolFeeSettings/SchoolFeeSettings'
+import SimuladorCobros from './privateViews/Simulador/CobrosSimulador'
 
 function ListRoutes() {
   return (
@@ -32,6 +44,7 @@ function ListRoutes() {
         <Route path="SobreNosotros" element={<AboutUsView />} />
         <Route path="PrivacyPolicy" element={<PrivacyPolicy />} />
         <Route path="TermsAndConditions" element={<TermsAndConditions />} />
+        <Route path="Solicitud" element={<SolicitudInscripcion />} />
       </Route>
 
       {/* Rutas Privadas */}
@@ -41,9 +54,8 @@ function ListRoutes() {
         {/* Rutas específicas por rol */}
         <Route path="/representante" element={<RepresLayout />}>
           <Route index element={<RepresDashboard />} />
-          {/* ✅ Nueva ruta para validación de pagos - AHORA EN REPRESENTANTE */}
-          <Route path="payment-validation" element={<PaymentValidation />} />
-          <Route path="class-schedule" element={<ClassSchedule />} /> {/* Nueva ruta */}
+          <Route path="validar-pago/:representativeId" element={<PaymentValidationPage />} />
+          <Route path="ChildrenSchedule" element={<ChildrenScheduleView />} />
         </Route>
           
         <Route path="/admin" element={<AdminLayout />}>
@@ -51,9 +63,24 @@ function ListRoutes() {
           <Route path="users" element={<LayoutUsers />}>
             <Route index element={<UserDashboard />} />
             <Route path="insert" element={<InsertUser />} />
-            <Route path="list" element={<UserList />} />
+            <Route path="list" element={<AdminListUsersBackend />} />
           </Route>
+          <Route path="Schedule" element={<ScheduleView />} />
           <Route path="Balance" element={<ManualBalance />} />
+          <Route path="ListSubjects" element={<AdminListSubjectsBackend />} />
+          <Route path="listStudents" element={<AdminListStudentsBackend />} />
+          <Route path="ListTeacher" element={<AdminListTeachersBackend />} />
+          <Route path="Settings" element={<InscriptionSettings />} />
+          <Route path="transactions" element={<PaymentHistory />} />   // NUEVA RUTA
+          <Route path="registrations" element={<AdminRegistrationsList />} />
+          <Route path="school-fees" element={<SchoolFeeSettings />} />
+          <Route path="simulador-cobros" element={<SimuladorCobros/>} />
+          
+          {/* ✅ NUEVAS RUTAS PARA PROFESORES (estructura modular) */}
+          <Route path="teachers">
+            <Route path="list" element={<TeacherListPage />} />
+            <Route path="edit" element={<EditTeacherPage />} />
+          </Route>
         </Route>
       </Route>
     </Routes>

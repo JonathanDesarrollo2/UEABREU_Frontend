@@ -1,216 +1,98 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  FaMoneyBillWave, 
-  FaUser, 
-  FaSearch, 
-  FaPlus, 
-  FaMinus, 
-  FaHistory,
-  FaCreditCard,
-  FaInfoCircle,
-  FaArrowLeft,
-  FaCheckCircle
+  FaMoneyBillWave, FaUser, FaSearch, FaPlus, FaMinus, FaHistory,
+  FaCreditCard, FaInfoCircle, FaArrowLeft, FaCheckCircle
 } from 'react-icons/fa';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css'; // ¡Importa los estilos!
-import api from '../../library/axios';
+import 'react-toastify/dist/ReactToastify.css';
 
-interface Representative {
+import { useRepresentativeSearch } from './hooks/useRepresentativeSearch';
+import { useBalanceTransaction } from './hooks/useBalanceTransaction';
+import { useTransactionHistory } from './hooks/useTransactionHistory';
+import { 
+  formatCurrency, getBalanceColor, getBalanceBgColor, mapPaymentMethodToDisplay 
+} from './utils/balanceUtils';
+
+// Interfaz para representante (usada en hooks y componente= 
+export interface Representative {
   id: string;
   fullName: string;
   identityCard: string;
   phone: string;
   balance: number;
+  balanceFormatted?: string;
+  balanceStatus?: 'debt' | 'zero' | 'credit';
+  debtAmount?: number;
+  studentCount?: number;
+  userStatus?: boolean;
+  email?: string;
   students?: Array<{
     id: string;
     fullName: string;
     status: string;
+    balance?: number; // balance individual del estudiante
   }>;
-}
-
-interface TransactionForm {
-  amount: number;
-  description: string;
-  paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
-  reference?: string;
-  createdBy?: string;
 }
 
 export default function ManualBalance() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRep, setSelectedRep] = useState<Representative | null>(null);
-  const [searchResults, setSearchResults] = useState<Representative[]>([]);
   const [transactionType, setTransactionType] = useState<'deposit' | 'withdrawal'>('deposit');
-  const [formData, setFormData] = useState<TransactionForm>({
-    amount: 0,
-    description: '',
-    paymentMethod: 'cash',
-    reference: '',
-    createdBy: localStorage.getItem('userId') || undefined
-  });
-  const [isSearching, setIsSearching] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [transactions, setTransactions] = useState<any[]>([]);
 
-  // Buscar representantes
-  const searchRepresentatives = async () => {
-    if (!searchTerm.trim()) return;
-    
-    setIsSearching(true);
-    try {
-      const response = await api.get('/balance/representatives', {
-        params: {
-          search: searchTerm,
-          limit: 10,
-          page: 1
+  // Hooks personalizados
+  const {
+    searchTerm,
+    setSearchTerm,
+    searchResults,
+    setSearchResults,
+    isSearching,
+    selectedRep,
+    setSelectedRep,
+    loadRepresentativeDetails,
+  } = useRepresentativeSearch();
+
+  const {
+    showHistory,
+    setShowHistory,
+    transactions,
+    loadTransactionHistory,
+  } = useTransactionHistory();
+
+  const {
+    loading,
+    formData,
+    setFormData,
+    handleSubmit,
+    calculateNewBalance,
+    updateTransactionType,
+  } = useBalanceTransaction(
+    selectedRep,
+    transactionType,
+    async () => {
+      // Callback tras transacción exitosa: refrescar representante e historial
+      if (selectedRep) {
+        const updatedRep = await loadRepresentativeDetails(selectedRep.id);
+        if (updatedRep) {
+          setSelectedRep(updatedRep);
+          loadTransactionHistory(selectedRep.id);
         }
-      });
-
-      if (response.data.result) {
-        setSearchResults(response.data.content.representatives || []);
-      } else {
-        toast.error('Error al buscar representantes');
       }
-    } catch (error) {
-      console.error('Error buscando representantes:', error);
-      toast.error('Error al buscar representantes');
-    } finally {
-      setIsSearching(false);
     }
+  );
+
+  // Sincronizar descripción al cambiar tipo de transacción
+  const handleTransactionTypeChange = (newType: 'deposit' | 'withdrawal') => {
+    setTransactionType(newType);
+    updateTransactionType(newType);
   };
 
-  // Cargar detalles del representante seleccionado
-  const loadRepresentativeDetails = async (id: string) => {
-    try {
-      const response = await api.get(`/balance/representative/${id}/balance`);
-      if (response.data.result) {
-        setSelectedRep(response.data.content);
-        setFormData(prev => ({
-          ...prev,
-          description: transactionType === 'deposit' 
-            ? 'Depósito manual en efectivo'
-            : 'Retiro manual en efectivo'
-        }));
-        loadTransactionHistory(id);
-      }
-    } catch (error) {
-      console.error('Error cargando detalles:', error);
-      toast.error('Error al cargar información del representante');
-    }
-  };
-
-  // Cargar historial de transacciones
-  const loadTransactionHistory = async (representativeId: string) => {
-    try {
-      const response = await api.get(`/balance/representative/${representativeId}/transactions`, {
-        params: { limit: 5 }
-      });
-      
-      if (response.data.result) {
-        setTransactions(response.data.content || []);
-      }
-    } catch (error) {
-      console.error('Error cargando historial:', error);
-    }
-  };
-
-  // Manejar búsqueda
-  useEffect(() => {
-    const delaySearch = setTimeout(() => {
-      if (searchTerm.trim().length >= 3) {
-        searchRepresentatives();
-      } else {
-        setSearchResults([]);
-      }
-    }, 500);
-
-    return () => clearTimeout(delaySearch);
-  }, [searchTerm]);
-
-  // Manejar envío del formulario
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedRep) {
-      toast.error('Selecciona un representante primero');
-      return;
-    }
-
-    if (!formData.amount || formData.amount <= 0) {
-      toast.error('El monto debe ser mayor a 0');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const endpoint = transactionType === 'deposit' 
-        ? `/balance/representative/${selectedRep.id}/deposit`
-        : `/balance/representative/${selectedRep.id}/withdraw`;
-
-      const response = await api.post(endpoint, {
-        ...formData,
-        amount: parseFloat(formData.amount.toString())
-      });
-
-      if (response.data.result) {
-        toast.success(
-          transactionType === 'deposit' 
-            ? 'Depósito registrado exitosamente'
-            : 'Retiro registrado exitosamente'
-        );
-
-        // Actualizar datos del representante
-        await loadRepresentativeDetails(selectedRep.id);
-        
-        // Limpiar formulario
-        setFormData({
-          amount: 0,
-          description: '',
-          paymentMethod: 'cash',
-          reference: '',
-          createdBy: localStorage.getItem('userId') || undefined
-        });
-      } else {
-        toast.error(response.data.error?.join(', ') || 'Error al procesar la transacción');
-      }
-    } catch (error: any) {
-      console.error('Error procesando transacción:', error);
-      toast.error(
-        error.response?.data?.error?.join(', ') || 
-        'Error al procesar la transacción'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Calcular nuevo saldo
-  const calculateNewBalance = () => {
-    if (!selectedRep) return 0;
-    
-    const currentBalance = selectedRep.balance || 0;
-    const amount = formData.amount || 0;
-    
-    if (transactionType === 'deposit') {
-      return currentBalance + amount;
-    } else {
-      return currentBalance - amount;
-    }
-  };
-
-  // Formatear moneda
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
+  // Seleccionar un estudiante automáticamente si solo hay uno, o permitir selección manual
+  const studentOptions = selectedRep?.students || [];
+  const hasMultipleStudents = studentOptions.length > 1;
+  
+  // Si solo hay un estudiante, asignarlo automáticamente al formData
+  if (selectedRep && studentOptions.length === 1 && !formData.studentId) {
+    setFormData(prev => ({ ...prev, studentId: studentOptions[0].id }));
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-4 md:p-6">
@@ -284,12 +166,17 @@ export default function ManualBalance() {
 
                 {/* Resultados de búsqueda */}
                 {searchResults.length > 0 && !selectedRep && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                     {searchResults.map((rep) => (
                       <div
                         key={rep.id}
                         onClick={() => {
-                          loadRepresentativeDetails(rep.id);
+                          loadRepresentativeDetails(rep.id).then(updatedRep => {
+                            if (updatedRep) {
+                              setSelectedRep(updatedRep);
+                              loadTransactionHistory(rep.id);
+                            }
+                          });
                           setSearchResults([]);
                           setSearchTerm('');
                         }}
@@ -299,15 +186,23 @@ export default function ManualBalance() {
                           <div>
                             <h4 className="font-semibold text-gray-800">{rep.fullName}</h4>
                             <p className="text-sm text-gray-600">
-                              Cédula: {rep.identityCard} | Tel: {rep.phone}
+                              Cédula: {rep.identityCard} | Tel: {rep.phone || 'N/A'}
                             </p>
                           </div>
-                          <div className={`px-2 py-1 rounded text-xs font-bold ${(rep.balance || 0) >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          <div className={`px-2 py-1 rounded text-xs font-bold ${getBalanceBgColor(rep.balance || 0)}`}>
                             {formatCurrency(rep.balance || 0)}
                           </div>
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {searchTerm.length >= 2 && !isSearching && searchResults.length === 0 && !selectedRep && (
+                  <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg p-4">
+                    <p className="text-gray-600 text-center">
+                      No se encontraron representantes con "{searchTerm}"
+                    </p>
                   </div>
                 )}
               </div>
@@ -327,36 +222,51 @@ export default function ManualBalance() {
                         </span>
                         <span className="text-sm text-gray-600">
                           <FaCreditCard className="inline mr-1" />
-                          {selectedRep.phone}
+                          {selectedRep.phone || 'N/A'}
                         </span>
+                        {selectedRep.email && (
+                          <span className="text-sm text-gray-600">
+                            {selectedRep.email}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`text-2xl font-bold ${(selectedRep.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(selectedRep.balance || 0)}
+                      <div className={`text-2xl font-bold ${getBalanceColor(selectedRep.balance || 0)}`}>
+                        {selectedRep.balanceFormatted || formatCurrency(selectedRep.balance || 0)}
                       </div>
                       <div className="text-sm text-gray-600">
                         Saldo actual
                       </div>
+                      {selectedRep.balanceStatus && (
+                        <div className={`text-xs px-2 py-1 rounded ${selectedRep.balanceStatus === 'debt' ? 'bg-red-100 text-red-800' : selectedRep.balanceStatus === 'credit' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          {selectedRep.balanceStatus === 'debt' ? 'EN DEUDA' : selectedRep.balanceStatus === 'credit' ? 'CON CRÉDITO' : 'SALDO CERO'}
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Estudiantes */}
-                  {selectedRep.students && selectedRep.students.length > 0 && (
+                  {/* Lista de estudiantes con sus balances individuales */}
+                  {studentOptions.length > 0 && (
                     <div className="mb-4">
                       <h4 className="font-semibold text-gray-700 mb-2">
-                        Estudiantes Activos
+                        Estudiantes ({studentOptions.length})
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {selectedRep.students.map((student) => (
+                        {studentOptions.map((student) => (
                           <div
                             key={student.id}
                             className="bg-white p-3 rounded-lg border border-gray-200"
                           >
                             <div className="flex justify-between items-center">
-                              <span className="font-medium text-gray-800">{student.fullName}</span>
-                              <span className={`px-2 py-1 rounded text-xs ${student.status === 'active' || student.status === 'regular' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                              <span className="font-medium text-gray-800 truncate mr-2">{student.fullName}</span>
+                              <span className={`px-2 py-1 rounded text-xs ${student.status === 'regular' ? 'bg-green-100 text-green-800' : student.status === 'pendiente' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
                                 {student.status}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              Balance: <span className={getBalanceColor(student.balance || 0)}>
+                                {formatCurrency(student.balance || 0)}
                               </span>
                             </div>
                           </div>
@@ -365,7 +275,6 @@ export default function ManualBalance() {
                     </div>
                   )}
 
-                  {/* Botón para ver historial */}
                   <button
                     onClick={() => setShowHistory(!showHistory)}
                     className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
@@ -382,7 +291,7 @@ export default function ManualBalance() {
               {showHistory && selectedRep && transactions.length > 0 && (
                 <div className="mt-6">
                   <h4 className="font-semibold text-gray-700 mb-3">
-                    Transacciones Recientes
+                    Transacciones Recientes ({transactions.length})
                   </h4>
                   <div className="space-y-3">
                     {transactions.map((transaction) => (
@@ -397,17 +306,20 @@ export default function ManualBalance() {
                                 {transaction.type === 'deposit' ? 'DEPÓSITO' : 'RETIRO'}
                               </span>
                               <span className="text-sm text-gray-600">
-                                {new Date(transaction.createdAt).toLocaleDateString('es-VE')}
+                                {transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString('es-VE') : 'N/A'}
                               </span>
                             </div>
-                            <p className="text-gray-800 mt-1">{transaction.description}</p>
+                            <p className="text-gray-800 mt-1">{transaction.description || 'Sin descripción'}</p>
+                            {transaction.reference && (
+                              <p className="text-xs text-gray-500 mt-1">Ref: {transaction.reference}</p>
+                            )}
                           </div>
                           <div className="text-right">
                             <div className={`text-lg font-bold ${transaction.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
-                              {transaction.type === 'deposit' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                              {transaction.type === 'deposit' ? '+' : '-'}{formatCurrency(transaction.amount || 0)}
                             </div>
-                            <div className="text-sm text-gray-600">
-                              {transaction.paymentMethod}
+                            <div className="text-sm text-gray-600 capitalize">
+                              {mapPaymentMethodToDisplay(transaction.paymentMethod || 'cash')}
                             </div>
                           </div>
                         </div>
@@ -434,21 +346,44 @@ export default function ManualBalance() {
               {/* Selector de tipo */}
               <div className="flex space-x-2 mb-6">
                 <button
-                  onClick={() => setTransactionType('deposit')}
+                  type="button"
+                  onClick={() => handleTransactionTypeChange('deposit')}
                   className={`flex-1 py-3 rounded-lg font-semibold transition-all ${transactionType === 'deposit' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   Depósito
                 </button>
                 <button
-                  onClick={() => setTransactionType('withdrawal')}
+                  type="button"
+                  onClick={() => handleTransactionTypeChange('withdrawal')}
                   className={`flex-1 py-3 rounded-lg font-semibold transition-all ${transactionType === 'withdrawal' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   Retiro
                 </button>
               </div>
 
-              {/* Formulario */}
               <form onSubmit={handleSubmit}>
+                {/* Selección de estudiante (si hay más de uno) */}
+                {selectedRep && studentOptions.length > 1 && (
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Estudiante *
+                    </label>
+                    <select
+                      value={formData.studentId || ''}
+                      onChange={(e) => setFormData({...formData, studentId: e.target.value})}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Seleccione un estudiante</option>
+                      {studentOptions.map(student => (
+                        <option key={student.id} value={student.id}>
+                          {student.fullName} (Balance: {formatCurrency(student.balance || 0)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Monto */}
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -464,7 +399,7 @@ export default function ManualBalance() {
                       min="0.01"
                       value={formData.amount || ''}
                       onChange={(e) => setFormData({...formData, amount: parseFloat(e.target.value) || 0})}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0.00"
                       required
                     />
@@ -479,8 +414,7 @@ export default function ManualBalance() {
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Ingrese una descripción..."
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800"
                     rows={3}
                     required
                   />
@@ -494,7 +428,7 @@ export default function ManualBalance() {
                   <select
                     value={formData.paymentMethod}
                     onChange={(e) => setFormData({...formData, paymentMethod: e.target.value as any})}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg"
                   >
                     <option value="cash">Efectivo</option>
                     <option value="bank_transfer">Transferencia Bancaria</option>
@@ -514,7 +448,7 @@ export default function ManualBalance() {
                     type="text"
                     value={formData.reference || ''}
                     onChange={(e) => setFormData({...formData, reference: e.target.value})}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg"
                     placeholder="Número de referencia o comprobante"
                   />
                 </div>
@@ -536,7 +470,7 @@ export default function ManualBalance() {
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-blue-200">
                       <span className="text-gray-800 font-semibold">Nuevo saldo:</span>
-                      <span className={`text-xl font-bold ${calculateNewBalance() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`text-xl font-bold ${getBalanceColor(calculateNewBalance())}`}>
                         {formatCurrency(calculateNewBalance())}
                       </span>
                     </div>
@@ -552,9 +486,6 @@ export default function ManualBalance() {
                           <FaInfoCircle />
                           <span className="font-semibold">Saldo insuficiente</span>
                         </div>
-                        <p className="text-red-600 text-sm mt-1">
-                          El representante no tiene suficiente saldo para este retiro.
-                        </p>
                       </div>
                     ) : (
                       <div className="bg-green-50 border border-green-200 rounded-xl p-4">
@@ -570,9 +501,16 @@ export default function ManualBalance() {
                 {/* Botón de envío */}
                 <button
                   type="submit"
-                  disabled={loading || !selectedRep || formData.amount <= 0 || 
-                    (transactionType === 'withdrawal' && formData.amount > (selectedRep?.balance || 0))}
-                  className={`w-full py-3 rounded-xl font-semibold transition-all ${transactionType === 'deposit' ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'} disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-md`}
+                  disabled={
+                    loading || !selectedRep || formData.amount <= 0 || 
+                    (transactionType === 'withdrawal' && formData.amount > (selectedRep?.balance || 0)) ||
+                    (hasMultipleStudents && !formData.studentId) // deshabilitar si no se seleccionó estudiante
+                  }
+                  className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                    transactionType === 'deposit' 
+                      ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' 
+                      : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
+                  } disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-md`}
                 >
                   {loading ? (
                     <div className="flex items-center justify-center space-x-2">
@@ -585,7 +523,6 @@ export default function ManualBalance() {
                 </button>
               </form>
 
-              {/* Nota informativa */}
               <div className="mt-6 pt-4 border-t border-gray-200">
                 <div className="flex items-start space-x-2 text-gray-600 text-sm">
                   <FaInfoCircle className="mt-0.5 flex-shrink-0" />

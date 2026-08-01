@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { Link, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import type { typeLogin_in } from "../../types/login";
 import { userInLogin } from "./hooks/useInLogin";
 import { useInLoginForm } from "./hooks/useInLoginForm";
@@ -34,37 +33,9 @@ export default function LoginAuthPublic() {
 
   const onSubmit = useCallback(
     (formdata: typeLogin_in) => {
-      if (!formdata.usermail?.trim()) {
-        toast.error("El email es requerido");
-        return;
-      }
-      if (!formdata.userpass?.trim()) {
-        toast.error("La contraseña es requerida.");
-        return;
-      }
-
-      mutate(formdata, {
-        onSuccess: (dataAPI) => {
-          if (dataAPI.result) {
-            console.log('✅ Login exitoso, redirigiendo...');
-            toast.success('¡Bienvenido!', {
-              autoClose: 1000,
-            });
-            
-            setTimeout(() => {
-              console.log('🔄 Navegando a /app (ruta privada)');
-              navigate('/app');
-            }, 1200);
-          } else {
-            console.log('❌ Login fallido:', dataAPI.error);
-          }
-        },
-        onError: (error) => {
-          console.error('❌ Error en login:', error);
-        }
-      });
+      mutate(formdata);
     },
-    [mutate, navigate]
+    [mutate]
   );
 
   const handleCancel = useCallback(() => navigate('/'), [navigate]);
@@ -107,13 +78,10 @@ export default function LoginAuthPublic() {
         transition={{ duration: 0.6 }}
         className="w-full max-w-md relative z-10"
       >
-        {/* Tarjeta principal */}
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200 relative overflow-hidden">
           
-          {/* Efecto de acento decorativo */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-800 to-blue-900"></div>
           
-          {/* Encabezado con animación */}
           <motion.div 
             className="text-center mb-8"
             initial={{ opacity: 0, y: -20 }}
@@ -130,14 +98,12 @@ export default function LoginAuthPublic() {
             <h1 className="text-2xl font-bold text-slate-800 mb-2">U.E. José Antonio Abreu</h1>
             <p className="text-slate-600">Plataforma Educativa</p>
             
-            {/* Indicadores de estado */}
             <div className="flex justify-center gap-2 mt-4">
               <StatusLight isActive={!!emailValue} />
               <StatusLight isActive={!!passwordValue} />
             </div>
           </motion.div>
 
-          {/* Formulario con animaciones escalonadas */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -240,7 +206,6 @@ export default function LoginAuthPublic() {
             </motion.div>
           </form>
 
-          {/* Sección Únete a Nosotros */}
           <motion.div 
             className="text-center mt-8 pt-6 border-t border-slate-200"
             initial={{ opacity: 0 }}
@@ -268,7 +233,6 @@ export default function LoginAuthPublic() {
           </motion.div>
         </div>
 
-        {/* Mensaje decorativo inferior */}
         <motion.p 
           className="text-center text-slate-500 mt-6 text-sm"
           initial={{ opacity: 0 }}

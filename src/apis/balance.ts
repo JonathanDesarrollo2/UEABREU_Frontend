@@ -1,34 +1,44 @@
-// src/apis/balance.ts
 import api from '../library/axios';
 
 export interface BalanceResponse {
   result: boolean;
   content: {
-    id: string;
-    fullName: string;
-    identityCard: string;
-    phone: string;
-    balance: number;
-    financialSummary: {
-      currentBalance: number;
-      debtAmount: number;
-      availableCredit: number;
-      activeStudents: number;
-      monthlyFee: number;
-      nextPaymentDue: string;
-      canEnrollNewStudent: boolean;
-    };
-    students?: Array<{
+    representative: {
       id: string;
       fullName: string;
+      identityCard: string;
+      phone: string;
+      balance: number;
+      balanceFormatted: string;
+      balanceStatus: 'debt' | 'credit' | 'zero';
+      debtAmount: number;
+      studentCount: number;
+      userEmail: string;
+      students: Array<{
+        id: string;
+        fullName: string;
+        status: string;
+        currentGrade: string;
+        balance: number;
+        balanceFormatted: string;
+      }>;
+    };
+    recentTransactions: Array<{
+      id: string;
+      type: string;
+      amount: number;
+      description: string;
+      paymentMethod: string;
+      reference: string;
       status: string;
+      createdAt: string;
     }>;
   };
   error: string[];
 }
 
 export async function getRepresentativeBalance(id: string): Promise<BalanceResponse> {
-  const response = await api.get(`/balance/representative/${id}/balance`);
+  const response = await api.get(`/private/balance/representative/${id}/balance`);
   return response.data;
 }
 
@@ -37,12 +47,12 @@ export async function manualDeposit(
   data: {
     amount: number;
     description: string;
-    paymentMethod: string;
+    paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
     reference?: string;
     createdBy?: string;
   }
 ) {
-  const response = await api.post(`/balance/representative/${representativeId}/deposit`, data);
+  const response = await api.post(`/private/balance/representative/${representativeId}/deposit`, data);
   return response.data;
 }
 
@@ -51,17 +61,17 @@ export async function manualWithdrawal(
   data: {
     amount: number;
     description: string;
-    paymentMethod: string;
+    paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
     reference?: string;
     createdBy?: string;
   }
 ) {
-  const response = await api.post(`/balance/representative/${representativeId}/withdraw`, data);
+  const response = await api.post(`/private/balance/representative/${representativeId}/withdraw`, data);
   return response.data;
 }
 
 export async function searchRepresentatives(searchTerm: string, limit = 10) {
-  const response = await api.get('/balance/representatives', {
+  const response = await api.get('/private/balance/representatives', {
     params: {
       search: searchTerm,
       limit,
@@ -72,8 +82,31 @@ export async function searchRepresentatives(searchTerm: string, limit = 10) {
 }
 
 export async function getTransactionHistory(representativeId: string, params?: any) {
-  const response = await api.get(`/balance/representative/${representativeId}/transactions`, {
+  const response = await api.get(`/private/balance/representative/${representativeId}/transactions`, {
     params
   });
+  return response.data;
+}
+
+export async function checkPaymentExists(reference: string, representativeId: string) {
+  const response = await api.get('/private/balance/check-payment', {
+    params: { reference, representativeId }
+  });
+  return response.data;
+}
+
+export async function getFinancialStatistics() {
+  const response = await api.get('/private/balance/statistics/financial');
+  return response.data;
+}
+
+export async function getRepresentativeByEmail(email: string): Promise<any> {
+  const response = await api.get('/private/balance/representative-by-email', {
+    params: { email }
+  });
+  return response.data;
+}
+export async function getAllTransactions(params?: any) {
+  const response = await api.get('/private/balance/transactions', { params });
   return response.data;
 }

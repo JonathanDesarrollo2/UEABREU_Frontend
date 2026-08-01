@@ -5,7 +5,7 @@ import { FiCheck, FiUser, FiBook, FiHeart, FiAward, FiHome } from 'react-icons/f
 export const BenefitsSection: React.FC = () => {
   const advantages = [
     {
-      text: "Educación basada en valores cristianos",
+      text: "Educación basada en buenos valores ",
       icon: <FiHeart className="w-6 h-6" />
     },
     {
@@ -31,7 +31,7 @@ export const BenefitsSection: React.FC = () => {
   ];
 
   return (
-    <section className="w-screen relative left-1/2 right-1/2 -mx-[50vw] bg-gradient-to-br from-emerald-600 to-teal-700 py-16">
+    <section id="ventajas" className="w-screen relative left-1/2 right-1/2 -mx-[50vw] bg-gradient-to-br from-blue-800 to-blue-900 py-16 scroll-mt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ y: 30, opacity: 0 }}
@@ -43,7 +43,7 @@ export const BenefitsSection: React.FC = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             ¿Por Qué Elegirnos?
           </h2>
-          <p className="text-lg text-emerald-100 max-w-3xl mx-auto">
+          <p className="text-lg text-blue-100 max-w-3xl mx-auto">
             Más de 20 años formando jóvenes íntegros y preparados para el futuro
           </p>
         </motion.div>
@@ -79,8 +79,8 @@ export const BenefitsSection: React.FC = () => {
           viewport={{ once: true }}
           className="text-center mt-12"
         >
-          <p className="text-emerald-100 text-lg italic">
-            "Formando líderes del mañana con educación de calidad y valores cristianos"
+          <p className="text-blue-100 text-lg italic">
+            "Formando lideres del mañana con pasión y creando valores"
           </p>
         </motion.div>
       </div>

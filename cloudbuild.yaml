@@ -4,30 +4,30 @@ steps:
       'build',
       '--no-cache',
       '-t',
-      'gcr.io/${PROJECT_ID}/UEABREU_Frontend:latest',
+      'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:latest',
+      '--build-arg', 'VITE_API_BASE_LOCAL=https://appservices.ueabreu.com/api', # 👈 LÍNEA CLAVE
       '.'
     ]
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'push',
-      'gcr.io/${PROJECT_ID}/UEABREU_Frontend:latest'
+      'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:latest'
     ]
   - name: 'gcr.io/cloud-builders/gcloud'
     args: [
       'run',
       'deploy',
-      'UEABREU_Frontend',
+      'ueabreu-frontend',
       '--image',
-      'gcr.io/${PROJECT_ID}/UEABREU_Frontend:latest',
+      'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:latest',
       '--region',
       'us-central1',
       '--platform',
       'managed',
       '--allow-unauthenticated',
       '--port',
-      '8080',
-      '--set-env-vars',
-      "VITE_API_BASE_LOCAL=https://appservices.ueabreu.com/api"
+      '8080'
+      # ❌ NO incluyas '--set-env-vars' para VITE_API_BASE_LOCAL aquí
     ]
 options:
     logging: CLOUD_LOGGING_ONLY

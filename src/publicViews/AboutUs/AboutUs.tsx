@@ -62,7 +62,7 @@ const AboutUsView: React.FC = () => {
   return (
     <div className="min-h-screen pt-28 bg-white">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white py-20">
+      <section className="bg-gradient-to-r from-blue-800 to-blue-900 text-white py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.h1 
             initial={{ y: 30, opacity: 0 }}
@@ -84,7 +84,7 @@ const AboutUsView: React.FC = () => {
       </section>
 
       {/* Misión y Visión */}
-      <section className="py-20 bg-gradient-to-br from-gray-50 to-emerald-50">
+      <section className="py-20 bg-gradient-to-br from-slate-50 to-blue-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <motion.div
@@ -92,15 +92,15 @@ const AboutUsView: React.FC = () => {
               whileInView={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.8 }}
               viewport={{ once: true }}
-              className="bg-white p-8 rounded-2xl shadow-lg border border-gray-200"
+              className="bg-white p-8 rounded-2xl shadow-lg border border-slate-200"
             >
               <div className="flex items-center mb-6">
-                <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mr-4">
-                  <FiTarget className="w-6 h-6 text-emerald-600" />
+                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mr-4 border border-blue-200">
+                  <FiTarget className="w-6 h-6 text-blue-700" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-800">Nuestra Visión</h3>
+                <h3 className="text-2xl font-bold text-slate-800">Nuestra Visión</h3>
               </div>
-              <p className="text-gray-600 leading-relaxed">
+              <p className="text-slate-600 leading-relaxed">
                 Formar jóvenes mediante una educación integral y de excelencia que promueve el pensamiento crítico, 
                 la constancia y la solidaridad. Inspirados por el legado del Maestro José Antonio Abreu, desarrollamos 
                 en nuestros estudiantes un liderazgo con espíritu de servicio, capacitándolos para transformar los 
@@ -113,15 +113,15 @@ const AboutUsView: React.FC = () => {
               whileInView={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.8 }}
               viewport={{ once: true }}
-              className="bg-white p-8 rounded-2xl shadow-lg border border-gray-200"
+              className="bg-white p-8 rounded-2xl shadow-lg border border-slate-200"
             >
               <div className="flex items-center mb-6">
-                <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center mr-4">
-                  <FiAward className="w-6 h-6 text-teal-600" />
+                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mr-4 border border-blue-200">
+                  <FiAward className="w-6 h-6 text-blue-700" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-800">Nuestra Misión</h3>
+                <h3 className="text-2xl font-bold text-slate-800">Nuestra Misión</h3>
               </div>
-              <p className="text-gray-600 leading-relaxed">
+              <p className="text-slate-600 leading-relaxed">
                 Consolidarnos como la institución que forma a la nueva generación de profesionales y ciudadanos, 
                 reconocida por un modelo educativo donde la excelencia académica y el espíritu de servicio se unen 
                 para honrar el legado del Maestro José Antonio Abreu.
@@ -141,8 +141,8 @@ const AboutUsView: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Nuestros Valores</h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">Nuestros Valores</h2>
+            <p className="text-lg text-slate-600 max-w-3xl mx-auto">
               Principios fundamentales que guían nuestra labor educativa diaria
             </p>
           </motion.div>
@@ -155,13 +155,13 @@ const AboutUsView: React.FC = () => {
                 whileInView={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="bg-white p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-all duration-300"
+                className="bg-white p-6 rounded-xl border border-slate-200 hover:shadow-lg transition-all duration-300"
               >
-                <div className="text-emerald-600 mb-4 flex justify-center">
+                <div className="text-blue-700 mb-4 flex justify-center">
                   {value.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-3 text-center">{value.title}</h3>
-                <p className="text-gray-600 text-center">{value.description}</p>
+                <h3 className="text-xl font-semibold text-slate-800 mb-3 text-center">{value.title}</h3>
+                <p className="text-slate-600 text-center">{value.description}</p>
               </motion.div>
             ))}
           </div>
@@ -169,7 +169,7 @@ const AboutUsView: React.FC = () => {
       </section>
 
       {/* Proyecto a Ejecutar en el Tiempo */}
-      <section className="py-20 bg-gradient-to-br from-gray-50 to-emerald-50">
+      <section className="py-20 bg-gradient-to-br from-slate-50 to-blue-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ y: 30, opacity: 0 }}
@@ -178,8 +178,8 @@ const AboutUsView: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Proyecto a Ejecutar en el Tiempo</h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">Proyecto a Ejecutar en el Tiempo</h2>
+            <p className="text-lg text-slate-600 max-w-3xl mx-auto">
               Nuestra metodología de trabajo basada en un proceso continuo de mejora
             </p>
           </motion.div>
@@ -194,15 +194,15 @@ const AboutUsView: React.FC = () => {
                 viewport={{ once: true }}
                 className="flex flex-col md:flex-row items-center gap-8"
               >
-                <div className="flex-shrink-0 w-28 h-28 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-3xl shadow-lg border-4 border-white">
+                <div className="flex-shrink-0 w-28 h-28 rounded-full bg-blue-700 text-white flex items-center justify-center font-bold text-3xl shadow-lg border-4 border-white">
                   {index + 1}
                 </div>
-                <div className="flex-1 bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+                <div className="flex-1 bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
                   <div className="flex items-center mb-4">
-                    <div className="w-4 h-4 rounded-full bg-emerald-500 mr-3"></div>
-                    <h3 className="text-xl font-bold text-gray-800">{phase.phase}</h3>
+                    <div className="w-4 h-4 rounded-full bg-blue-700 mr-3"></div>
+                    <h3 className="text-xl font-bold text-slate-800">{phase.phase}</h3>
                   </div>
-                  <p className="text-gray-600">{phase.description}</p>
+                  <p className="text-slate-600">{phase.description}</p>
                 </div>
               </motion.div>
             ))}
@@ -211,7 +211,7 @@ const AboutUsView: React.FC = () => {
       </section>
 
       {/* CTA Final */}
-      <section className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white">
+      <section className="bg-gradient-to-r from-blue-800 to-blue-900 text-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-20">
           <motion.div
             initial={{ y: 30, opacity: 0 }}
@@ -226,7 +226,7 @@ const AboutUsView: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
                 href="/join-us"
-                className="bg-white text-emerald-600 px-8 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors shadow-lg"
+                className="bg-white text-blue-800 px-8 py-3 rounded-xl font-semibold hover:bg-slate-50 transition-colors shadow-lg"
               >
                 Solicitar Información
               </a>

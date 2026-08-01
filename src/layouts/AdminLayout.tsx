@@ -1,18 +1,22 @@
-// layouts/StudentLayout.tsx
+// layouts/AdminLayout.tsx
 import { Outlet, useOutletContext, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { 
-  FaGraduationCap, 
   FaHome, 
-  FaMoneyCheck, 
-  FaChartLine,
-  FaCalendarAlt,
-  FaBell,
-  FaUserGraduate,
+  FaMoneyCheck,
   FaSignOutAlt,
   FaBars,
-  FaTimes
+  FaTimes,
+  FaUser,
+  FaUserPlus,
+  FaCalendar,
+  FaGraduationCap,
+  FaChalkboardTeacher,
+  FaClipboardList,
+  FaHistory,
+  FaFlask
 } from 'react-icons/fa';
+import { FaDollarSign } from 'react-icons/fa6';
 
 interface SessionContext {
   sesionUser?: string;
@@ -25,7 +29,7 @@ interface SessionContext {
   } | null;
 }
 
-export default function StudentLayout() {
+export default function AdminLayout() {
   const sessionContext = useOutletContext<SessionContext>();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -37,11 +41,18 @@ export default function StudentLayout() {
 
   const menuItems = [
     { name: 'Dashboard', icon: FaHome, path: '/admin' },
+    { name: 'Inscripciones', icon: FaClipboardList, path: '/admin/settings' },
     { name: 'Pagos', icon: FaMoneyCheck, path: '/admin/Balance' },
-    { name: 'Calificaciones', icon: FaChartLine, path: '/student/grades' },
-    { name: 'Asistencia', icon: FaCalendarAlt, path: '/student/attendance' },
-    { name: 'Notificaciones', icon: FaBell, path: '/student/notifications' },
-    { name: 'Perfil', icon: FaUserGraduate, path: '/student/profile' },
+    { name: 'Historial de Pagos', icon: FaHistory, path: '/admin/transactions' },
+    { name: 'Usuarios', icon: FaUser, path: '/admin/users/list' },
+    { name: 'Nuevo Usuario', icon: FaUserPlus, path: '/admin/users/insert' },
+    { name: 'Horario', icon: FaCalendar, path: '/admin/Schedule' },
+    { name: 'Materias', icon: FaGraduationCap, path: '/admin/ListSubjects' },
+    { name: 'Estudiantes', icon: FaGraduationCap, path: '/admin/listStudents' },
+    { name: 'Profesores', icon: FaChalkboardTeacher, path: '/admin/teachers/list' },
+    { name: 'Solicitudes', icon: FaClipboardList, path: '/admin/registrations' },
+    { name: 'Tarifas Escolares', icon: FaDollarSign, path: '/admin/school-fees' },
+    { name: 'Simulador Cobros', icon: FaFlask, path: '/admin/simulador-cobros' },
   ];
 
   return (
@@ -59,10 +70,14 @@ export default function StudentLayout() {
             </button>
           </div>
           <div className="flex-1 h-0 pt-6 pb-4 overflow-y-auto">
-            {/* Logo y nombre */}
+            {/* Logo con imagen, mismo tamaño que en RepresLayout */}
             <div className="flex-shrink-0 flex items-center px-5 pb-6">
-              <div className="flex items-center justify-center w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-500 rounded-xl shadow-md">
-                <FaGraduationCap className="h-7 w-7 text-white" />
+              <div className="flex items-center justify-center w-20 h-20 rounded-xl">
+                <img 
+                  src="/logo.png" 
+                  alt="Logo U.E. José Antonio Abreu" 
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div className="ml-4">
                 <span className="text-white text-lg font-bold block">U.E. José</span>
@@ -71,21 +86,14 @@ export default function StudentLayout() {
               </div>
             </div>
             
-            {/* Información del estudiante */}
-            {sessionContext.studentInfo?.name && (
+            {/* Información del administrador (sin ACTIVO) */}
+            {sessionContext.sesionUser && (
               <div className="px-5 py-4 bg-gray-700 mx-3 mt-4 rounded-lg">
                 <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Administrativo</p>
-                <p className="text-white font-bold text-lg mt-1">{sessionContext.studentInfo.name}</p>
-                <p className="text-sm mt-3">
-                  {sessionContext.studentInfo.status ? 
-                    <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">● AL DÍA</span> : 
-                    <span className="bg-blue-400 text-white px-3 py-1 rounded-full text-xs font-bold">● PENDIENTE</span>
-                  }
-                </p>
+                <p className="text-white font-bold text-lg mt-1">{sessionContext.sesionUser}</p>
               </div>
             )}
             
-            {/* Menú */}
             <nav className="mt-6 px-3 space-y-2">
               {menuItems.map((item) => (
                 <a
@@ -106,10 +114,14 @@ export default function StudentLayout() {
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-72 bg-gray-800 shadow-sm">
           <div className="flex-1 flex flex-col pt-6 pb-4 overflow-y-auto">
-            {/* Logo y nombre */}
+            {/* Logo con imagen, mismo tamaño que en RepresLayout */}
             <div className="flex items-center px-6 pb-6">
-              <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-500 rounded-xl shadow-md">
-                <FaGraduationCap className="h-8 w-8 text-white" />
+              <div className="flex items-center justify-center w-24 h-24 rounded-xl">
+                <img 
+                  src="/logo.png" 
+                  alt="Logo U.E. José Antonio Abreu" 
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div className="ml-4">
                 <span className="text-white text-xl font-bold block">U.E. José</span>
@@ -118,21 +130,14 @@ export default function StudentLayout() {
               </div>
             </div>
             
-            {/* Información del estudiante */}
-            {sessionContext.studentInfo?.name && (
+            {/* Información del administrador (sin ACTIVO) */}
+            {sessionContext.sesionUser && (
               <div className="px-5 py-5 bg-gray-700 mx-4 mt-4 rounded-xl">
                 <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Administrativo</p>
-                <p className="text-white font-bold text-lg mt-2">{sessionContext.studentInfo.name}</p>
-                <p className="text-sm mt-3">
-                  {sessionContext.studentInfo.status ? 
-                    <span className="bg-green-500 text-white px-4 py-2 rounded-full text-sm font-bold">● AL DÍA</span> : 
-                    <span className="bg-blue-400 text-white px-4 py-2 rounded-full text-sm font-bold">● PENDIENTE</span>
-                  }
-                </p>
+                <p className="text-white font-bold text-lg mt-2">{sessionContext.sesionUser}</p>
               </div>
             )}
             
-            {/* Menú */}
             <nav className="mt-6 flex-1 px-4 space-y-3">
               {menuItems.map((item) => (
                 <a
@@ -174,22 +179,16 @@ export default function StudentLayout() {
           <div className="flex justify-between items-center px-7 py-5">
             <div className="hidden lg:block">
               <h1 className="text-2xl font-bold text-white">Panel Administrativo</h1>
-              <p className="text-gray-400 text-base mt-2 font-medium">Seguimiento educativo integral</p>
+              <p className="text-gray-400 text-base mt-2 font-medium">Gestión administrativa</p>
             </div>
             
             <div className="flex items-center space-x-5">
-              {/* Información del usuario - Sin correo */}
               <div className="text-right hidden sm:block bg-gray-700 px-4 py-3 rounded-lg">
                 <p className="text-base font-bold text-white">{sessionContext.sesionUser}</p>
                 <p className="text-sm text-gray-400 font-medium">Administrativo</p>
               </div>
               
-              {/* Badge de estado */}
-              <div className="bg-gradient-to-r from-blue-400 to-blue-500 text-white px-5 py-3 rounded-lg text-base font-bold shadow-md">
-                Administrativo
-              </div>
-              
-              {/* Botón de salir */}
+              {/* Botón de cerrar sesión (sin cambios) */}
               <button
                 onClick={handleLogout}
                 className="flex items-center space-x-3 bg-gray-700 hover:bg-blue-500 text-gray-300 hover:text-white px-5 py-3 rounded-lg transition-all duration-200 border-2 border-blue-500 hover:border-blue-400 shadow-sm font-bold text-base"
@@ -201,7 +200,6 @@ export default function StudentLayout() {
           </div>
         </header>
 
-        {/* Main content area */}
         <main className="flex-1 relative overflow-y-auto focus:outline-none bg-gray-100">
           <div className="py-7">
             <div className="max-w-8xl mx-auto px-5 sm:px-7 lg:px-9">
