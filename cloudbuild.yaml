@@ -4,7 +4,7 @@ steps:
       - 'build'
       - '--no-cache'
       - '-f'
-      - 'dockerfile'
+      - 'dockerfile'                          # ← así se llama tu archivo real (minúscula)
       - '-t'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:${_IMAGE_TAG}'
       - '--build-arg'
