@@ -52,7 +52,9 @@ export default function AdminLayout() {
     { name: 'Profesores', icon: FaChalkboardTeacher, path: '/admin/teachers/list' },
     { name: 'Solicitudes', icon: FaClipboardList, path: '/admin/registrations' },
     { name: 'Tarifas Escolares', icon: FaDollarSign, path: '/admin/school-fees' },
-    { name: 'Simulador Cobros', icon: FaFlask, path: '/admin/simulador-cobros' },
+        ...(import.meta.env.VITE_ENABLE_SIMULATOR === 'true'
+      ? [{ name: 'Simulador Cobros', icon: FaFlask, path: '/admin/simulador-cobros' }]
+      : []),
   ];
 
   return (

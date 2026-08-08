@@ -9,6 +9,7 @@ steps:
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/ueabreu-frontend/ueabreu-frontend:${_IMAGE_TAG}'
       - '--build-arg'
       - 'VITE_API_BASE_LOCAL=${_API_BASE_URL}'
+      - 'VITE_ENABLE_SIMULATOR=${_VITE_ENABLE_SIMULATOR}'   # ← NUEVA LÍNEA
       - '.'
   - name: 'gcr.io/cloud-builders/docker'
     args:
