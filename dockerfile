@@ -5,12 +5,17 @@ FROM node:20 AS build
 
 WORKDIR /app
 
-# 🔧 Recibe la variable de entorno
+# 🔧 Recibe la variable de entorno para la API
 ARG VITE_API_BASE_LOCAL
 ENV VITE_API_BASE_LOCAL=$VITE_API_BASE_LOCAL
 
-# Verificación
+# 🔧 Recibe la variable de entorno para habilitar el simulador (solo en test)
+ARG VITE_ENABLE_SIMULATOR
+ENV VITE_ENABLE_SIMULATOR=$VITE_ENABLE_SIMULATOR
+
+# Verificación (opcional pero útil para depurar)
 RUN echo "✅ [DOCKER BUILD] VITE_API_BASE_LOCAL: $VITE_API_BASE_LOCAL"
+RUN echo "✅ [DOCKER BUILD] VITE_ENABLE_SIMULATOR: $VITE_ENABLE_SIMULATOR"
 
 COPY package.json package-lock.json ./
 RUN npm install
