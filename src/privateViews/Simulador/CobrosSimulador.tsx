@@ -96,6 +96,13 @@ const SimuladorCobros: React.FC = () => {
           Modifica la fecha del sistema de pruebas. Afecta a todos los cálculos de cobros, mensualidades y pronto pago.
         </p>
 
+        {/* ✅ Indicador de fecha simulada activa */}
+        <p className="mt-3 text-white text-lg font-semibold">
+          {simulatedDate
+            ? `📅 Fecha simulada activa: ${new Date(simulatedDate + 'T00:00:00').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' })}`
+            : '📅 Usando fecha real del servidor'}
+        </p>
+
         <div className="flex flex-wrap gap-3 mt-5">
           <div className="flex items-center gap-2 bg-white/20 rounded-lg px-4 py-3">
             <FaCalendarAlt className="text-xl" />
