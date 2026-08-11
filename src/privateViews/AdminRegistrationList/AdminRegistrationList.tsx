@@ -22,7 +22,8 @@ import ExcelJS from 'exceljs';
 
 (pdfMake as any).vfs = pdfFonts.vfs;
 
-const API_BASE = import.meta.env.VITE_API_URL || "https://appservices.ueabreu.com";
+// ✅ ÚNICO CAMBIO REALIZADO: usar la variable de entorno de la API de pruebas
+const API_BASE = import.meta.env.VITE_API_BASE_LOCAL || "https://appservices.ueabreu.com/api";
 
 interface Application {
   id: string;
