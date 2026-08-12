@@ -98,7 +98,7 @@ export async function updateStudentExonerationAPI(
   }
 }
 export const updateStudentSectionAPI = async (studentId: string, section: string) => {
-  const response = await fetch(`/api/private/students/${studentId}/section`, {
+  const response = await fetch(`/private/students/${studentId}/section`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ section }),
