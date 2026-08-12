@@ -10,7 +10,7 @@ import ConfirmDeleteModal from '../../../components/ConfirmDeleteModal';
 import ExonerationModal from '../../../components/ExonerationModal';
 import type { TypeStudent } from '../../../types/student';
 import { useDeleteStudent } from '../../../hooks/teacher/useDeteleStudent';
-import { updateStudentExonerationAPI } from '../../../apis/student';
+import { updateStudentExonerationAPI, updateStudentSectionAPI } from '../../../apis/student';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import GenericModal from '../../../components/GenricModal';
@@ -18,6 +18,9 @@ import GenericModal from '../../../components/GenricModal';
 interface ListStudentsAPIProps {
   data: TypeStudent[];
 }
+
+// Opciones de sección disponibles
+const SECTION_OPTIONS = ['A', 'B', 'C', 'D', 'E'];
 
 export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
   const navigate = useNavigate();
@@ -31,9 +34,13 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
   } | null>(null);
   const [exonerationTarget, setExonerationTarget] = useState<TypeStudent | null>(null);
 
-  // ✅ Este hook ya existe en tu proyecto: src/hooks/teacher/useDeteleStudent.ts
+  // Estados locales para las secciones de cada estudiante (para reflejar el cambio instantáneo)
+  const [sectionValues, setSectionValues] = useState<Record<string, string>>({});
+
+  // Mutación para eliminar estudiante (ya existente)
   const { mutate: deleteStudent, isPending: isDeleting } = useDeleteStudent();
 
+  // Mutación para exoneración (ya existente)
   const exonerationMutation = useMutation({
     mutationFn: ({ studentId, percent }: { studentId: string; percent: number }) =>
       updateStudentExonerationAPI(studentId, percent),
@@ -51,9 +58,25 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
     },
   });
 
+  // Mutación para actualizar la sección
+  const sectionMutation = useMutation({
+    mutationFn: ({ studentId, section }: { studentId: string; section: string }) =>
+      updateStudentSectionAPI(studentId, section),
+    onSuccess: (data) => {
+      if (data.result) {
+        toast.success(data.content[0]);
+        queryClient.invalidateQueries({ queryKey: ['students'] });
+      } else {
+        toast.error(data.error?.[0] || 'Error al actualizar sección');
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Error al actualizar sección');
+    },
+  });
+
   const handleDelete = () => {
     if (deleteCandidate) {
-      // ✅ Pasamos studentId y representativeId (como espera el hook)
       deleteStudent(
         {
           studentId: deleteCandidate.studentId,
@@ -78,6 +101,13 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
     if (exonerationTarget?.id) {
       exonerationMutation.mutate({ studentId: exonerationTarget.id, percent });
     }
+  };
+
+  const handleSectionChange = (studentId: string, newSection: string) => {
+    // Actualiza el estado local para respuesta inmediata
+    setSectionValues(prev => ({ ...prev, [studentId]: newSection }));
+    // Dispara la mutación al backend
+    sectionMutation.mutate({ studentId, section: newSection });
   };
 
   const formatDate = (date?: Date) => {
@@ -114,79 +144,98 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
             </tr>
           </thead>
           <tbody>
-            {data.map((student) => (
-              <tr
-                key={student.id}
-                className="border-b hover:bg-gray-50 cursor-pointer"
-                onClick={() => setSelectedStudent(student)}
-              >
-                <td className="py-3 px-4">
-                  <div className="font-medium text-blue-600">{student.fullName}</div>
-                </td>
-                <td className="py-3 px-4">{student.identityCard}</td>
-                <td className="py-3 px-4">{student.currentGrade || 'En asignar'}</td>
-                <td className="py-3 px-4">{student.section || 'Pendiente'}</td>
-                <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(student.status)}`}>
-                    {student.status ? student.status.charAt(0).toUpperCase() + student.status.slice(1) : 'Pendiente'}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-700">
-                      {student.exonerationPercent ?? 0}%
+            {data.map((student) => {
+              const currentSection =
+                sectionValues[student.id!] ?? student.section ?? 'Pendiente';
+              return (
+                <tr
+                  key={student.id}
+                  className="border-b hover:bg-gray-50 cursor-pointer"
+                  onClick={() => setSelectedStudent(student)}
+                >
+                  <td className="py-3 px-4">
+                    <div className="font-medium text-blue-600">{student.fullName}</div>
+                  </td>
+                  <td className="py-3 px-4">{student.identityCard}</td>
+                  <td className="py-3 px-4">{student.currentGrade || 'En asignar'}</td>
+                  {/* 🔥 Columna Sección editable */}
+                  <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                    <select
+                      value={currentSection}
+                      onChange={(e) => handleSectionChange(student.id!, e.target.value)}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      disabled={sectionMutation.isPending}
+                    >
+                      <option value="Pendiente">Pendiente</option>
+                      {SECTION_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(student.status)}`}>
+                      {student.status
+                        ? student.status.charAt(0).toUpperCase() + student.status.slice(1)
+                        : 'Pendiente'}
                     </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExonerationTarget(student);
-                      }}
-                      className="p-1 text-green-600 hover:text-green-800 rounded-full hover:bg-green-100"
-                      title="Editar exoneración"
-                    >
-                      <FaMoneyBillWave className="text-lg" />
-                    </button>
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-sm text-gray-500">
-                  {formatDate(student.admissionDate)}
-                </td>
-                <td className="py-3 px-4">
-                  {student.representative ? (
-                    <div>
-                      <div className="font-medium">{student.representative.fullName}</div>
-                      <div className="text-sm text-gray-500">{student.representative.identityCard}</div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-700">
+                        {student.exonerationPercent ?? 0}%
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExonerationTarget(student);
+                        }}
+                        className="p-1 text-green-600 hover:text-green-800 rounded-full hover:bg-green-100"
+                        title="Editar exoneración"
+                      >
+                        <FaMoneyBillWave className="text-lg" />
+                      </button>
                     </div>
-                  ) : (
-                    <span className="text-gray-400">No asignado</span>
-                  )}
-                </td>
-                <td className="py-3 px-4">
-                  <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => handleUpdate(student)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                      title="Editar"
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      onClick={() =>
-                        setDeleteCandidate({
-                          studentId: student.id!,
-                          representativeId: student.representativeId!,
-                          studentName: student.fullName!,
-                        })
-                      }
-                      className="p-2 text-red-600 hover:bg-red-50 rounded"
-                      title="Eliminar"
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-gray-500">
+                    {formatDate(student.admissionDate)}
+                  </td>
+                  <td className="py-3 px-4">
+                    {student.representative ? (
+                      <div>
+                        <div className="font-medium">{student.representative.fullName}</div>
+                        <div className="text-sm text-gray-500">{student.representative.identityCard}</div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">No asignado</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => handleUpdate(student)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                        title="Editar"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        onClick={() =>
+                          setDeleteCandidate({
+                            studentId: student.id!,
+                            representativeId: student.representativeId!,
+                            studentName: student.fullName!,
+                          })
+                        }
+                        className="p-2 text-red-600 hover:bg-red-50 rounded"
+                        title="Eliminar"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -205,7 +254,11 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
               type: 'text',
             },
             { label: 'Grado Actual', value: selectedStudent.currentGrade || 'En asignar', type: 'text' },
-            { label: 'Sección', value: selectedStudent.section || 'Pendiente', type: 'text' },
+            {
+              label: 'Sección',
+              value: sectionValues[selectedStudent.id!] ?? selectedStudent.section ?? 'Pendiente',
+              type: 'text',
+            },
             {
               label: 'Estado Académico',
               value: selectedStudent.status

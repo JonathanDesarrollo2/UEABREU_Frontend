@@ -97,3 +97,11 @@ export async function updateStudentExonerationAPI(
     throw new Error(mensaje);
   }
 }
+export const updateStudentSectionAPI = async (studentId: string, section: string) => {
+  const response = await fetch(`/api/private/students/${studentId}/section`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ section }),
+  });
+  return response.json();
+};
