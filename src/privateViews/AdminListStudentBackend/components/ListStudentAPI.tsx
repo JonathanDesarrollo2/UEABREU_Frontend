@@ -31,6 +31,7 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
   } | null>(null);
   const [exonerationTarget, setExonerationTarget] = useState<TypeStudent | null>(null);
 
+  // ✅ Este hook ya existe en tu proyecto: src/hooks/teacher/useDeteleStudent.ts
   const { mutate: deleteStudent, isPending: isDeleting } = useDeleteStudent();
 
   const exonerationMutation = useMutation({
@@ -52,12 +53,20 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
 
   const handleDelete = () => {
     if (deleteCandidate) {
-      deleteStudent(deleteCandidate, {
-        onSuccess: () => {
-          setDeleteCandidate(null);
-          setSelectedStudent(null);
-        },
-      });
+      // ✅ Pasamos studentId y representativeId (como espera el hook)
+      deleteStudent(
+        {
+          studentId: deleteCandidate.studentId,
+          representativeId: deleteCandidate.representativeId,
+          studentName: deleteCandidate.studentName,
+        } as any,
+        {
+          onSuccess: () => {
+            setDeleteCandidate(null);
+            setSelectedStudent(null);
+          },
+        }
+      );
     }
   };
 
@@ -122,7 +131,6 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
                     {student.status ? student.status.charAt(0).toUpperCase() + student.status.slice(1) : 'Pendiente'}
                   </span>
                 </td>
-                {/* Columna de exoneración */}
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-gray-700">
@@ -183,50 +191,29 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
         </table>
       </div>
 
-      {/* Modal de Detalles del Estudiante */}
       {selectedStudent && (
         <GenericModal
           title={`Detalles del Estudiante: ${selectedStudent.fullName}`}
           fields={[
-            {
-              label: 'Nombre Completo',
-              value: selectedStudent.fullName || 'No disponible',
-              type: 'text'
-            },
-            {
-              label: 'Cédula',
-              value: selectedStudent.identityCard || 'No disponible',
-              type: 'text'
-            },
+            { label: 'Nombre Completo', value: selectedStudent.fullName || 'No disponible', type: 'text' },
+            { label: 'Cédula', value: selectedStudent.identityCard || 'No disponible', type: 'text' },
             {
               label: 'Fecha de Nacimiento',
               value: selectedStudent.birthDate
                 ? new Date(selectedStudent.birthDate).toLocaleDateString('es-ES')
                 : 'No disponible',
-              type: 'text'
+              type: 'text',
             },
-            {
-              label: 'Grado Actual',
-              value: selectedStudent.currentGrade || 'En asignar',
-              type: 'text'
-            },
-            {
-              label: 'Sección',
-              value: selectedStudent.section || 'Pendiente',
-              type: 'text'
-            },
+            { label: 'Grado Actual', value: selectedStudent.currentGrade || 'En asignar', type: 'text' },
+            { label: 'Sección', value: selectedStudent.section || 'Pendiente', type: 'text' },
             {
               label: 'Estado Académico',
               value: selectedStudent.status
                 ? selectedStudent.status.charAt(0).toUpperCase() + selectedStudent.status.slice(1)
                 : 'Pendiente',
-              type: 'text'
+              type: 'text',
             },
-            {
-              label: 'Fecha de Admisión',
-              value: formatDate(selectedStudent.admissionDate),
-              type: 'text'
-            }
+            { label: 'Fecha de Admisión', value: formatDate(selectedStudent.admissionDate), type: 'text' },
           ]}
           extraContent={
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
@@ -267,7 +254,7 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
             setDeleteCandidate({
               studentId: selectedStudent.id!,
               representativeId: selectedStudent.representativeId!,
-              studentName: selectedStudent.fullName!
+              studentName: selectedStudent.fullName!,
             });
             setSelectedStudent(null);
           }}
@@ -275,7 +262,6 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
         />
       )}
 
-      {/* Modal de Confirmación de Eliminación */}
       <ConfirmDeleteModal
         show={!!deleteCandidate}
         onClose={() => setDeleteCandidate(null)}
@@ -285,7 +271,6 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
         isLoading={isDeleting}
       />
 
-      {/* Modal de Exoneración */}
       <ExonerationModal
         show={!!exonerationTarget}
         studentName={exonerationTarget?.fullName || ''}
