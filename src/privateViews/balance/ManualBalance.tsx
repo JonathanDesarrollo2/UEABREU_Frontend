@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FaMoneyBillWave, FaUser, FaSearch, FaPlus, FaMinus, FaHistory,
-  FaCreditCard, FaInfoCircle, FaArrowLeft, FaCheckCircle
+  FaCreditCard, FaInfoCircle, FaArrowLeft, FaCheckCircle, FaTimes
 } from 'react-icons/fa';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -13,7 +13,7 @@ import {
   formatCurrency, getBalanceColor, getBalanceBgColor, mapPaymentMethodToDisplay 
 } from './utils/balanceUtils';
 
-// Interfaz para representante (usada en hooks y componente= 
+// Interfaz para representante (usada en hooks y componente)
 export interface Representative {
   id: string;
   fullName: string;
@@ -30,7 +30,7 @@ export interface Representative {
     id: string;
     fullName: string;
     status: string;
-    balance?: number; // balance individual del estudiante
+    balance?: number;
   }>;
 }
 
@@ -83,6 +83,21 @@ export default function ManualBalance() {
   const handleTransactionTypeChange = (newType: 'deposit' | 'withdrawal') => {
     setTransactionType(newType);
     updateTransactionType(newType);
+  };
+
+  // Nueva función para limpiar representante seleccionado
+  const handleClearRepresentative = () => {
+    setSelectedRep(null);
+    setSearchTerm('');
+    setSearchResults([]);
+    setShowHistory(false);
+    setFormData(prev => ({
+      ...prev,
+      amount: 0,
+      description: transactionType === 'deposit' ? 'Depósito manual' : 'Retiro manual',
+      reference: '',
+      studentId: undefined,
+    }));
   };
 
   // Seleccionar un estudiante automáticamente si solo hay uno, o permitir selección manual
@@ -245,6 +260,15 @@ export default function ManualBalance() {
                       )}
                     </div>
                   </div>
+
+                  {/* Botón para limpiar representante */}
+                  <button
+                    onClick={handleClearRepresentative}
+                    className="mb-4 flex items-center space-x-2 text-sm text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <FaTimes />
+                    <span>Cambiar representante</span>
+                  </button>
 
                   {/* Lista de estudiantes con sus balances individuales */}
                   {studentOptions.length > 0 && (
@@ -504,7 +528,7 @@ export default function ManualBalance() {
                   disabled={
                     loading || !selectedRep || formData.amount <= 0 || 
                     (transactionType === 'withdrawal' && formData.amount > (selectedRep?.balance || 0)) ||
-                    (hasMultipleStudents && !formData.studentId) // deshabilitar si no se seleccionó estudiante
+                    (hasMultipleStudents && !formData.studentId)
                   }
                   className={`w-full py-3 rounded-xl font-semibold transition-all ${
                     transactionType === 'deposit' 

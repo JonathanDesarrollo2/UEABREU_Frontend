@@ -59,11 +59,9 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'academic'>('overview');
   const [retryCount, setRetryCount] = useState(0);
 
-  // Estados para la tasa BCV (sin duplicar)
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const [loadingRate, setLoadingRate] = useState(true);
 
-  // Cargar tasa BCV al montar el componente
   useEffect(() => {
     const fetchBCVRate = async () => {
       try {
@@ -74,7 +72,6 @@ export default function AdminDashboard() {
           console.log('✅ Tasa BCV cargada:', response.content);
         }
       } catch (err: any) {
-        // Valor de respaldo en caso de error
         setBcvRate({
           PriceRateBCV: 36.6642,
           dtRate: new Date().toLocaleDateString('es-VE').split('/').reverse().join('/')
@@ -466,7 +463,6 @@ export default function AdminDashboard() {
                 <h3 className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</h3>
                 <p className="text-gray-900 font-semibold">{stat.title}</p>
                 <p className="text-gray-600 text-sm mt-1">{stat.description}</p>
-                {/* Barra de progreso */}
                 <div className="mt-4">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>Progreso</span>
@@ -488,7 +484,6 @@ export default function AdminDashboard() {
 
           {/* Sección de Balance */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Balance Total */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -504,7 +499,6 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              {/* Indicador de tasa BCV */}
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <FaExchangeAlt className="text-blue-600" />
@@ -539,7 +533,6 @@ export default function AdminDashboard() {
                     {formatCurrency(stats.financial.monthlyCollected, 'VES')}
                   </p>
                   <p className="text-sm text-green-600 mt-1">Este mes</p>
-                  {/* Equivalente en USD */}
                   {bcvRate && (
                     <p className="text-xs text-green-600 mt-1">
                       ≈ {formatCurrency(convertToUSD(stats.financial.monthlyCollected), 'USD')}
@@ -556,7 +549,6 @@ export default function AdminDashboard() {
                     {formatCurrency(stats.financial.totalDebt, 'VES')}
                   </p>
                   <p className="text-sm text-red-600 mt-1">Deuda total</p>
-                  {/* Equivalente en USD */}
                   {bcvRate && (
                     <p className="text-xs text-red-600 mt-1">
                       ≈ {formatCurrency(convertToUSD(stats.financial.totalDebt), 'USD')}
@@ -573,7 +565,6 @@ export default function AdminDashboard() {
                     {formatCurrency(stats.financial.totalCredit, 'VES')}
                   </p>
                   <p className="text-sm text-blue-600 mt-1">Crédito disponible</p>
-                  {/* Equivalente en USD */}
                   {bcvRate && (
                     <p className="text-xs text-blue-600 mt-1">
                       ≈ {formatCurrency(convertToUSD(stats.financial.totalCredit), 'USD')}
@@ -593,7 +584,6 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Progreso de recaudación */}
               <div className="mt-6">
                 <div className="flex justify-between text-sm text-gray-600 mb-2">
                   <span>Progreso de recaudación mensual</span>
@@ -610,7 +600,6 @@ export default function AdminDashboard() {
               </div>
             </motion.div>
 
-            {/* Estado de Estudiantes */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -643,7 +632,6 @@ export default function AdminDashboard() {
                 ))}
               </div>
 
-              {/* Gráfico de pastel simple */}
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex justify-between items-center">
                   <div className="text-center">
@@ -665,7 +653,6 @@ export default function AdminDashboard() {
 
           {/* Top Deudores y Representantes */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top Deudores */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -707,7 +694,6 @@ export default function AdminDashboard() {
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-red-600">{formatCurrency(debtor.debtAmount, 'VES')}</p>
-                        {/* Equivalente en USD */}
                         {bcvRate && (
                           <p className="text-xs text-gray-500">
                             ≈ {formatCurrency(convertToUSD(debtor.debtAmount), 'USD')}
@@ -721,7 +707,6 @@ export default function AdminDashboard() {
               )}
             </motion.div>
 
-            {/* Estado de Representantes */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -753,14 +738,6 @@ export default function AdminDashboard() {
                       {stats.representatives.total - stats.representatives.withDebt}
                     </span>
                   </div>
-                  <div className="mt-2 w-full bg-green-200 rounded-full h-2">
-                    <div 
-                      className="h-2 rounded-full bg-green-500 transition-all duration-700"
-                      style={{ 
-                        width: `${calculatePercentage(stats.representatives.total - stats.representatives.withDebt, stats.representatives.total)}%` 
-                      }}
-                    ></div>
-                  </div>
                 </div>
 
                 <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-4">
@@ -772,14 +749,6 @@ export default function AdminDashboard() {
                     <span className="text-2xl font-bold text-red-900">
                       {stats.representatives.withDebt}
                     </span>
-                  </div>
-                  <div className="mt-2 w-full bg-red-200 rounded-full h-2">
-                    <div 
-                      className="h-2 rounded-full bg-red-500 transition-all duration-700"
-                      style={{ 
-                        width: `${calculatePercentage(stats.representatives.withDebt, stats.representatives.total)}%` 
-                      }}
-                    ></div>
                   </div>
                 </div>
 
@@ -793,18 +762,9 @@ export default function AdminDashboard() {
                       {stats.representatives.withCredit}
                     </span>
                   </div>
-                  <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
-                    <div 
-                      className="h-2 rounded-full bg-blue-500 transition-all duration-700"
-                      style={{ 
-                        width: `${calculatePercentage(stats.representatives.withCredit, stats.representatives.total)}%` 
-                      }}
-                    ></div>
-                  </div>
                 </div>
               </div>
 
-              {/* Resumen */}
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
@@ -824,7 +784,7 @@ export default function AdminDashboard() {
         </>
       )}
 
-        {activeTab === 'financial' && (
+      {activeTab === 'financial' && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -832,7 +792,6 @@ export default function AdminDashboard() {
         >
           <h2 className="text-xl font-bold text-gray-900 mb-6">Panel Financiero Detallado</h2>
           
-          {/* Indicador de tasa BCV */}
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <FaExchangeAlt className="text-blue-600 text-xl" />
@@ -898,7 +857,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             
-            {/* Transacciones Recientes (CORREGIDO) */}
+            {/* 🔥 TRANSACCIONES RECIENTES CORREGIDAS */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Transacciones Recientes</h3>
               {stats.recentTransactions.length === 0 ? (
@@ -916,33 +875,41 @@ export default function AdminDashboard() {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto (Bs)</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tasa</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">USD</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {stats.recentTransactions.map((transaction: any) => {
-                        // Si el backend ya envía amountUSD, lo usamos; si no, calculamos con tasa actual
-                        const usdAmount = transaction.amountUSD !== undefined ? transaction.amountUSD : convertToUSD(transaction.amount);
+                      {stats.recentTransactions.map((tx: any) => {
+                        const usdAmount = tx.amountUSD !== undefined ? tx.amountUSD : convertToUSD(tx.amount);
+                        const bcvRateTx = tx.bcvRate !== undefined ? tx.bcvRate : (bcvRate?.PriceRateBCV || 0);
                         return (
-                          <tr key={transaction.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm text-gray-900">{transaction.date}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900">{transaction.representativeName}</td>
-                            <td className="px-4 py-3 text-sm text-gray-700">{transaction.description || getTypeLabel(transaction.type)}</td>
+                          <tr key={tx.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{tx.date || 'N/A'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-900">{tx.representativeName}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{tx.description || getTypeLabel(tx.type)}</td>
                             <td className="px-4 py-3 text-sm">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(transaction.type)}`}>
-                                {getTypeLabel(transaction.type)}
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(tx.type)}`}>
+                                {getTypeLabel(tx.type)}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                              {formatCurrency(transaction.amount, 'VES')}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {formatCurrency(usdAmount, 'USD')}
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{formatCurrency(tx.amount, 'VES')}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{bcvRateTx.toFixed(4)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(usdAmount, 'USD')}</td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                tx.status === 'completed' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {tx.status === 'completed' ? 'Completado' : tx.status}
+                              </span>
                             </td>
                             <td className="px-4 py-3 text-sm">
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {transaction.status}
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                tx.paymentStatus === 'incompleto' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                              }`}>
+                                {tx.paymentStatus === 'incompleto' ? 'Incompleto' : 'Completo'}
                               </span>
                             </td>
                           </tr>
@@ -1033,7 +1000,6 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Distribución de estudiantes */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribución de Estudiantes por Estado</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -1052,7 +1018,6 @@ export default function AdminDashboard() {
         </motion.div>
       )}
 
-      {/* Footer informativo */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

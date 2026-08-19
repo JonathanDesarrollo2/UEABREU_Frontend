@@ -98,7 +98,6 @@ const RepresentativeForm = ({ register, errors }: any) => {
           </div>
         </div>
 
-        {/* NOTA: El campo initialBalance del representante se mantiene, pero ahora es opcional y puede usarse como saldo global si no se especifica por estudiante */}
         <div className="md:col-span-2">
           <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Información Financiera</h3>
         </div>
@@ -235,7 +234,6 @@ const StudentsForm = ({ control, register, errors }: any) => {
                     options={studentStatusOptions}
                     defaultValue="pendiente"
                   />
-                  {/* Grado y Sección */}
                   <FormField 
                     type="select"
                     id={`studentsData.${index}.currentGrade`} 
@@ -256,7 +254,6 @@ const StudentsForm = ({ control, register, errors }: any) => {
                     options={sectionOptions.map(s => ({ value: s, text: s }))}
                     defaultValue="A"
                   />
-                  {/* NUEVO CAMPO: Saldo inicial del estudiante */}
                   <FormField 
                     type="number"
                     id={`studentsData.${index}.balance`} 

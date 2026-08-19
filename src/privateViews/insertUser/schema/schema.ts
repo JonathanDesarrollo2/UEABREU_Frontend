@@ -14,7 +14,7 @@ const representativeDataSchema = z.object({
   initialBalance: z.number().default(0).optional(),
 });
 
-// Esquema para datos del estudiante (con grado, sección y balance individual)
+// Esquema para datos del estudiante (con grado, sección, balance individual y fecha de ingreso)
 const studentDataSchema = z.object({
   fullName: z.string().min(3, "Nombre completo es requerido"),
   identityCard: z.string().min(6, "Cédula es requerida"),
@@ -34,9 +34,8 @@ const studentDataSchema = z.object({
   status: z.enum(['pendiente', 'regular', 'repitiente', 'condicionado', 'inactivo']).default('pendiente').optional(),
   currentGrade: z.string().min(1, "Grado es requerido"),
   section: z.string().min(1, "Sección es requerida"),
-  // NUEVO CAMPO: balance individual del estudiante
   balance: z.number().default(0).optional(),
-  admissionDate: z.string().optional(), // NUEVO
+  admissionDate: z.string().optional(), // NUEVO: fecha de ingreso opcional
 });
 
 // Esquema principal para inserción de usuario
