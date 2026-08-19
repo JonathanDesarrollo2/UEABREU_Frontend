@@ -124,7 +124,7 @@ const RepresentativeForm = ({ register, errors }: any) => {
   );
 };
 
-// Componente para el listado de estudiantes (con balance individual)
+// Componente para el listado de estudiantes (con balance individual y fecha de ingreso)
 const StudentsForm = ({ control, register, errors }: any) => {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -151,7 +151,8 @@ const StudentsForm = ({ control, register, errors }: any) => {
       status: 'pendiente',
       currentGrade: '1ro',
       section: 'A',
-      balance: 0 // Valor por defecto para el saldo individual
+      balance: 0,
+      admissionDate: '' // NUEVO CAMPO: fecha de ingreso vacía por defecto
     });
   };
 
@@ -215,6 +216,14 @@ const StudentsForm = ({ control, register, errors }: any) => {
                     required={true} 
                     register={register} 
                     error={errors?.studentsData?.[index]?.birthDate} 
+                  />
+                  {/* NUEVO CAMPO: Fecha de Ingreso */}
+                  <FormField 
+                    type="date"
+                    id={`studentsData.${index}.admissionDate`} 
+                    label="Fecha de Ingreso" 
+                    register={register} 
+                    error={errors?.studentsData?.[index]?.admissionDate} 
                   />
                   <FormField 
                     type="select"
@@ -438,7 +447,7 @@ export default function InsertUser() {
     toast.info("Formulario limpiado");
   }, [reset]);
 
-  // Calcular total de saldos de estudiantes para mostrar en el resumen (opcional)
+  // Calcular total de saldos de estudiantes para mostrar en el resumen
   const totalStudentBalance = students.reduce((sum: number, student: any) => sum + (Number(student.balance) || 0), 0);
   const globalBalance = watch('representativeData.initialBalance') || 0;
 
@@ -519,12 +528,11 @@ export default function InsertUser() {
                       required={true} 
                       register={register} 
                       error={errors.nivel}
-                      defaultValue={1}  // ✅ Cambiado a número
+                      defaultValue={1}
                       options={[
-                        { value: 1, text: "Representante" },   // ✅ Valor numérico
-                        { value: 2, text: "Administrador" }    // ✅ Valor numérico
+                        { value: 1, text: "Representante" },
+                        { value: 2, text: "Administrador" }
                       ]}
-                      // ✅ Ya no es necesario validation con setValueAs
                     />
                   </div>
                 </div>

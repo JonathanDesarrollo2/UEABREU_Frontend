@@ -36,6 +36,7 @@ const studentDataSchema = z.object({
   section: z.string().min(1, "Sección es requerida"),
   // NUEVO CAMPO: balance individual del estudiante
   balance: z.number().default(0).optional(),
+  admissionDate: z.string().optional(), // NUEVO
 });
 
 // Esquema principal para inserción de usuario
