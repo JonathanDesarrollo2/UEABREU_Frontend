@@ -18,10 +18,10 @@ import {
   FaUserCheck,
   FaClock,
   FaBalanceScale,
-  FaExchangeAlt  // Nuevo ícono para la tasa
+  FaExchangeAlt
 } from 'react-icons/fa';
 import { getDashboardStatsAPI, type DashboardStats } from '../apis/dashboard';
-import { getBCVRateAPI, type BCVRateResponse } from '../apis/bank'; // Importar API de tasa
+import { getBCVRateAPI, type BCVRateResponse } from '../apis/bank';
 import { toast } from 'react-toastify';
 
 interface SessionContext {
@@ -31,6 +31,26 @@ interface SessionContext {
   nivel?: number;
 }
 
+// Mapeo de tipos de transacción a etiquetas legibles
+const typeLabels: Record<string, string> = {
+  deposit: 'Depósito',
+  withdrawal: 'Retiro',
+  payment: 'Pago',
+  fee: 'Cargo',
+  adjustment: 'Ajuste',
+};
+
+const getTypeLabel = (type: string) => typeLabels[type] || type;
+
+const getTypeColor = (type: string) => {
+  switch (type) {
+    case 'deposit': return 'bg-green-100 text-green-800';
+    case 'fee': return 'bg-red-100 text-red-800';
+    case 'adjustment': return 'bg-blue-100 text-blue-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+};
+
 export default function AdminDashboard() {
   const sessionContext = useOutletContext<SessionContext>();
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -39,11 +59,9 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'academic'>('overview');
   const [retryCount, setRetryCount] = useState(0);
 
-  // Estados para la tasa BCV
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const [loadingRate, setLoadingRate] = useState(true);
 
-  // Cargar tasa BCV al montar el componente
   useEffect(() => {
     const fetchBCVRate = async () => {
       try {
@@ -54,10 +72,9 @@ export default function AdminDashboard() {
           console.log('✅ Tasa BCV cargada:', response.content);
         }
       } catch (err: any) {
-        // Valor de respaldo en caso de error
         setBcvRate({
           PriceRateBCV: 36.6642,
-          dtRate: new Date().toLocaleDateString('es-VE').split('/').reverse().join('/') // formato dd/MM/yyyy
+          dtRate: new Date().toLocaleDateString('es-VE').split('/').reverse().join('/')
         });
         console.warn('⚠️ Usando tasa BCV de respaldo');
       } finally {
@@ -75,14 +92,12 @@ export default function AdminDashboard() {
       
       const data = await getDashboardStatsAPI();
       
-      // Verificar que los datos no sean vacíos o inválidos
       if (data && typeof data === 'object') {
         console.log('✅ Dashboard cargado exitosamente:', data);
         setStats(data);
         setLastUpdated(new Date().toLocaleTimeString());
-        setRetryCount(0); // Resetear contador de reintentos
+        setRetryCount(0);
         
-        // Mostrar toast de éxito solo si hay datos reales
         if (data.teachers.total > 0 || data.students.total > 0 || data.representatives.total > 0) {
           toast.success('Dashboard actualizado correctamente', {
             position: "top-right",
@@ -97,7 +112,6 @@ export default function AdminDashboard() {
       } else {
         console.warn('⚠️ Datos del dashboard vacíos o inválidos:', data);
         
-        // Si no hay datos después de varios intentos, mostrar error
         if (retryCount >= 2) {
           toast.warning('No se pudieron cargar los datos del dashboard. Verifica la conexión.', {
             position: "top-right",
@@ -105,10 +119,8 @@ export default function AdminDashboard() {
           });
         }
         
-        // Incrementar contador de reintentos
         setRetryCount(prev => prev + 1);
         
-        // Mantener stats existentes si hay, o usar valores por defecto
         if (!stats) {
           setStats({
             teachers: { total: 0, active: 0, inactive: 0 },
@@ -151,7 +163,6 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('❌ Error en loadDashboardData:', error);
       
-      // Mostrar error solo después de varios intentos fallidos
       if (retryCount >= 2) {
         toast.error('Error crítico al cargar el dashboard', {
           position: "top-right",
@@ -161,7 +172,6 @@ export default function AdminDashboard() {
       
       setRetryCount(prev => prev + 1);
       
-      // Mantener stats existentes si hay
       if (!stats) {
         setStats({
           teachers: { total: 0, active: 0, inactive: 0 },
@@ -208,18 +218,15 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadDashboardData();
-    // Actualizar cada 5 minutos
     const interval = setInterval(loadDashboardData, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Función para convertir a dólares usando la tasa BCV
   const convertToUSD = (amountInVES: number): number => {
     if (!bcvRate || bcvRate.PriceRateBCV <= 0) return 0;
     return amountInVES / bcvRate.PriceRateBCV;
   };
 
-  // Función para formatear moneda (acepta 'VES' o 'USD')
   const formatCurrency = (amount: number, currency: 'VES' | 'USD' = 'VES') => {
     const formatter = new Intl.NumberFormat('es-VE', {
       style: 'currency',
@@ -230,12 +237,10 @@ export default function AdminDashboard() {
     return formatter.format(amount);
   };
 
-  // Función para calcular porcentaje
   const calculatePercentage = (value: number, total: number) => {
     return total > 0 ? Math.round((value / total) * 100) : 0;
   };
 
-  // Mostrar estado de carga inicial
   if (loading && !stats) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6 flex items-center justify-center">
@@ -256,7 +261,6 @@ export default function AdminDashboard() {
     );
   }
 
-  // Verificar si stats es null (no debería pasar después de la carga)
   if (!stats) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
@@ -290,7 +294,6 @@ export default function AdminDashboard() {
     );
   }
 
-  // Estadísticas principales
   const mainStats = [
     {
       title: "Docentes Activos",
@@ -336,7 +339,6 @@ export default function AdminDashboard() {
     }
   ];
 
-  // Datos de estudiantes por estado
   const studentStatusData = [
     { status: 'Regular', count: stats.students.byStatus.regular, color: 'bg-green-100 text-green-800' },
     { status: 'Pendiente', count: stats.students.byStatus.pendiente, color: 'bg-yellow-100 text-yellow-800' },
@@ -461,7 +463,6 @@ export default function AdminDashboard() {
                 <h3 className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</h3>
                 <p className="text-gray-900 font-semibold">{stat.title}</p>
                 <p className="text-gray-600 text-sm mt-1">{stat.description}</p>
-                {/* Barra de progreso */}
                 <div className="mt-4">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>Progreso</span>
@@ -483,7 +484,6 @@ export default function AdminDashboard() {
 
           {/* Sección de Balance */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Balance Total */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -499,7 +499,6 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              {/* Indicador de tasa BCV */}
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <FaExchangeAlt className="text-blue-600" />
@@ -534,7 +533,6 @@ export default function AdminDashboard() {
                     {formatCurrency(stats.financial.monthlyCollected, 'VES')}
                   </p>
                   <p className="text-sm text-green-600 mt-1">Este mes</p>
-                  {/* Equivalente en USD */}
                   {bcvRate && (
                     <p className="text-xs text-green-600 mt-1">
                       ≈ {formatCurrency(convertToUSD(stats.financial.monthlyCollected), 'USD')}
@@ -551,7 +549,6 @@ export default function AdminDashboard() {
                     {formatCurrency(stats.financial.totalDebt, 'VES')}
                   </p>
                   <p className="text-sm text-red-600 mt-1">Deuda total</p>
-                  {/* Equivalente en USD */}
                   {bcvRate && (
                     <p className="text-xs text-red-600 mt-1">
                       ≈ {formatCurrency(convertToUSD(stats.financial.totalDebt), 'USD')}
@@ -568,7 +565,6 @@ export default function AdminDashboard() {
                     {formatCurrency(stats.financial.totalCredit, 'VES')}
                   </p>
                   <p className="text-sm text-blue-600 mt-1">Crédito disponible</p>
-                  {/* Equivalente en USD */}
                   {bcvRate && (
                     <p className="text-xs text-blue-600 mt-1">
                       ≈ {formatCurrency(convertToUSD(stats.financial.totalCredit), 'USD')}
@@ -588,7 +584,6 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Progreso de recaudación */}
               <div className="mt-6">
                 <div className="flex justify-between text-sm text-gray-600 mb-2">
                   <span>Progreso de recaudación mensual</span>
@@ -605,7 +600,6 @@ export default function AdminDashboard() {
               </div>
             </motion.div>
 
-            {/* Estado de Estudiantes */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -638,7 +632,6 @@ export default function AdminDashboard() {
                 ))}
               </div>
 
-              {/* Gráfico de pastel simple */}
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex justify-between items-center">
                   <div className="text-center">
@@ -658,9 +651,7 @@ export default function AdminDashboard() {
             </motion.div>
           </div>
 
-          {/* Top Deudores y Representantes */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top Deudores */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -702,7 +693,6 @@ export default function AdminDashboard() {
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-red-600">{formatCurrency(debtor.debtAmount, 'VES')}</p>
-                        {/* Equivalente en USD */}
                         {bcvRate && (
                           <p className="text-xs text-gray-500">
                             ≈ {formatCurrency(convertToUSD(debtor.debtAmount), 'USD')}
@@ -716,7 +706,6 @@ export default function AdminDashboard() {
               )}
             </motion.div>
 
-            {/* Estado de Representantes */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -799,7 +788,6 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Resumen */}
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
@@ -827,7 +815,6 @@ export default function AdminDashboard() {
         >
           <h2 className="text-xl font-bold text-gray-900 mb-6">Panel Financiero Detallado</h2>
           
-          {/* Indicador de tasa BCV en el panel financiero */}
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <FaExchangeAlt className="text-blue-600 text-xl" />
@@ -908,41 +895,55 @@ export default function AdminDashboard() {
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Representante</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto (Bs)</th>
-                        {bcvRate && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">USD</th>}
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tasa</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">USD</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {stats.recentTransactions.map((transaction) => (
-                        <tr key={transaction.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-900">{transaction.date}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900">{transaction.representativeName}</td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              transaction.type === 'deposit' 
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {transaction.type === 'deposit' ? 'Depósito' : 'Retiro'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                            {formatCurrency(transaction.amount, 'VES')}
-                          </td>
-                          {bcvRate && (
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {formatCurrency(convertToUSD(transaction.amount), 'USD')}
+                      {stats.recentTransactions.map((transaction: any) => {
+                        const usdAmount = transaction.amountUSD !== undefined ? transaction.amountUSD : convertToUSD(transaction.amount);
+                        const bcvRateTx = transaction.bcvRate !== undefined ? transaction.bcvRate : (bcvRate?.PriceRateBCV || 0);
+                        return (
+                          <tr key={transaction.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{transaction.date || 'N/A'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-900">{transaction.representativeName}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{transaction.description || getTypeLabel(transaction.type)}</td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(transaction.type)}`}>
+                                {getTypeLabel(transaction.type)}
+                              </span>
                             </td>
-                          )}
-                          <td className="px-4 py-3 text-sm">
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {transaction.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                              {formatCurrency(transaction.amount, 'VES')}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {bcvRateTx.toFixed(4)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {formatCurrency(usdAmount, 'USD')}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                transaction.status === 'completed' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {transaction.status === 'completed' ? 'Completado' : transaction.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                transaction.paymentStatus === 'incompleto' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                              }`}>
+                                {transaction.paymentStatus === 'incompleto' ? 'Incompleto' : 'Completo'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1028,7 +1029,6 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Distribución de estudiantes */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribución de Estudiantes por Estado</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -1047,7 +1047,6 @@ export default function AdminDashboard() {
         </motion.div>
       )}
 
-      {/* Footer informativo */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

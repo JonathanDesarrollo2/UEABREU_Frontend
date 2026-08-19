@@ -22,7 +22,8 @@ import ExcelJS from 'exceljs';
 
 (pdfMake as any).vfs = pdfFonts.vfs;
 
-const API_BASE = import.meta.env.VITE_API_URL || "https://appservices.ueabreu.com";
+// ✅ La variable ya incluye /api al final (ej: https://test.appservices.ueabreu.com/api)
+const API_BASE = import.meta.env.VITE_API_BASE_LOCAL || "https://appservices.ueabreu.com/api";
 
 interface Application {
   id: string;
@@ -178,7 +179,8 @@ const AdminRegistrationsList: React.FC = () => {
         search: search.trim(),
         sortOrder: sortOrder,
       });
-      const res = await fetch(`${API_BASE}/api/private/registrations/list?${params}`, {
+      // ✅ Se eliminó "/api" extra de la ruta
+      const res = await fetch(`${API_BASE}/private/registrations/list?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -203,7 +205,8 @@ const AdminRegistrationsList: React.FC = () => {
   const handleDownload = async (id: string) => {
     console.log(`⬇️ [handleDownload] Generando PDF para solicitud ${id}`);
     try {
-      const res = await fetch(`${API_BASE}/api/private/registrations/${id}/data`, {
+      // ✅ Se eliminó "/api" extra de la ruta
+      const res = await fetch(`${API_BASE}/private/registrations/${id}/data`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -249,7 +252,8 @@ const AdminRegistrationsList: React.FC = () => {
         search: search.trim(),
         sortOrder: sortOrder,
       });
-      const listRes = await fetch(`${API_BASE}/api/private/registrations/list?${params}`, {
+      // ✅ Se eliminó "/api" extra de la ruta
+      const listRes = await fetch(`${API_BASE}/private/registrations/list?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const listData = await listRes.json();
@@ -270,7 +274,8 @@ const AdminRegistrationsList: React.FC = () => {
 
       for (let i = 0; i < allApps.length; i++) {
         const app = allApps[i];
-        const dataRes = await fetch(`${API_BASE}/api/private/registrations/${app.id}/data`, {
+        // ✅ Se eliminó "/api" extra de la ruta
+        const dataRes = await fetch(`${API_BASE}/private/registrations/${app.id}/data`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const dataJson = await dataRes.json();
@@ -324,7 +329,8 @@ const AdminRegistrationsList: React.FC = () => {
         search: search.trim(),
         sortOrder: sortOrder,
       });
-      const listRes = await fetch(`${API_BASE}/api/private/registrations/list?${params}`, {
+      // ✅ Se eliminó "/api" extra de la ruta
+      const listRes = await fetch(`${API_BASE}/private/registrations/list?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const listData = await listRes.json();
@@ -386,7 +392,8 @@ const AdminRegistrationsList: React.FC = () => {
       // Llenar filas
       for (let i = 0; i < allApps.length; i++) {
         const app = allApps[i];
-        const dataRes = await fetch(`${API_BASE}/api/private/registrations/${app.id}/data`, {
+        // ✅ Se eliminó "/api" extra de la ruta
+        const dataRes = await fetch(`${API_BASE}/private/registrations/${app.id}/data`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const dataJson = await dataRes.json();
@@ -508,8 +515,9 @@ const AdminRegistrationsList: React.FC = () => {
     try {
       const url =
         action === "activate"
-          ? `${API_BASE}/api/private/registrations/${selectedId}/activate`
-          : `${API_BASE}/api/private/registrations/${selectedId}`;
+          // ✅ Se eliminó "/api" extra de la ruta
+          ? `${API_BASE}/private/registrations/${selectedId}/activate`
+          : `${API_BASE}/private/registrations/${selectedId}`;
       const method = action === "activate" ? "POST" : "DELETE";
       const res = await fetch(url, {
         method,
