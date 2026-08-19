@@ -32,13 +32,11 @@ export default function LoadListStudentsAPI({ Buscar }: BusStudentProps) {
     setPage(1);
   };
 
-  if (isLoading) {
-    return <SpinnerGeneral />;
-  }
+  if (isLoading) return <SpinnerGeneral />;
 
-  if (isError) {
+  if (isError || !data) {
     return (
-      <ListEmpty 
+      <ListEmpty
         message="Error cargando la lista de estudiantes..."
         columns={[
           { name: "Nombre", widthPercent: 20 },
@@ -53,13 +51,13 @@ export default function LoadListStudentsAPI({ Buscar }: BusStudentProps) {
     );
   }
 
-  if (!data || data.content.length === 0) {
-    const mensaje = Buscar.DeBus 
-      ? `No hay estudiantes que coincidan con "${Buscar.DeBus}"...` 
+  if (data.content.length === 0) {
+    const mensaje = Buscar.DeBus
+      ? `No hay estudiantes que coincidan con "${Buscar.DeBus}"...`
       : `No hay estudiantes registrados...`;
-    
+
     return (
-      <ListEmpty 
+      <ListEmpty
         message={mensaje}
         columns={[
           { name: "Nombre", widthPercent: 20 },
