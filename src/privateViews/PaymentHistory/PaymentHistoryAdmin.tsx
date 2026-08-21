@@ -63,7 +63,6 @@ const PaymentHistory: React.FC = () => {
   const repInputRef = useRef<HTMLInputElement>(null);
   const studentInputRef = useRef<HTMLInputElement>(null);
 
-  // Refs para sincronizar scroll horizontal
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableWidthRef = useRef<HTMLDivElement>(null);
@@ -162,28 +161,42 @@ const PaymentHistory: React.FC = () => {
     setShowStudentDropdown(false);
   };
 
+  // Función para obtener TODAS las transacciones según filtros usando paginación con límite 100
+  const fetchAllTransactionsForExport = async (): Promise<TransactionItem[]> => {
+    const limit = 100;
+    let page = 1;
+    let allTransactions: TransactionItem[] = [];
+    let totalPages = 1;
+
+    do {
+      const response = await getAllTransactions({
+        search: filters.search || undefined,
+        studentId: filters.studentId || undefined,
+        representativeId: filters.representativeId || undefined,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined,
+        page,
+        limit,
+      });
+
+      if (!response.result) {
+        throw new Error(response.error?.[0] || 'Error al obtener datos para exportar');
+      }
+
+      allTransactions = allTransactions.concat(response.content.transactions);
+      totalPages = response.content.pagination.totalPages;
+      page++;
+    } while (page <= totalPages);
+
+    return allTransactions;
+  };
+
   // 🖨️ Exportación PDF
   const handleExportPDF = async () => {
     setExporting(true);
     try {
-      const response = await getAllTransactions({
-        ...filters,
-        startDate: filters.startDate || undefined,
-        endDate: filters.endDate || undefined,
-        representativeId: filters.representativeId || undefined,
-        studentId: filters.studentId || undefined,
-        search: filters.search || undefined,
-        page: 1,
-        limit: 99999,
-      });
+      const allTx = await fetchAllTransactionsForExport();
 
-      if (!response.result) {
-        toast.error(response.error?.[0] || 'Error al obtener datos para exportar');
-        setExporting(false);
-        return;
-      }
-
-      const allTx: TransactionItem[] = response.content.transactions;
       if (allTx.length === 0) {
         toast.error('No hay transacciones para exportar con los filtros actuales.');
         setExporting(false);
@@ -257,9 +270,9 @@ const PaymentHistory: React.FC = () => {
 
       pdfMake.createPdf(docDefinition).download('Historial_Transacciones.pdf');
       toast.success(`PDF generado con ${allTx.length} transacciones.`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Error al exportar PDF.');
+      toast.error(error.message || 'Error al exportar PDF.');
     } finally {
       setExporting(false);
     }
@@ -269,24 +282,8 @@ const PaymentHistory: React.FC = () => {
   const handleExportExcel = async () => {
     setExporting(true);
     try {
-      const response = await getAllTransactions({
-        ...filters,
-        startDate: filters.startDate || undefined,
-        endDate: filters.endDate || undefined,
-        representativeId: filters.representativeId || undefined,
-        studentId: filters.studentId || undefined,
-        search: filters.search || undefined,
-        page: 1,
-        limit: 99999,
-      });
+      const allTx = await fetchAllTransactionsForExport();
 
-      if (!response.result) {
-        toast.error(response.error?.[0] || 'Error al obtener datos para exportar');
-        setExporting(false);
-        return;
-      }
-
-      const allTx: TransactionItem[] = response.content.transactions;
       if (allTx.length === 0) {
         toast.error('No hay transacciones para exportar con los filtros actuales.');
         setExporting(false);
@@ -361,9 +358,9 @@ const PaymentHistory: React.FC = () => {
       URL.revokeObjectURL(url);
 
       toast.success(`Excel generado con ${allTx.length} transacciones.`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Error al exportar Excel.');
+      toast.error(error.message || 'Error al exportar Excel.');
     } finally {
       setExporting(false);
     }
@@ -433,7 +430,6 @@ const PaymentHistory: React.FC = () => {
             <div className="text-center py-20"><FaHistory className="mx-auto text-4xl text-gray-300 mb-4" /><p className="text-gray-500 text-lg">No se encontraron transacciones</p><p className="text-gray-400">Pruebe ajustando los filtros</p></div>
           ) : (
             <>
-              {/* Barra de scroll superior */}
               <div
                 ref={topScrollRef}
                 className="overflow-x-auto overflow-y-hidden border-b border-gray-200"
@@ -443,7 +439,6 @@ const PaymentHistory: React.FC = () => {
                 <div style={{ height: '1px' }}></div>
               </div>
 
-              {/* Contenedor principal con scroll inferior */}
               <div
                 ref={mainScrollRef}
                 className="overflow-x-auto"
