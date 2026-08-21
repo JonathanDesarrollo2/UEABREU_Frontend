@@ -236,7 +236,7 @@ const PaymentHistory: React.FC = () => {
             const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [2, 2, 2, 2],
+        pageMargins: [1, 1, 1, 1],
         content: [
           { text: 'HISTORIAL DE TRANSACCIONES', style: 'title' },
           { text: `Generado: ${new Date().toLocaleDateString('es-VE')} ${new Date().toLocaleTimeString('es-VE')}`, style: 'subtitle' },
@@ -245,7 +245,7 @@ const PaymentHistory: React.FC = () => {
           {
             table: {
               headerRows: 1,
-              widths: [42, 65, 65, 90, 38, 55, 55, 55, 60, 38, 45, 55, 65, 50, 50],
+              widths: [42, 60, 60, 80, 35, 50, 50, 50, 55, 35, 42, 50, 60, 45, 45],
               body: [
                 [
                   'Fecha', 'Representante', 'Estudiante', 'Descripción', 'Tipo',
@@ -255,7 +255,16 @@ const PaymentHistory: React.FC = () => {
                 ...tableBody,
               ],
             },
-            layout: 'lightHorizontalLines',
+            layout: {
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#aaaaaa',
+              vLineColor: () => '#aaaaaa',
+              paddingLeft: () => 2,
+              paddingRight: () => 2,
+              paddingTop: () => 1,
+              paddingBottom: () => 1,
+            },
           },
         ],
         styles: {
