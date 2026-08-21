@@ -191,7 +191,7 @@ const PaymentHistory: React.FC = () => {
           ) : transactions.length === 0 ? (
             <div className="text-center py-20"><FaHistory className="mx-auto text-4xl text-gray-300 mb-4" /><p className="text-gray-500 text-lg">No se encontraron transacciones</p><p className="text-gray-400">Pruebe ajustando los filtros</p></div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-scroll">
               <table className="w-full min-w-max">
                 <thead>
                   <tr className="bg-blue-600">
