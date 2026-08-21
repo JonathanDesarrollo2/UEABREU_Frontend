@@ -58,6 +58,19 @@ const PaymentHistory: React.FC = () => {
   const repInputRef = useRef<HTMLInputElement>(null);
   const studentInputRef = useRef<HTMLInputElement>(null);
 
+  // Refs para sincronizar las barras de scroll horizontal
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableWidthRef = useRef<HTMLDivElement>(null);
+
+  const syncScroll = (source: 'main' | 'top') => {
+    if (source === 'main' && mainScrollRef.current && topScrollRef.current) {
+      topScrollRef.current.scrollLeft = mainScrollRef.current.scrollLeft;
+    } else if (source === 'top' && topScrollRef.current && mainScrollRef.current) {
+      mainScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+  };
+
   const searchReps = useCallback(async (term: string) => {
     if (term.length < 2) { setRepResults([]); return; }
     try {
@@ -105,6 +118,17 @@ const PaymentHistory: React.FC = () => {
   useEffect(() => {
     fetchTransactions();
   }, [filters.page]);
+
+  useEffect(() => {
+    // Actualizar el ancho de la barra superior cuando cambien las transacciones
+    if (tableWidthRef.current && topScrollRef.current) {
+      const contentWidth = tableWidthRef.current.scrollWidth;
+      const innerDiv = topScrollRef.current.querySelector('div');
+      if (innerDiv) {
+        innerDiv.style.width = `${contentWidth}px`;
+      }
+    }
+  }, [transactions]);
 
   const handleApplyFilters = () => {
     setFilters(prev => ({ ...prev, page: 1 }));
@@ -191,77 +215,96 @@ const PaymentHistory: React.FC = () => {
           ) : transactions.length === 0 ? (
             <div className="text-center py-20"><FaHistory className="mx-auto text-4xl text-gray-300 mb-4" /><p className="text-gray-500 text-lg">No se encontraron transacciones</p><p className="text-gray-400">Pruebe ajustando los filtros</p></div>
           ) : (
-            <div className="overflow-x-scroll">
-              <table className="w-full min-w-max">
-                <thead>
-                  <tr className="bg-blue-600">
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Fecha</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Representante</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Estudiante</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Descripción</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Tipo</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto (Bs)</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto Pendiente</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto Bs Cancelado</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Tasa</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">USD</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Método</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Referencia</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Estado</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Pago</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {transactions.map(t => {
-                    const isFee = t.type === 'fee';
-                    const isDeposit = t.type === 'deposit';
-                    const balanceAfter = t.balanceAfter ?? 0;
-                    const pendingAmount = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
-                    const paidAmount = isDeposit ? t.amount : 0;
-                    const displayMethod = isFee ? '—' : mapPaymentMethodToDisplay(t.paymentMethod);
-                    const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
-                    const displayPaymentStatus = isFee ? 'Incompleto' : (balanceAfter < 0 ? 'Incompleto' : 'Completo');
+            <>
+              {/* Barra de scroll superior */}
+              <div
+                ref={topScrollRef}
+                className="overflow-x-auto overflow-y-hidden border-b border-gray-200"
+                style={{ height: '16px' }}
+                onScroll={() => syncScroll('top')}
+              >
+                <div style={{ height: '1px' }}></div>
+              </div>
 
-                    return (
-                      <tr key={t.id} className="hover:bg-blue-50/30 transition-colors">
-                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '-'}</td>
-                        <td className="px-6 py-4 font-medium text-gray-900">{t.representative?.fullName || '—'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{t.student?.fullName || '—'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600 max-w-[200px] truncate">{t.description || '—'}</td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${isDeposit ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {isDeposit ? 'DEPÓSITO' : t.type.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className={`px-6 py-4 text-sm font-bold ${isDeposit ? 'text-green-600' : 'text-red-600'}`}>
-                          {isDeposit ? '+' : '-'}{formatCurrencyLocal(t.amount, 'VES')}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-700">
-                          {pendingAmount > 0 ? formatCurrencyLocal(pendingAmount, 'VES') : '—'}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-700">
-                          {paidAmount > 0 ? formatCurrencyLocal(paidAmount, 'VES') : '—'}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">{t.bcvRate ? t.bcvRate.toFixed(4) : '—'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600 capitalize">{displayMethod}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 font-mono">{t.reference || '—'}</td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${displayStatus === 'Completado' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                            {displayStatus}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${displayPaymentStatus === 'Incompleto' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                            {displayPaymentStatus}
-                          </span>
-                        </td>
+              {/* Contenedor principal con scroll inferior */}
+              <div
+                ref={mainScrollRef}
+                className="overflow-x-auto"
+                onScroll={() => syncScroll('main')}
+              >
+                <div ref={tableWidthRef}>
+                  <table className="w-full min-w-max">
+                    <thead>
+                      <tr className="bg-blue-600">
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Fecha</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Representante</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Estudiante</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Descripción</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Tipo</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto (Bs)</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto Pendiente</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto Bs Cancelado</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Tasa</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">USD</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Método</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Referencia</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Estado</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Pago</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {transactions.map(t => {
+                        const isFee = t.type === 'fee';
+                        const isDeposit = t.type === 'deposit';
+                        const balanceAfter = t.balanceAfter ?? 0;
+                        const pendingAmount = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
+                        const paidAmount = isDeposit ? t.amount : 0;
+                        const displayMethod = isFee ? '—' : mapPaymentMethodToDisplay(t.paymentMethod);
+                        const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
+                        const displayPaymentStatus = isFee ? 'Incompleto' : (balanceAfter < 0 ? 'Incompleto' : 'Completo');
+
+                        return (
+                          <tr key={t.id} className="hover:bg-blue-50/30 transition-colors">
+                            <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '-'}</td>
+                            <td className="px-6 py-4 font-medium text-gray-900">{t.representative?.fullName || '—'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-700">{t.student?.fullName || '—'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-600 max-w-[200px] truncate">{t.description || '—'}</td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${isDeposit ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {isDeposit ? 'DEPÓSITO' : t.type.toUpperCase()}
+                              </span>
+                            </td>
+                            <td className={`px-6 py-4 text-sm font-bold ${isDeposit ? 'text-green-600' : 'text-red-600'}`}>
+                              {isDeposit ? '+' : '-'}{formatCurrencyLocal(t.amount, 'VES')}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-700">
+                              {pendingAmount > 0 ? formatCurrencyLocal(pendingAmount, 'VES') : '—'}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-700">
+                              {paidAmount > 0 ? formatCurrencyLocal(paidAmount, 'VES') : '—'}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500">{t.bcvRate ? t.bcvRate.toFixed(4) : '—'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-700">{t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-600 capitalize">{displayMethod}</td>
+                            <td className="px-6 py-4 text-sm text-gray-500 font-mono">{t.reference || '—'}</td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${displayStatus === 'Completado' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                {displayStatus}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${displayPaymentStatus === 'Incompleto' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                                {displayPaymentStatus}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
 
           {pagination.totalPages > 1 && (
