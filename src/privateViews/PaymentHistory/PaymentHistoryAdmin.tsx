@@ -236,7 +236,7 @@ const PaymentHistory: React.FC = () => {
             const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [5, 5, 5, 5],
+        pageMargins: [2, 2, 2, 2],
         content: [
           { text: 'HISTORIAL DE TRANSACCIONES', style: 'title' },
           { text: `Generado: ${new Date().toLocaleDateString('es-VE')} ${new Date().toLocaleTimeString('es-VE')}`, style: 'subtitle' },
@@ -245,7 +245,7 @@ const PaymentHistory: React.FC = () => {
           {
             table: {
               headerRows: 1,
-              widths: [40, 60, 60, 80, 35, 50, 50, 50, 55, 35, 40, 50, 55, 45, 45],
+              widths: [42, 65, 65, 90, 38, 55, 55, 55, 60, 38, 45, 55, 65, 50, 50],
               body: [
                 [
                   'Fecha', 'Representante', 'Estudiante', 'Descripción', 'Tipo',
@@ -262,7 +262,7 @@ const PaymentHistory: React.FC = () => {
           title: { fontSize: 8, bold: true, alignment: 'center', margin: [0, 0, 0, 2] },
           subtitle: { fontSize: 6, alignment: 'center', color: 'gray', margin: [0, 0, 0, 2] },
         },
-        defaultStyle: { fontSize: 5.5, lineHeight: 1.05 },
+        defaultStyle: { fontSize: 5, lineHeight: 1.0 },
       };
 
       pdfMake.createPdf(docDefinition).download('Historial_Transacciones.pdf');
