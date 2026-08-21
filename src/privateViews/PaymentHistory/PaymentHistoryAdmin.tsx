@@ -58,7 +58,7 @@ const PaymentHistory: React.FC = () => {
   const repInputRef = useRef<HTMLInputElement>(null);
   const studentInputRef = useRef<HTMLInputElement>(null);
 
-  // Refs para sincronizar las barras de scroll horizontal
+  // Refs para sincronizar scroll horizontal
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableWidthRef = useRef<HTMLDivElement>(null);
@@ -120,7 +120,6 @@ const PaymentHistory: React.FC = () => {
   }, [filters.page]);
 
   useEffect(() => {
-    // Actualizar el ancho de la barra superior cuando cambien las transacciones
     if (tableWidthRef.current && topScrollRef.current) {
       const contentWidth = tableWidthRef.current.scrollWidth;
       const innerDiv = topScrollRef.current.querySelector('div');
@@ -243,6 +242,7 @@ const PaymentHistory: React.FC = () => {
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Tipo</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto (Bs)</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto Pendiente</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto a Favor</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto Bs Cancelado</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Tasa</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">USD</th>
@@ -258,6 +258,7 @@ const PaymentHistory: React.FC = () => {
                         const isDeposit = t.type === 'deposit';
                         const balanceAfter = t.balanceAfter ?? 0;
                         const pendingAmount = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
+                        const creditAmount = balanceAfter > 0 ? balanceAfter : 0;
                         const paidAmount = isDeposit ? t.amount : 0;
                         const displayMethod = isFee ? '—' : mapPaymentMethodToDisplay(t.paymentMethod);
                         const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
@@ -279,6 +280,9 @@ const PaymentHistory: React.FC = () => {
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-700">
                               {pendingAmount > 0 ? formatCurrencyLocal(pendingAmount, 'VES') : '—'}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-green-700">
+                              {creditAmount > 0 ? formatCurrencyLocal(creditAmount, 'VES') : '—'}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-700">
                               {paidAmount > 0 ? formatCurrencyLocal(paidAmount, 'VES') : '—'}
