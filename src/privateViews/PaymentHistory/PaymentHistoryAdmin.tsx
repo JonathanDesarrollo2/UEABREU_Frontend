@@ -233,10 +233,10 @@ const PaymentHistory: React.FC = () => {
         ];
       });
 
-      const docDefinition: any = {
+            const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [10, 10, 10, 10],
+        pageMargins: [5, 5, 5, 5],
         content: [
           { text: 'HISTORIAL DE TRANSACCIONES', style: 'title' },
           { text: `Generado: ${new Date().toLocaleDateString('es-VE')} ${new Date().toLocaleTimeString('es-VE')}`, style: 'subtitle' },
@@ -245,10 +245,7 @@ const PaymentHistory: React.FC = () => {
           {
             table: {
               headerRows: 1,
-              widths: [
-                'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto',
-                'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'
-              ],
+              widths: [40, 60, 60, 80, 35, 50, 50, 50, 55, 35, 40, 50, 55, 45, 45],
               body: [
                 [
                   'Fecha', 'Representante', 'Estudiante', 'Descripción', 'Tipo',
@@ -262,10 +259,10 @@ const PaymentHistory: React.FC = () => {
           },
         ],
         styles: {
-          title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 4] },
-          subtitle: { fontSize: 8, alignment: 'center', color: 'gray' },
+          title: { fontSize: 8, bold: true, alignment: 'center', margin: [0, 0, 0, 2] },
+          subtitle: { fontSize: 6, alignment: 'center', color: 'gray', margin: [0, 0, 0, 2] },
         },
-        defaultStyle: { fontSize: 7, lineHeight: 1.1 },
+        defaultStyle: { fontSize: 5.5, lineHeight: 1.05 },
       };
 
       pdfMake.createPdf(docDefinition).download('Historial_Transacciones.pdf');
