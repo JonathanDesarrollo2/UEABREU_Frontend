@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FaSearch, FaHistory, FaFilter, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaSearch, FaHistory, FaFilter, FaTimes, FaChevronLeft, FaChevronRight, FaFilePdf, FaFileExcel } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { getAllTransactions } from '../../apis/balance';
 import { getPaginatedStudentsAPI } from '../../apis/student';
 import api from '../../library/axios';
 import { mapPaymentMethodToDisplay } from '../balance/utils/balanceUtils';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+import ExcelJS from 'exceljs';
+
+(pdfMake as any).vfs = pdfFonts.vfs;
 
 interface TransactionItem {
   id: string;
@@ -23,7 +28,6 @@ interface TransactionItem {
   representative?: { id: string; fullName: string; identityCard: string };
 }
 
-// Formateador local que acepta moneda
 const formatCurrencyLocal = (amount: number, currency: 'VES' | 'USD') => {
   return new Intl.NumberFormat('es-VE', {
     style: 'currency',
@@ -36,6 +40,7 @@ const formatCurrencyLocal = (amount: number, currency: 'VES' | 'USD') => {
 const PaymentHistory: React.FC = () => {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
     studentId: '',
@@ -157,6 +162,213 @@ const PaymentHistory: React.FC = () => {
     setShowStudentDropdown(false);
   };
 
+  // 🖨️ Exportación PDF
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      const response = await getAllTransactions({
+        ...filters,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined,
+        representativeId: filters.representativeId || undefined,
+        studentId: filters.studentId || undefined,
+        search: filters.search || undefined,
+        page: 1,
+        limit: 99999,
+      });
+
+      if (!response.result) {
+        toast.error(response.error?.[0] || 'Error al obtener datos para exportar');
+        setExporting(false);
+        return;
+      }
+
+      const allTx: TransactionItem[] = response.content.transactions;
+      if (allTx.length === 0) {
+        toast.error('No hay transacciones para exportar con los filtros actuales.');
+        setExporting(false);
+        return;
+      }
+
+      const tableBody = allTx.map(t => {
+        const isFee = t.type === 'fee';
+        const isDeposit = t.type === 'deposit';
+        const balanceAfter = t.balanceAfter ?? 0;
+        const pendingAmount = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
+        const creditAmount = balanceAfter > 0 ? balanceAfter : 0;
+        const paidAmount = isDeposit ? t.amount : 0;
+        const displayMethod = isFee ? '—' : mapPaymentMethodToDisplay(t.paymentMethod);
+        const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
+        const displayPaymentStatus = isFee ? 'Incompleto' : (balanceAfter < 0 ? 'Incompleto' : 'Completo');
+
+        return [
+          t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '—',
+          t.representative?.fullName || '—',
+          t.student?.fullName || '—',
+          t.description || '—',
+          isDeposit ? 'DEPÓSITO' : t.type.toUpperCase(),
+          `${isDeposit ? '+' : '-'}${formatCurrencyLocal(t.amount, 'VES')}`,
+          pendingAmount > 0 ? formatCurrencyLocal(pendingAmount, 'VES') : '—',
+          creditAmount > 0 ? formatCurrencyLocal(creditAmount, 'VES') : '—',
+          paidAmount > 0 ? formatCurrencyLocal(paidAmount, 'VES') : '—',
+          t.bcvRate ? t.bcvRate.toFixed(4) : '—',
+          t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—',
+          displayMethod,
+          t.reference || '—',
+          displayStatus,
+          displayPaymentStatus,
+        ];
+      });
+
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageOrientation: 'landscape',
+        pageMargins: [10, 10, 10, 10],
+        content: [
+          { text: 'HISTORIAL DE TRANSACCIONES', style: 'title' },
+          { text: `Generado: ${new Date().toLocaleDateString('es-VE')} ${new Date().toLocaleTimeString('es-VE')}`, style: 'subtitle' },
+          { text: `Cantidad de registros: ${allTx.length}`, style: 'subtitle' },
+          { text: '\n' },
+          {
+            table: {
+              headerRows: 1,
+              widths: [
+                'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto',
+                'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'
+              ],
+              body: [
+                [
+                  'Fecha', 'Representante', 'Estudiante', 'Descripción', 'Tipo',
+                  'Monto Bs', 'Pendiente', 'A Favor', 'Bs Cancelado', 'Tasa',
+                  'USD', 'Método', 'Referencia', 'Estado', 'Pago'
+                ],
+                ...tableBody,
+              ],
+            },
+            layout: 'lightHorizontalLines',
+          },
+        ],
+        styles: {
+          title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 4] },
+          subtitle: { fontSize: 8, alignment: 'center', color: 'gray' },
+        },
+        defaultStyle: { fontSize: 7, lineHeight: 1.1 },
+      };
+
+      pdfMake.createPdf(docDefinition).download('Historial_Transacciones.pdf');
+      toast.success(`PDF generado con ${allTx.length} transacciones.`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al exportar PDF.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // 📊 Exportación Excel
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const response = await getAllTransactions({
+        ...filters,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined,
+        representativeId: filters.representativeId || undefined,
+        studentId: filters.studentId || undefined,
+        search: filters.search || undefined,
+        page: 1,
+        limit: 99999,
+      });
+
+      if (!response.result) {
+        toast.error(response.error?.[0] || 'Error al obtener datos para exportar');
+        setExporting(false);
+        return;
+      }
+
+      const allTx: TransactionItem[] = response.content.transactions;
+      if (allTx.length === 0) {
+        toast.error('No hay transacciones para exportar con los filtros actuales.');
+        setExporting(false);
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Historial de Transacciones');
+
+      sheet.columns = [
+        { header: 'Fecha', key: 'date', width: 12 },
+        { header: 'Representante', key: 'rep', width: 25 },
+        { header: 'Estudiante', key: 'student', width: 25 },
+        { header: 'Descripción', key: 'description', width: 30 },
+        { header: 'Tipo', key: 'type', width: 12 },
+        { header: 'Monto Bs', key: 'amount', width: 15 },
+        { header: 'Monto Pendiente', key: 'pending', width: 15 },
+        { header: 'Monto a Favor', key: 'credit', width: 15 },
+        { header: 'Monto Bs Cancelado', key: 'paid', width: 18 },
+        { header: 'Tasa', key: 'rate', width: 12 },
+        { header: 'USD', key: 'usd', width: 12 },
+        { header: 'Método', key: 'method', width: 18 },
+        { header: 'Referencia', key: 'reference', width: 20 },
+        { header: 'Estado', key: 'status', width: 14 },
+        { header: 'Pago', key: 'payment', width: 14 },
+      ];
+
+      sheet.getRow(1).eachCell(cell => {
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
+      });
+
+      allTx.forEach(t => {
+        const isFee = t.type === 'fee';
+        const isDeposit = t.type === 'deposit';
+        const balanceAfter = t.balanceAfter ?? 0;
+        const pendingAmount = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
+        const creditAmount = balanceAfter > 0 ? balanceAfter : 0;
+        const paidAmount = isDeposit ? t.amount : 0;
+        const displayMethod = isFee ? '—' : mapPaymentMethodToDisplay(t.paymentMethod);
+        const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
+        const displayPaymentStatus = isFee ? 'Incompleto' : (balanceAfter < 0 ? 'Incompleto' : 'Completo');
+
+        sheet.addRow({
+          date: t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '—',
+          rep: t.representative?.fullName || '—',
+          student: t.student?.fullName || '—',
+          description: t.description || '—',
+          type: isDeposit ? 'DEPÓSITO' : t.type.toUpperCase(),
+          amount: `${isDeposit ? '+' : '-'}${formatCurrencyLocal(t.amount, 'VES')}`,
+          pending: pendingAmount > 0 ? formatCurrencyLocal(pendingAmount, 'VES') : '—',
+          credit: creditAmount > 0 ? formatCurrencyLocal(creditAmount, 'VES') : '—',
+          paid: paidAmount > 0 ? formatCurrencyLocal(paidAmount, 'VES') : '—',
+          rate: t.bcvRate ? t.bcvRate.toFixed(4) : '—',
+          usd: t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—',
+          method: displayMethod,
+          reference: t.reference || '—',
+          status: displayStatus,
+          payment: displayPaymentStatus,
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Historial_Transacciones.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Excel generado con ${allTx.length} transacciones.`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al exportar Excel.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-6">
       <div className="max-w-8xl mx-auto">
@@ -205,6 +417,12 @@ const PaymentHistory: React.FC = () => {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button onClick={handleApplyFilters} className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition"><FaSearch className="inline mr-2" /> Buscar</button>
             <button onClick={clearFilters} className="px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100"><FaTimes className="inline mr-2" /> Limpiar filtros</button>
+            <button onClick={handleExportPDF} disabled={exporting} className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 transition inline-flex items-center">
+              <FaFilePdf className="inline mr-2" /> {exporting ? 'Exportando...' : 'Exportar PDF'}
+            </button>
+            <button onClick={handleExportExcel} disabled={exporting} className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-xl shadow-md hover:from-green-700 hover:to-green-800 disabled:opacity-50 transition inline-flex items-center">
+              <FaFileExcel className="inline mr-2" /> {exporting ? 'Exportando...' : 'Exportar Excel'}
+            </button>
           </div>
         </div>
 
