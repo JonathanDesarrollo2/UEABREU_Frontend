@@ -7,7 +7,8 @@ import {
   FaUser,
   FaUserTie,
   FaMoneyBillWave,
-  FaUsers
+  FaUsers,
+  FaCalendarAlt
 } from 'react-icons/fa';
 import type { TypeUser_full } from '../../../types/user';
 import { useDeleteUser } from '../hooks/useDeleteUser';
@@ -49,9 +50,18 @@ export default function ListAPIs({ data }: ListAPIProps) {
     }
   };
 
-  const formatDate = (date?: Date) => {
+  const formatDate = (date?: Date | string) => {
     if (!date) return 'No disponible';
     return new Date(date).toLocaleDateString('es-ES');
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
   };
 
   return (
@@ -215,24 +225,37 @@ export default function ListAPIs({ data }: ListAPIProps) {
                     <h5 className="font-bold mb-2 flex items-center">
                       <FaUsers className="mr-2" /> Estudiantes ({selectedUser.representative.students.length})
                     </h5>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {selectedUser.representative.students.map((student) => (
-                        <div 
-                          key={student.id} 
-                          className="p-3 border rounded hover:bg-blue-50 cursor-pointer"
-                          onClick={() => setSelectedStudent(student)}
-                        >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-medium">{student.fullName}</p>
-                              <p className="text-sm text-gray-600">Cédula: {student.identityCard}</p>
+                    <div className="space-y-3 max-h-72 overflow-y-auto">
+                      {selectedUser.representative.students.map((student) => {
+                        // Cast para acceder a campos adicionales que puede devolver el backend
+                        const studentAny = student as any;
+                        return (
+                          <div 
+                            key={student.id} 
+                            className="p-4 border rounded-lg bg-white hover:bg-blue-50 cursor-pointer transition-colors"
+                            onClick={() => setSelectedStudent(studentAny)}
+                          >
+                            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2">
+                              <div>
+                                <p className="font-medium text-gray-900">{student.fullName}</p>
+                                <p className="text-sm text-gray-600">Cédula: {student.identityCard}</p>
+                                <p className="text-sm text-gray-600 flex items-center">
+                                  <FaCalendarAlt className="mr-1 text-gray-400" />
+                                  Admisión: {formatDate(studentAny.admissionDate)}
+                                </p>
+                              </div>
+                              <div className="md:text-right">
+                                <span className={`inline-block px-2 py-1 rounded text-xs mb-1 ${student.status === 'regular' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                  {student.status || 'pendiente'}
+                                </span>
+                                <p className={`text-sm font-semibold ${studentAny.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                  Saldo: {formatCurrency(studentAny.balance || 0)}
+                                </p>
+                              </div>
                             </div>
-                            <span className={`px-2 py-1 rounded text-xs ${student.status === 'regular' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                              {student.status || 'pendiente'}
-                            </span>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -303,18 +326,34 @@ export default function ListAPIs({ data }: ListAPIProps) {
             }
           ]}
           extraContent={
-            selectedStudent.birthDate && (
-              <div className="mt-3 p-3 bg-gray-50 rounded">
-                <label className="block text-sm font-medium text-gray-600">Fecha de Nacimiento:</label>
-                <p className="text-gray-800">
-                  {new Date(selectedStudent.birthDate).toLocaleDateString('es-ES', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric'
-                  })}
-                </p>
-              </div>
-            )
+            <>
+              {selectedStudent.birthDate && (
+                <div className="mt-3 p-3 bg-gray-50 rounded">
+                  <label className="block text-sm font-medium text-gray-600">Fecha de Nacimiento:</label>
+                  <p className="text-gray-800">
+                    {new Date(selectedStudent.birthDate).toLocaleDateString('es-ES', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+              )}
+              {selectedStudent.admissionDate && (
+                <div className="mt-3 p-3 bg-gray-50 rounded">
+                  <label className="block text-sm font-medium text-gray-600">Fecha de Admisión:</label>
+                  <p className="text-gray-800">{formatDate(selectedStudent.admissionDate)}</p>
+                </div>
+              )}
+              {selectedStudent.balance !== undefined && (
+                <div className="mt-3 p-3 bg-gray-50 rounded">
+                  <label className="block text-sm font-medium text-gray-600">Saldo del Estudiante:</label>
+                  <p className={`text-lg font-semibold ${selectedStudent.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatCurrency(selectedStudent.balance)}
+                  </p>
+                </div>
+              )}
+            </>
           }
           show={!!selectedStudent}
           onClose={() => setSelectedStudent(null)}
