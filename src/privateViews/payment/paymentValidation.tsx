@@ -1,5 +1,4 @@
-// src/components/representante/PaymentValidation.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   cascadedValidationAPI,
   type BankValidationRequest,
@@ -8,7 +7,8 @@ import {
 } from '../../apis/bank';
 import {
   getRepresentativeBalance,
-  manualDeposit
+  manualDeposit,
+  getRepresentativeTransactions
 } from '../../apis/balance';
 import {
   FaUniversity,
@@ -23,7 +23,11 @@ import {
   FaCreditCard,
   FaCalendarDay,
   FaFileInvoiceDollar,
-  FaUserGraduate
+  FaUserGraduate,
+  FaHistory,
+  FaFilter,
+  FaChevronLeft,
+  FaChevronRight
 } from 'react-icons/fa';
 
 interface PaymentValidationProps {
@@ -55,6 +59,17 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
   const [depositResult, setDepositResult] = useState<any>(null);
   const [depositLoading, setDepositLoading] = useState(false);
 
+  // Historial de transacciones
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyFilters, setHistoryFilters] = useState({
+    studentId: '',
+    search: '',
+    page: 1,
+    limit: 5,
+  });
+  const [historyPagination, setHistoryPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1 });
+
   // Cargar tasa BCV
   useEffect(() => {
     const fetchBCVRate = async () => {
@@ -83,21 +98,47 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
         try {
           setLoadingStudents(true);
           const res = await getRepresentativeBalance(representativeId);
-          if (res.result && res.content.representative.students) {      // ✅
+          if (res.result && res.content.representative.students) {
             const studentsList = res.content.representative.students;
             setStudents(studentsList);
             if (studentsList.length === 1) {
               setSelectedStudentId(studentsList[0].id);
             }
           }
-      } catch (err: any) {
-        console.error('Error al cargar alumnos:', err);
-      } finally {
-        setLoadingStudents(false);
-      }
+        } catch (err: any) {
+          console.error('Error al cargar alumnos:', err);
+        } finally {
+          setLoadingStudents(false);
+        }
     };
     fetchStudents();
   }, [representativeId]);
+
+  // Cargar historial de transacciones del representante
+  const fetchHistory = useCallback(async () => {
+    if (!representativeId) return;
+    setHistoryLoading(true);
+    try {
+      const res = await getRepresentativeTransactions(representativeId, {
+        page: historyFilters.page,
+        limit: historyFilters.limit,
+        studentId: historyFilters.studentId || undefined,
+        search: historyFilters.search || undefined,
+      });
+      if (res.result) {
+        setHistory(res.content.transactions);
+        setHistoryPagination(res.content.pagination);
+      }
+    } catch (err: any) {
+      console.error('Error al cargar historial:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [representativeId, historyFilters]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   // Cálculo USD
   useEffect(() => {
@@ -120,7 +161,6 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
       const response = await cascadedValidationAPI(formData);
       setResult(response.content);
 
-      // Si la validación bancaria fue exitosa, registrar el depósito
       if (
         response.content.overallResult === 'success' &&
         response.content.message.includes('Pago verificado exitosamente')
@@ -136,12 +176,13 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
           };
           const depositRes = await manualDeposit(representativeId, depositPayload);
           setDepositResult(depositRes);
+          fetchHistory(); // refrescar historial
         } catch (depErr: any) {
-        const serverMessage =
-          depErr?.response?.data?.error?.[0] ||
-          depErr?.response?.data?.message ||
-          depErr.message;
-        setError(`Validación bancaria exitosa, pero error al registrar depósito: ${serverMessage}`);
+          const serverMessage =
+            depErr?.response?.data?.error?.[0] ||
+            depErr?.response?.data?.message ||
+            depErr.message;
+          setError(`Validación bancaria exitosa, pero error al registrar depósito: ${serverMessage}`);
         } finally {
           setDepositLoading(false);
         }
@@ -159,6 +200,11 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
       ...prev,
       [name]: name === 'Amount' || name === 'BankCode' ? Number(value) : value
     }));
+  };
+
+  const handleHistoryFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setHistoryFilters(prev => ({ ...prev, [name]: value, page: 1 }));
   };
 
   const getStatusIcon = (overallResult: string) => {
@@ -231,7 +277,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Formulario */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
@@ -269,42 +315,42 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Selector de estudiante (si hay más de uno) */}
-                      {students.length > 1 && (
-                            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                              <div className="flex items-center space-x-2 mb-3">
-                                <FaUserGraduate className="text-indigo-600" />
-                                <label className="block text-sm font-semibold text-indigo-700">
-                                  Selecciona el estudiante al que se aplicará el pago
-                                </label>
-                              </div>
-                              {loadingStudents ? (
-                                <div className="flex items-center justify-center py-4">
-                                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-600 border-t-transparent"></div>
-                                  <span className="ml-2 text-sm text-indigo-700">Cargando estudiantes...</span>
-                                </div>
-                              ) : (
-                                <>
-                                  <select
-                                    value={selectedStudentId}
-                                    onChange={(e) => setSelectedStudentId(e.target.value)}
-                                    className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                  >
-                                    <option value="">Repartir entre todos los hijos</option>
-                                    {students.map((student: any) => (
-                                      <option key={student.id} value={student.id}>
-                                        {student.fullName} – Saldo: ${student.balance?.toFixed(2) ?? '0.00'}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  {selectedStudentId === '' && (
-                                    <p className="text-xs text-indigo-600 mt-2">
-                                      El monto se dividirá equitativamente entre los {students.length} hijos.
-                                    </p>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          )}
+                {students.length > 1 && (
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <FaUserGraduate className="text-indigo-600" />
+                      <label className="block text-sm font-semibold text-indigo-700">
+                        Selecciona el estudiante al que se aplicará el pago
+                      </label>
+                    </div>
+                    {loadingStudents ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-600 border-t-transparent"></div>
+                        <span className="ml-2 text-sm text-indigo-700">Cargando estudiantes...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <select
+                          value={selectedStudentId}
+                          onChange={(e) => setSelectedStudentId(e.target.value)}
+                          className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="">Repartir entre todos los hijos</option>
+                          {students.map((student: any) => (
+                            <option key={student.id} value={student.id}>
+                              {student.fullName} – Saldo: ${student.balance?.toFixed(2) ?? '0.00'}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedStudentId === '' && (
+                          <p className="text-xs text-indigo-600 mt-2">
+                            El monto se dividirá equitativamente entre los {students.length} hijos.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {/* Campos del formulario */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -323,8 +369,10 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                     />
                   </div>
 
+                  {/* Banco resaltado */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <FaUniversity className="inline mr-1 text-blue-600" />
                       Banco *
                     </label>
                     <select
@@ -332,13 +380,30 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                       value={formData.BankCode}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
                     >
                       <option value={191}>BNC (0191)</option>
                       <option value={101}>Bancaribe (0101)</option>
                       <option value={104}>BdV (0104)</option>
                       <option value={105}>Mercantil (0105)</option>
                     </select>
+                  </div>
+
+                  {/* Cédula resaltada */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <FaCreditCard className="inline mr-1 text-blue-600" />
+                      ID Cliente *
+                    </label>
+                    <input
+                      type="text"
+                      name="ClientID"
+                      value={formData.ClientID}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
+                      placeholder="J000121532"
+                    />
                   </div>
 
                   <div>
@@ -356,23 +421,10 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                     />
                   </div>
 
+                  {/* Referencia resaltada */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      ID Cliente *
-                    </label>
-                    <input
-                      type="text"
-                      name="ClientID"
-                      value={formData.ClientID}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="J000121532"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <FaFileInvoiceDollar className="inline mr-1 text-blue-600" />
                       Referencia *
                     </label>
                     <input
@@ -381,7 +433,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                       value={formData.Reference}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
                       placeholder="40067"
                     />
                   </div>
@@ -400,8 +452,10 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                     />
                   </div>
 
-                  <div>
+                  {/* Monto Bs resaltado */}
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <FaMoneyBillWave className="inline mr-1 text-blue-600" />
                       Monto (Bs) *
                     </label>
                     <div className="space-y-3">
@@ -413,7 +467,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                           value={formData.Amount}
                           onChange={handleChange}
                           required
-                          className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-12"
+                          className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all pr-12 font-bold text-lg"
                           placeholder="0.00"
                           min="0"
                         />
@@ -478,6 +532,154 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                   </button>
                 </div>
               </form>
+            </div>
+
+            {/* Historial de Pagos del Representante */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-indigo-100 p-2 rounded-lg">
+                    <FaHistory className="text-lg text-indigo-600" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-800">Historial de Pagos</h2>
+                </div>
+                <span className="text-sm text-gray-500">
+                  {historyPagination.totalRecords} transacciones
+                </span>
+              </div>
+
+              {/* Filtros del historial */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-600 mb-1">
+                    <FaFilter className="inline mr-1 text-gray-400" />
+                    Estudiante
+                  </label>
+                  <select
+                    name="studentId"
+                    value={historyFilters.studentId}
+                    onChange={handleHistoryFilterChange}
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Todos los hijos</option>
+                    {students.map((student: any) => (
+                      <option key={student.id} value={student.id}>
+                        {student.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-600 mb-1">
+                    <FaSearch className="inline mr-1 text-gray-400" />
+                    Buscar
+                  </label>
+                  <input
+                    type="text"
+                    name="search"
+                    value={historyFilters.search}
+                    onChange={handleHistoryFilterChange}
+                    placeholder="Descripción, referencia..."
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Tabla del historial */}
+              {historyLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
+                </div>
+              ) : history.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <FaHistory className="mx-auto text-3xl text-gray-300 mb-2" />
+                  <p className="text-gray-600">No hay transacciones</p>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto rounded-lg border border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estudiante</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto Bs</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pendiente</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">A Favor</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {history.map((tx: any) => (
+                          <tr key={tx.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                              {tx.createdAt ? formatDate(tx.createdAt) : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {tx.student?.fullName || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">
+                              {tx.description || '—'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                                tx.type === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {tx.type === 'deposit' ? 'DEPÓSITO' : tx.type.toUpperCase()}
+                              </span>
+                            </td>
+                            <td className={`px-4 py-3 text-sm font-bold ${
+                              tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {tx.type === 'deposit' ? '+' : '-'}{tx.amount?.toFixed(2)} Bs
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {tx.pendingAmount > 0 ? `${tx.pendingAmount.toFixed(2)} Bs` : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-green-700">
+                              {tx.creditAmount > 0 ? `${tx.creditAmount.toFixed(2)} Bs` : '—'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                tx.displayStatus === 'Completado' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {tx.displayStatus}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Paginación del historial */}
+                  {historyPagination.totalPages > 1 && (
+                    <div className="flex justify-between items-center mt-4">
+                      <span className="text-sm text-gray-600">
+                        Página {historyPagination.currentPage} de {historyPagination.totalPages}
+                      </span>
+                      <div className="flex space-x-2">
+                        <button
+                          disabled={historyFilters.page === 1}
+                          onClick={() => setHistoryFilters(prev => ({ ...prev, page: prev.page - 1 }))}
+                          className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 hover:bg-gray-100"
+                        >
+                          <FaChevronLeft className="text-gray-600" />
+                        </button>
+                        <button
+                          disabled={historyFilters.page === historyPagination.totalPages}
+                          onClick={() => setHistoryFilters(prev => ({ ...prev, page: prev.page + 1 }))}
+                          className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 hover:bg-gray-100"
+                        >
+                          <FaChevronRight className="text-gray-600" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
