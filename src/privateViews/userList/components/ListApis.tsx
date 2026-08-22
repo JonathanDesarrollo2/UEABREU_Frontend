@@ -8,12 +8,15 @@ import {
   FaUserTie,
   FaMoneyBillWave,
   FaUsers,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaSignInAlt
 } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import type { TypeUser_full } from '../../../types/user';
 import { useDeleteUser } from '../hooks/useDeleteUser';
 import GenericModal from '../../../components/GenricModal';
 import ConfirmDeleteModal from '../../../components/ConfirmDeleteModal';
+import api from '../../../library/axios';
 
 interface ListAPIProps {
   data: TypeUser_full[];
@@ -24,6 +27,7 @@ export default function ListAPIs({ data }: ListAPIProps) {
   const [selectedUser, setSelectedUser] = useState<TypeUser_full | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; userlogin: string } | null>(null);
+  const [impersonating, setImpersonating] = useState(false);
   
   const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
 
@@ -40,6 +44,32 @@ export default function ListAPIs({ data }: ListAPIProps) {
 
   const handleUpdate = (user: TypeUser_full) => {
     navigate('/admin/users/edit', { state: { userData: user } });
+  };
+
+  const handleImpersonate = async () => {
+    if (!selectedUser) return;
+    setImpersonating(true);
+    try {
+      const { data } = await api.post(`/private/user/impersonate/${selectedUser.id}`);
+      if (data.result) {
+        const { token } = data.content;
+        localStorage.setItem('tokcattleraising_inCattleRanchCloud', token);
+        toast.success(`Sesión iniciada como ${selectedUser.userlogin}`);
+        // Redirigir según nivel
+        if (selectedUser.nivel === 1) {
+          navigate('/representante'); // Ajusta la ruta del panel de representante
+        } else {
+          navigate('/admin/dashboard'); // O dashboard de admin
+        }
+        setSelectedUser(null);
+      } else {
+        toast.error(data.error?.[0] || 'Error al iniciar sesión como este usuario');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.[0] || 'Error de conexión');
+    } finally {
+      setImpersonating(false);
+    }
   };
 
   const getNivelText = (nivel?: number) => {
@@ -184,91 +214,104 @@ export default function ListAPIs({ data }: ListAPIProps) {
             }
           ]}
           extraContent={
-            selectedUser.nivel === 1 && selectedUser.representative ? (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-bold text-lg mb-3 flex items-center">
-                  <FaUserTie className="mr-2" /> Información del Representante
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600">Nombre Completo:</label>
-                    <p className="text-gray-800">{selectedUser.representative.fullName}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600">Cédula:</label>
-                    <p className="text-gray-800">{selectedUser.representative.identityCard}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600">Teléfono:</label>
-                    <p className="text-gray-800">{selectedUser.representative.phone}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600">Relación:</label>
-                    <p className="text-gray-800">{selectedUser.representative.relationship}</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-600">Dirección:</label>
-                    <p className="text-gray-800">{selectedUser.representative.address}</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-600">Saldo Actual:</label>
-                    <p className={`text-xl font-bold ${selectedUser.representative.balanceStatus === 'debt' ? 'text-red-600' : selectedUser.representative.balanceStatus === 'credit' ? 'text-green-600' : 'text-gray-600'}`}>
-                      {selectedUser.representative.balanceFormatted || 'Bs 0,00'}
-                    </p>
-                  </div>
-                </div>
+            <>
+              {/* Botón de suplantación */}
+              <div className="mt-4 mb-4">
+                <button
+                  onClick={handleImpersonate}
+                  disabled={impersonating}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-5 py-3 text-base font-semibold text-white shadow-md hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  <FaSignInAlt className="text-lg" />
+                  {impersonating ? 'Iniciando sesión...' : 'Entrar como este usuario'}
+                </button>
+              </div>
 
-                {/* Lista de Estudiantes */}
-                {selectedUser.representative.students && selectedUser.representative.students.length > 0 && (
-                  <div>
-                    <h5 className="font-bold mb-2 flex items-center">
-                      <FaUsers className="mr-2" /> Estudiantes ({selectedUser.representative.students.length})
-                    </h5>
-                    <div className="space-y-3 max-h-72 overflow-y-auto">
-                      {selectedUser.representative.students.map((student) => {
-                        // Cast para acceder a campos adicionales que puede devolver el backend
-                        const studentAny = student as any;
-                        return (
-                          <div 
-                            key={student.id} 
-                            className="p-4 border rounded-lg bg-white hover:bg-blue-50 cursor-pointer transition-colors"
-                            onClick={() => setSelectedStudent(studentAny)}
-                          >
-                            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2">
-                              <div>
-                                <p className="font-medium text-gray-900">{student.fullName}</p>
-                                <p className="text-sm text-gray-600">Cédula: {student.identityCard}</p>
-                                <p className="text-sm text-gray-600 flex items-center">
-                                  <FaCalendarAlt className="mr-1 text-gray-400" />
-                                  Admisión: {formatDate(studentAny.admissionDate)}
-                                </p>
-                              </div>
-                              <div className="md:text-right">
-                                <span className={`inline-block px-2 py-1 rounded text-xs mb-1 ${student.status === 'regular' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                  {student.status || 'pendiente'}
-                                </span>
-                                <p className={`text-sm font-semibold ${studentAny.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                  Saldo: {formatCurrency(studentAny.balance || 0)}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+              {selectedUser.nivel === 1 && selectedUser.representative ? (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-bold text-lg mb-3 flex items-center">
+                    <FaUserTie className="mr-2" /> Información del Representante
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Nombre Completo:</label>
+                      <p className="text-gray-800">{selectedUser.representative.fullName}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Cédula:</label>
+                      <p className="text-gray-800">{selectedUser.representative.identityCard}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Teléfono:</label>
+                      <p className="text-gray-800">{selectedUser.representative.phone}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Relación:</label>
+                      <p className="text-gray-800">{selectedUser.representative.relationship}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-600">Dirección:</label>
+                      <p className="text-gray-800">{selectedUser.representative.address}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-600">Saldo Actual:</label>
+                      <p className={`text-xl font-bold ${selectedUser.representative.balanceStatus === 'debt' ? 'text-red-600' : selectedUser.representative.balanceStatus === 'credit' ? 'text-green-600' : 'text-gray-600'}`}>
+                        {selectedUser.representative.balanceFormatted || 'Bs 0,00'}
+                      </p>
                     </div>
                   </div>
-                )}
-              </div>
-            ) : selectedUser.nivel === 1 ? (
-              <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
-                <p className="text-yellow-700">Este usuario es nivel 1 (Representante) pero no tiene información de representante registrada.</p>
-              </div>
-            ) : (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-blue-700">Usuario administrativo.</p>
-              </div>
-            )
+
+                  {/* Lista de Estudiantes */}
+                  {selectedUser.representative.students && selectedUser.representative.students.length > 0 && (
+                    <div>
+                      <h5 className="font-bold mb-2 flex items-center">
+                        <FaUsers className="mr-2" /> Estudiantes ({selectedUser.representative.students.length})
+                      </h5>
+                      <div className="space-y-3 max-h-72 overflow-y-auto">
+                        {selectedUser.representative.students.map((student) => {
+                          const studentAny = student as any;
+                          return (
+                            <div 
+                              key={student.id} 
+                              className="p-4 border rounded-lg bg-white hover:bg-blue-50 cursor-pointer transition-colors"
+                              onClick={() => setSelectedStudent(studentAny)}
+                            >
+                              <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2">
+                                <div>
+                                  <p className="font-medium text-gray-900">{student.fullName}</p>
+                                  <p className="text-sm text-gray-600">Cédula: {student.identityCard}</p>
+                                  <p className="text-sm text-gray-600 flex items-center">
+                                    <FaCalendarAlt className="mr-1 text-gray-400" />
+                                    Admisión: {formatDate(studentAny.admissionDate)}
+                                  </p>
+                                </div>
+                                <div className="md:text-right">
+                                  <span className={`inline-block px-2 py-1 rounded text-xs mb-1 ${student.status === 'regular' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                    {student.status || 'pendiente'}
+                                  </span>
+                                  <p className={`text-sm font-semibold ${studentAny.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                    Saldo: {formatCurrency(studentAny.balance || 0)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : selectedUser.nivel === 1 ? (
+                <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
+                  <p className="text-yellow-700">Este usuario es nivel 1 (Representante) pero no tiene información de representante registrada.</p>
+                </div>
+              ) : (
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <p className="text-blue-700">Usuario administrativo.</p>
+                </div>
+              )}
+            </>
           }
           show={!!selectedUser}
           onClose={() => setSelectedUser(null)}
