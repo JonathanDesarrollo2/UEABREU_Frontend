@@ -4,7 +4,6 @@ import { toast } from 'react-toastify';
 import { getAllTransactions } from '../../apis/balance';
 import { getPaginatedStudentsAPI } from '../../apis/student';
 import api from '../../library/axios';
-import { mapPaymentMethodToDisplay } from '../balance/utils/balanceUtils';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import ExcelJS from 'exceljs';
@@ -161,7 +160,6 @@ const PaymentHistory: React.FC = () => {
     setShowStudentDropdown(false);
   };
 
-  // Función para obtener TODAS las transacciones según filtros usando paginación con límite 100
   const fetchAllTransactionsForExport = async (): Promise<TransactionItem[]> => {
     const limit = 100;
     let page = 1;
@@ -191,7 +189,6 @@ const PaymentHistory: React.FC = () => {
     return allTransactions;
   };
 
-  // 🖨️ Exportación PDF
   const handleExportPDF = async () => {
     setExporting(true);
     try {
@@ -209,10 +206,7 @@ const PaymentHistory: React.FC = () => {
         const balanceAfter = t.balanceAfter ?? 0;
         const pendingAmount = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
         const creditAmount = balanceAfter > 0 ? balanceAfter : 0;
-        const paidAmount = isDeposit ? t.amount : 0;
-        const displayMethod = isFee ? '—' : mapPaymentMethodToDisplay(t.paymentMethod);
         const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
-        const displayPaymentStatus = isFee ? 'Incompleto' : (balanceAfter < 0 ? 'Incompleto' : 'Completo');
 
         return [
           t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '—',
@@ -223,20 +217,17 @@ const PaymentHistory: React.FC = () => {
           `${isDeposit ? '+' : '-'}${formatCurrencyLocal(t.amount, 'VES')}`,
           pendingAmount > 0 ? formatCurrencyLocal(pendingAmount, 'VES') : '—',
           creditAmount > 0 ? formatCurrencyLocal(creditAmount, 'VES') : '—',
-          paidAmount > 0 ? formatCurrencyLocal(paidAmount, 'VES') : '—',
           t.bcvRate ? t.bcvRate.toFixed(4) : '—',
           t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—',
-          displayMethod,
           t.reference || '—',
           displayStatus,
-          displayPaymentStatus,
         ];
       });
 
-            const docDefinition: any = {
+      const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [1, 1, 1, 1],
+        pageMargins: [2, 2, 2, 2],
         content: [
           { text: 'HISTORIAL DE TRANSACCIONES', style: 'title' },
           { text: `Generado: ${new Date().toLocaleDateString('es-VE')} ${new Date().toLocaleTimeString('es-VE')}`, style: 'subtitle' },
@@ -245,12 +236,12 @@ const PaymentHistory: React.FC = () => {
           {
             table: {
               headerRows: 1,
-              widths: [42, 60, 60, 80, 35, 50, 50, 50, 55, 35, 42, 50, 60, 45, 45],
+              widths: [42, 60, 60, 80, 35, 50, 50, 50, 35, 42, 60, 45],
               body: [
                 [
                   'Fecha', 'Representante', 'Estudiante', 'Descripción', 'Tipo',
-                  'Monto Bs', 'Pendiente', 'A Favor', 'Bs Cancelado', 'Tasa',
-                  'USD', 'Método', 'Referencia', 'Estado', 'Pago'
+                  'Monto Bs', 'Pendiente', 'A Favor', 'Tasa',
+                  'USD', 'Referencia', 'Estado'
                 ],
                 ...tableBody,
               ],
@@ -284,7 +275,6 @@ const PaymentHistory: React.FC = () => {
     }
   };
 
-  // 📊 Exportación Excel
   const handleExportExcel = async () => {
     setExporting(true);
     try {
@@ -308,13 +298,10 @@ const PaymentHistory: React.FC = () => {
         { header: 'Monto Bs', key: 'amount', width: 15 },
         { header: 'Monto Pendiente', key: 'pending', width: 15 },
         { header: 'Monto a Favor', key: 'credit', width: 15 },
-        { header: 'Monto Bs Cancelado', key: 'paid', width: 18 },
         { header: 'Tasa', key: 'rate', width: 12 },
         { header: 'USD', key: 'usd', width: 12 },
-        { header: 'Método', key: 'method', width: 18 },
         { header: 'Referencia', key: 'reference', width: 20 },
         { header: 'Estado', key: 'status', width: 14 },
-        { header: 'Pago', key: 'payment', width: 14 },
       ];
 
       sheet.getRow(1).eachCell(cell => {
@@ -328,10 +315,7 @@ const PaymentHistory: React.FC = () => {
         const balanceAfter = t.balanceAfter ?? 0;
         const pendingAmount = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
         const creditAmount = balanceAfter > 0 ? balanceAfter : 0;
-        const paidAmount = isDeposit ? t.amount : 0;
-        const displayMethod = isFee ? '—' : mapPaymentMethodToDisplay(t.paymentMethod);
         const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
-        const displayPaymentStatus = isFee ? 'Incompleto' : (balanceAfter < 0 ? 'Incompleto' : 'Completo');
 
         sheet.addRow({
           date: t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '—',
@@ -342,13 +326,10 @@ const PaymentHistory: React.FC = () => {
           amount: `${isDeposit ? '+' : '-'}${formatCurrencyLocal(t.amount, 'VES')}`,
           pending: pendingAmount > 0 ? formatCurrencyLocal(pendingAmount, 'VES') : '—',
           credit: creditAmount > 0 ? formatCurrencyLocal(creditAmount, 'VES') : '—',
-          paid: paidAmount > 0 ? formatCurrencyLocal(paidAmount, 'VES') : '—',
           rate: t.bcvRate ? t.bcvRate.toFixed(4) : '—',
           usd: t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—',
-          method: displayMethod,
           reference: t.reference || '—',
           status: displayStatus,
-          payment: displayPaymentStatus,
         });
       });
 
@@ -462,13 +443,10 @@ const PaymentHistory: React.FC = () => {
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto (Bs)</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto Pendiente</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto a Favor</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto Bs Cancelado</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Tasa</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">USD</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Método</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Referencia</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Estado</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Pago</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -478,10 +456,7 @@ const PaymentHistory: React.FC = () => {
                         const balanceAfter = t.balanceAfter ?? 0;
                         const pendingAmount = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
                         const creditAmount = balanceAfter > 0 ? balanceAfter : 0;
-                        const paidAmount = isDeposit ? t.amount : 0;
-                        const displayMethod = isFee ? '—' : mapPaymentMethodToDisplay(t.paymentMethod);
                         const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
-                        const displayPaymentStatus = isFee ? 'Incompleto' : (balanceAfter < 0 ? 'Incompleto' : 'Completo');
 
                         return (
                           <tr key={t.id} className="hover:bg-blue-50/30 transition-colors">
@@ -503,21 +478,12 @@ const PaymentHistory: React.FC = () => {
                             <td className="px-6 py-4 text-sm text-green-700">
                               {creditAmount > 0 ? formatCurrencyLocal(creditAmount, 'VES') : '—'}
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-700">
-                              {paidAmount > 0 ? formatCurrencyLocal(paidAmount, 'VES') : '—'}
-                            </td>
                             <td className="px-6 py-4 text-sm text-gray-500">{t.bcvRate ? t.bcvRate.toFixed(4) : '—'}</td>
                             <td className="px-6 py-4 text-sm text-gray-700">{t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—'}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600 capitalize">{displayMethod}</td>
                             <td className="px-6 py-4 text-sm text-gray-500 font-mono">{t.reference || '—'}</td>
                             <td className="px-6 py-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${displayStatus === 'Completado' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                 {displayStatus}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${displayPaymentStatus === 'Incompleto' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                {displayPaymentStatus}
                               </span>
                             </td>
                           </tr>
