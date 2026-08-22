@@ -289,20 +289,20 @@ const PaymentHistory: React.FC = () => {
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Historial de Transacciones');
 
-      sheet.columns = [
-        { header: 'Fecha', key: 'date', width: 12 },
-        { header: 'Representante', key: 'rep', width: 25 },
-        { header: 'Estudiante', key: 'student', width: 25 },
-        { header: 'Descripción', key: 'description', width: 30 },
-        { header: 'Tipo', key: 'type', width: 12 },
-        { header: 'Monto Bs', key: 'amount', width: 15 },
-        { header: 'Monto Pendiente', key: 'pending', width: 15 },
-        { header: 'Monto a Favor', key: 'credit', width: 15 },
-        { header: 'Tasa', key: 'rate', width: 12 },
-        { header: 'USD', key: 'usd', width: 12 },
-        { header: 'Referencia', key: 'reference', width: 20 },
-        { header: 'Estado', key: 'status', width: 14 },
-      ];
+          sheet.columns = [
+            { header: 'Fecha', key: 'date', width: 12 },
+            { header: 'Representante', key: 'rep', width: 25 },
+            { header: 'Estudiante', key: 'student', width: 25 },
+            { header: 'Descripción', key: 'description', width: 30 },
+            { header: 'Tipo', key: 'type', width: 12 },
+            { header: 'Monto Bs', key: 'amount', width: 15 },
+            { header: 'Monto Pendiente', key: 'pending', width: 15 },
+            { header: 'Monto a Favor', key: 'credit', width: 15 },
+            { header: 'Tasa', key: 'rate', width: 12 },
+            { header: 'USD', key: 'usd', width: 12 },
+            { header: 'Referencia', key: 'reference', width: 20 },
+            { header: 'Estado', key: 'status', width: 14 },
+          ];
 
       sheet.getRow(1).eachCell(cell => {
         cell.font = { bold: true };
