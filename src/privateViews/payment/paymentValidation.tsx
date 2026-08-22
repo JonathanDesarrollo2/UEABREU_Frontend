@@ -34,15 +34,18 @@ interface PaymentValidationProps {
   representativeId: string;
 }
 
+// Valores fijos para la API bancaria (no los ingresa el representante)
+const DEFAULT_BANK_ACCOUNT = '01910001482101010049'; // Cuenta institucional
+const DEFAULT_PHONE = ''; // No se usa si se envía vacío
+const DEFAULT_REQUEST_DATE = new Date().toISOString().split('T')[0];
+
 export default function PaymentValidation({ representativeId }: PaymentValidationProps) {
-  const [formData, setFormData] = useState<BankValidationRequest>({
-    AccountNumber: '',
+  // Solo los 4 campos visibles
+  const [formData, setFormData] = useState({
     BankCode: 191,
-    PhoneNumber: '',
     ClientID: '',
     Reference: '',
-    RequestDate: new Date().toISOString().split('T')[0],
-    Amount: 0
+    Amount: 0,
   });
 
   const [loading, setLoading] = useState(false);
@@ -158,7 +161,18 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
     setDepositResult(null);
 
     try {
-      const response = await cascadedValidationAPI(formData);
+      // Construir objeto completo para la API bancaria
+      const fullValidationData: BankValidationRequest = {
+        AccountNumber: DEFAULT_BANK_ACCOUNT,
+        BankCode: formData.BankCode,
+        PhoneNumber: DEFAULT_PHONE,
+        ClientID: formData.ClientID,
+        Reference: formData.Reference,
+        RequestDate: DEFAULT_REQUEST_DATE,
+        Amount: formData.Amount,
+      };
+
+      const response = await cascadedValidationAPI(fullValidationData);
       setResult(response.content);
 
       if (
@@ -352,24 +366,9 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                   </div>
                 )}
 
-                {/* Campos del formulario */}
+                {/* Campos simplificados */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Número de Cuenta *
-                    </label>
-                    <input
-                      type="text"
-                      name="AccountNumber"
-                      value={formData.AccountNumber}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="01910001482101010049"
-                    />
-                  </div>
-
-                  {/* Banco resaltado */}
+                  {/* Banco */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       <FaUniversity className="inline mr-1 text-blue-600" />
@@ -389,11 +388,11 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                     </select>
                   </div>
 
-                  {/* Cédula resaltada */}
+                  {/* Cédula */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       <FaCreditCard className="inline mr-1 text-blue-600" />
-                      ID Cliente *
+                      Cédula *
                     </label>
                     <input
                       type="text"
@@ -406,22 +405,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Teléfono *
-                    </label>
-                    <input
-                      type="text"
-                      name="PhoneNumber"
-                      value={formData.PhoneNumber}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="584128021120"
-                    />
-                  </div>
-
-                  {/* Referencia resaltada */}
+                  {/* Referencia */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       <FaFileInvoiceDollar className="inline mr-1 text-blue-600" />
@@ -438,65 +422,92 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                     />
                   </div>
 
+                  {/* Monto Bs */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Fecha *
-                    </label>
-                    <input
-                      type="date"
-                      name="RequestDate"
-                      value={formData.RequestDate}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    />
-                  </div>
-
-                  {/* Monto Bs resaltado */}
-                  <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       <FaMoneyBillWave className="inline mr-1 text-blue-600" />
                       Monto (Bs) *
                     </label>
-                    <div className="space-y-3">
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.01"
-                          name="Amount"
-                          value={formData.Amount}
-                          onChange={handleChange}
-                          required
-                          className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all pr-12 font-bold text-lg"
-                          placeholder="0.00"
-                          min="0"
-                        />
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <span className="text-gray-600 font-bold text-sm">Bs</span>
-                        </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="Amount"
+                        value={formData.Amount}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all pr-12 font-bold text-lg"
+                        placeholder="0.00"
+                        min="0"
+                      />
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <span className="text-gray-600 font-bold text-sm">Bs</span>
                       </div>
-                      
-                      {formData.Amount > 0 && bcvRate && (
-                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <FaDollarSign className="text-green-600" />
-                              <span className="text-gray-700 text-sm font-medium">Equivalente:</span>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-bold text-green-700">
-                                {usdAmount.toLocaleString('es-VE', {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2
-                                })} USD
-                              </p>
-                              <p className="text-xs text-gray-600">
-                                Tasa: {bcvRate.PriceRateBCV.toFixed(2)} Bs/USD
-                              </p>
-                            </div>
+                    </div>
+                    
+                    {formData.Amount > 0 && bcvRate && (
+                      <div className="mt-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <FaDollarSign className="text-green-600" />
+                            <span className="text-gray-700 text-sm font-medium">Equivalente:</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-green-700">
+                              {usdAmount.toLocaleString('es-VE', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })} USD
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              Tasa: {bcvRate.PriceRateBCV.toFixed(2)} Bs/USD
+                            </p>
                           </div>
                         </div>
-                      )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Campos opcionales (grises, automáticos) */}
+                <div className="border-t border-gray-200 pt-4">
+                  <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    <FaInfoCircle className="mr-2 text-gray-400" />
+                    Campos opcionales (se completan automáticamente)
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1">
+                        Número de Cuenta
+                      </label>
+                      <input
+                        type="text"
+                        value={DEFAULT_BANK_ACCOUNT}
+                        disabled
+                        className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1">
+                        Teléfono
+                      </label>
+                      <input
+                        type="text"
+                        value={DEFAULT_PHONE || 'No requerido'}
+                        disabled
+                        className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1">
+                        Fecha
+                      </label>
+                      <input
+                        type="text"
+                        value={new Date(DEFAULT_REQUEST_DATE).toLocaleDateString('es-VE')}
+                        disabled
+                        className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                      />
                     </div>
                   </div>
                 </div>
@@ -506,7 +517,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                     <FaInfoCircle className="text-blue-600 text-sm mt-0.5" />
                     <div>
                       <p className="text-blue-700 text-xs">
-                        <strong>Nota:</strong> Todos los campos son obligatorios. La validación se realiza mediante tres métodos consecutivos.
+                        <strong>Nota:</strong> Los campos resaltados en azul son obligatorios. Los campos grises se completan automáticamente.
                       </p>
                     </div>
                   </div>
@@ -604,7 +615,6 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estudiante</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto Bs</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pendiente</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">A Favor</th>
@@ -623,17 +633,8 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                             <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">
                               {tx.description || '—'}
                             </td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                                tx.type === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                              }`}>
-                                {tx.type === 'deposit' ? 'DEPÓSITO' : tx.type.toUpperCase()}
-                              </span>
-                            </td>
-                            <td className={`px-4 py-3 text-sm font-bold ${
-                              tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {tx.type === 'deposit' ? '+' : '-'}{tx.amount?.toFixed(2)} Bs
+                            <td className="px-4 py-3 text-sm font-bold text-gray-800">
+                              {tx.amount?.toFixed(2)} Bs
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-700">
                               {tx.pendingAmount > 0 ? `${tx.pendingAmount.toFixed(2)} Bs` : '—'}
@@ -860,7 +861,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                   </div>
                   <h4 className="text-base font-semibold text-gray-700 mb-1">Sin resultados</h4>
                   <p className="text-gray-500 text-xs max-w-xs mx-auto">
-                    Complete el formulario y ejecute la validación
+                    Complete los campos azules y ejecute la validación
                   </p>
                 </div>
               )}
