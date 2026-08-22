@@ -34,18 +34,21 @@ interface PaymentValidationProps {
   representativeId: string;
 }
 
-// Valores fijos para la API bancaria (no los ingresa el representante)
-const DEFAULT_BANK_ACCOUNT = '01910001482101010049'; // Cuenta institucional
-const DEFAULT_PHONE = ''; // No se usa si se envía vacío
+// Valores predeterminados para los campos adicionales (editables)
+const DEFAULT_BANK_ACCOUNT = '01910001482101010049';
+const DEFAULT_PHONE = '';
 const DEFAULT_REQUEST_DATE = new Date().toISOString().split('T')[0];
 
 export default function PaymentValidation({ representativeId }: PaymentValidationProps) {
-  // Solo los 4 campos visibles
+  // Campos visibles + adicionales editables
   const [formData, setFormData] = useState({
     BankCode: 191,
     ClientID: '',
     Reference: '',
     Amount: 0,
+    AccountNumber: DEFAULT_BANK_ACCOUNT,
+    PhoneNumber: DEFAULT_PHONE,
+    RequestDate: DEFAULT_REQUEST_DATE,
   });
 
   const [loading, setLoading] = useState(false);
@@ -163,12 +166,12 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
     try {
       // Construir objeto completo para la API bancaria
       const fullValidationData: BankValidationRequest = {
-        AccountNumber: DEFAULT_BANK_ACCOUNT,
+        AccountNumber: formData.AccountNumber,
         BankCode: formData.BankCode,
-        PhoneNumber: DEFAULT_PHONE,
+        PhoneNumber: formData.PhoneNumber,
         ClientID: formData.ClientID,
         Reference: formData.Reference,
-        RequestDate: DEFAULT_REQUEST_DATE,
+        RequestDate: formData.RequestDate,
         Amount: formData.Amount,
       };
 
@@ -366,7 +369,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                   </div>
                 )}
 
-                {/* Campos simplificados */}
+                {/* Campos principales */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Banco */}
                   <div>
@@ -469,44 +472,49 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                   </div>
                 </div>
 
-                {/* Campos opcionales (grises, automáticos) */}
-                <div className="border-t border-gray-200 pt-4">
+                {/* Campos adicionales editables */}
+                <div className="border-t border-gray-200 pt-4 mt-4">
                   <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                     <FaInfoCircle className="mr-2 text-gray-400" />
-                    Campos opcionales (se completan automáticamente)
+                    Campos adicionales
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-500 mb-1">
+                      <label className="block text-sm font-medium text-gray-600 mb-1">
                         Número de Cuenta
                       </label>
                       <input
                         type="text"
-                        value={DEFAULT_BANK_ACCOUNT}
-                        disabled
-                        className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                        name="AccountNumber"
+                        value={formData.AccountNumber}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="01910001482101010049"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-500 mb-1">
+                      <label className="block text-sm font-medium text-gray-600 mb-1">
                         Teléfono
                       </label>
                       <input
                         type="text"
-                        value={DEFAULT_PHONE || 'No requerido'}
-                        disabled
-                        className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                        name="PhoneNumber"
+                        value={formData.PhoneNumber}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="584128021120"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-500 mb-1">
+                      <label className="block text-sm font-medium text-gray-600 mb-1">
                         Fecha
                       </label>
                       <input
-                        type="text"
-                        value={new Date(DEFAULT_REQUEST_DATE).toLocaleDateString('es-VE')}
-                        disabled
-                        className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                        type="date"
+                        name="RequestDate"
+                        value={formData.RequestDate}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
@@ -517,7 +525,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                     <FaInfoCircle className="text-blue-600 text-sm mt-0.5" />
                     <div>
                       <p className="text-blue-700 text-xs">
-                        <strong>Nota:</strong> Los campos resaltados en azul son obligatorios. Los campos grises se completan automáticamente.
+                        <strong>Nota:</strong> Los campos resaltados en azul son obligatorios. Los campos adicionales son editables.
                       </p>
                     </div>
                   </div>
@@ -622,35 +630,42 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {history.map((tx: any) => (
-                          <tr key={tx.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
-                              {tx.createdAt ? formatDate(tx.createdAt) : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {tx.student?.fullName || '—'}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">
-                              {tx.description || '—'}
-                            </td>
-                            <td className="px-4 py-3 text-sm font-bold text-gray-800">
-                              {tx.amount?.toFixed(2)} Bs
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {tx.pendingAmount > 0 ? `${tx.pendingAmount.toFixed(2)} Bs` : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-green-700">
-                              {tx.creditAmount > 0 ? `${tx.creditAmount.toFixed(2)} Bs` : '—'}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                tx.displayStatus === 'Completado' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {tx.displayStatus}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {history.map((tx: any) => {
+                          const isDeposit = tx.type === 'deposit';
+                          const amountDisplay = isDeposit
+                            ? `+${tx.amount?.toFixed(2)} Bs`
+                            : `-${tx.amount?.toFixed(2)} Bs`;
+                          const amountColor = isDeposit ? 'text-green-600' : 'text-red-600';
+                          return (
+                            <tr key={tx.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                                {tx.createdAt ? formatDate(tx.createdAt) : '—'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
+                                {tx.student?.fullName || '—'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">
+                                {tx.description || '—'}
+                              </td>
+                              <td className={`px-4 py-3 text-sm font-bold ${amountColor}`}>
+                                {amountDisplay}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
+                                {tx.pendingAmount > 0 ? `${tx.pendingAmount.toFixed(2)} Bs` : '—'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-green-700">
+                                {tx.creditAmount > 0 ? `${tx.creditAmount.toFixed(2)} Bs` : '—'}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  tx.displayStatus === 'Completado' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {tx.displayStatus}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
