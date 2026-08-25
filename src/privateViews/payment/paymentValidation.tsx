@@ -176,6 +176,11 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
       };
 
       const response = await cascadedValidationAPI(fullValidationData);
+      if (!response.result || !response.content) {
+        setError(response.error?.[0] || 'Error desconocido en la validación');
+        return;
+      }
+
       setResult(response.content);
 
       if (
@@ -193,7 +198,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
           };
           const depositRes = await manualDeposit(representativeId, depositPayload);
           setDepositResult(depositRes);
-          fetchHistory(); // refrescar historial
+          fetchHistory();
         } catch (depErr: any) {
           const serverMessage =
             depErr?.response?.data?.error?.[0] ||
@@ -205,7 +210,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
         }
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Error al realizar la validación');
     } finally {
       setLoading(false);
     }
@@ -263,6 +268,8 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
       year: 'numeric'
     });
   };
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
@@ -670,7 +677,6 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                     </table>
                   </div>
 
-                  {/* Paginación del historial */}
                   {historyPagination.totalPages > 1 && (
                     <div className="flex justify-between items-center mt-4">
                       <span className="text-sm text-gray-600">
@@ -764,101 +770,109 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
 
                   <div className="space-y-3 mt-4">
                     {/* P2P */}
-                    <div className={`flex justify-between items-center p-3 rounded-lg border ${
-                      result.details.validateP2P.movementExists 
-                        ? 'bg-green-50 border-green-200' 
-                        : result.details.validateP2P.executed
-                        ? 'bg-red-50 border-red-200'
-                        : 'bg-gray-100 border-gray-200'
-                    }`}>
-                      <div className="flex items-center space-x-2">
-                        <FaCreditCard className={
-                          result.details.validateP2P.movementExists ? 'text-green-600' : result.details.validateP2P.executed ? 'text-red-600' : 'text-gray-600'
-                        } size={14} />
-                        <span className="text-gray-700 text-sm">P2P</span>
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        result.details.validateP2P.movementExists ? 'bg-green-500 text-white' : result.details.validateP2P.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'
+                    {result.details && result.details.validateP2P && (
+                      <div className={`flex justify-between items-center p-3 rounded-lg border ${
+                        result.details.validateP2P.movementExists 
+                          ? 'bg-green-50 border-green-200' 
+                          : result.details.validateP2P.executed
+                          ? 'bg-red-50 border-red-200'
+                          : 'bg-gray-100 border-gray-200'
                       }`}>
-                        {result.details.validateP2P.executed ? (result.details.validateP2P.movementExists ? '✓' : '✗') : '—'}
-                      </span>
-                    </div>
+                        <div className="flex items-center space-x-2">
+                          <FaCreditCard className={
+                            result.details.validateP2P.movementExists ? 'text-green-600' : result.details.validateP2P.executed ? 'text-red-600' : 'text-gray-600'
+                          } size={14} />
+                          <span className="text-gray-700 text-sm">P2P</span>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          result.details.validateP2P.movementExists ? 'bg-green-500 text-white' : result.details.validateP2P.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'
+                        }`}>
+                          {result.details.validateP2P.executed ? (result.details.validateP2P.movementExists ? '✓' : '✗') : '—'}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Referencia */}
-                    <div className={`flex justify-between items-center p-3 rounded-lg border ${
-                      result.details.validateReference.movementExists 
-                        ? 'bg-green-50 border-green-200' 
-                        : result.details.validateReference.executed
-                        ? 'bg-red-50 border-red-200'
-                        : 'bg-gray-100 border-gray-200'
-                    }`}>
-                      <div className="flex items-center space-x-2">
-                        <FaCalendarDay className={
-                          result.details.validateReference.movementExists ? 'text-green-600' : result.details.validateReference.executed ? 'text-red-600' : 'text-gray-600'
-                        } size={14} />
-                        <span className="text-gray-700 text-sm">Referencia</span>
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        result.details.validateReference.movementExists ? 'bg-green-500 text-white' : result.details.validateReference.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'
+                    {result.details && result.details.validateReference && (
+                      <div className={`flex justify-between items-center p-3 rounded-lg border ${
+                        result.details.validateReference.movementExists 
+                          ? 'bg-green-50 border-green-200' 
+                          : result.details.validateReference.executed
+                          ? 'bg-red-50 border-red-200'
+                          : 'bg-gray-100 border-gray-200'
                       }`}>
-                        {result.details.validateReference.executed ? (result.details.validateReference.movementExists ? '✓' : '✗') : '—'}
-                      </span>
-                    </div>
+                        <div className="flex items-center space-x-2">
+                          <FaCalendarDay className={
+                            result.details.validateReference.movementExists ? 'text-green-600' : result.details.validateReference.executed ? 'text-red-600' : 'text-gray-600'
+                          } size={14} />
+                          <span className="text-gray-700 text-sm">Referencia</span>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          result.details.validateReference.movementExists ? 'bg-green-500 text-white' : result.details.validateReference.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'
+                        }`}>
+                          {result.details.validateReference.executed ? (result.details.validateReference.movementExists ? '✓' : '✗') : '—'}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Existencia */}
-                    <div className={`flex justify-between items-center p-3 rounded-lg border ${
-                      result.details.validateExistence.movementExists 
-                        ? 'bg-green-50 border-green-200' 
-                        : result.details.validateExistence.executed
-                        ? 'bg-red-50 border-red-200'
-                        : 'bg-gray-100 border-gray-200'
-                    }`}>
-                      <div className="flex items-center space-x-2">
-                        <FaUniversity className={
-                          result.details.validateExistence.movementExists ? 'text-green-600' : result.details.validateExistence.executed ? 'text-red-600' : 'text-gray-600'
-                        } size={14} />
-                        <span className="text-gray-700 text-sm">Existencia</span>
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        result.details.validateExistence.movementExists ? 'bg-green-500 text-white' : result.details.validateExistence.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'
+                    {result.details && result.details.validateExistence && (
+                      <div className={`flex justify-between items-center p-3 rounded-lg border ${
+                        result.details.validateExistence.movementExists 
+                          ? 'bg-green-50 border-green-200' 
+                          : result.details.validateExistence.executed
+                          ? 'bg-red-50 border-red-200'
+                          : 'bg-gray-100 border-gray-200'
                       }`}>
-                        {result.details.validateExistence.executed ? (result.details.validateExistence.movementExists ? '✓' : '✗') : '—'}
-                      </span>
-                    </div>
+                        <div className="flex items-center space-x-2">
+                          <FaUniversity className={
+                            result.details.validateExistence.movementExists ? 'text-green-600' : result.details.validateExistence.executed ? 'text-red-600' : 'text-gray-600'
+                          } size={14} />
+                          <span className="text-gray-700 text-sm">Existencia</span>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          result.details.validateExistence.movementExists ? 'bg-green-500 text-white' : result.details.validateExistence.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'
+                        }`}>
+                          {result.details.validateExistence.executed ? (result.details.validateExistence.movementExists ? '✓' : '✗') : '—'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  {(result.details.validateP2P.movementExists || 
-                    result.details.validateReference.movementExists || 
-                    result.details.validateExistence.movementExists) && (
-                    <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
-                      <h5 className="text-gray-800 font-semibold text-sm mb-2">Detalles</h5>
-                      <div className="space-y-2 text-gray-600 text-xs">
-                        <div className="flex justify-between">
-                          <span>Concepto:</span>
-                          <span className="text-gray-800 text-right max-w-[60%]">
-                            {result.details.validateP2P.data?.Concept || 
-                             result.details.validateReference.data?.Concept || 
-                             result.details.validateExistence.data?.Concept || 'N/A'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Control:</span>
-                          <span className="text-gray-800 font-mono">
-                            {result.details.validateP2P.data?.ControlNumber || 
-                             result.details.validateReference.data?.ControlNumber || 
-                             result.details.validateExistence.data?.ControlNumber || 'N/A'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Monto:</span>
-                          <span className="text-gray-800 font-bold">
-                            Bs {(result.details.validateP2P.data?.Amount || 
-                               result.details.validateReference.data?.Amount || 
-                               result.details.validateExistence.data?.Amount || 0).toFixed(2)}
-                          </span>
+                  {result.details && (
+                    (result.details.validateP2P?.movementExists || 
+                     result.details.validateReference?.movementExists || 
+                     result.details.validateExistence?.movementExists) && (
+                      <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
+                        <h5 className="text-gray-800 font-semibold text-sm mb-2">Detalles</h5>
+                        <div className="space-y-2 text-gray-600 text-xs">
+                          <div className="flex justify-between">
+                            <span>Concepto:</span>
+                            <span className="text-gray-800 text-right max-w-[60%]">
+                              {result.details.validateP2P?.data?.Concept || 
+                               result.details.validateReference?.data?.Concept || 
+                               result.details.validateExistence?.data?.Concept || 'N/A'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Control:</span>
+                            <span className="text-gray-800 font-mono">
+                              {result.details.validateP2P?.data?.ControlNumber || 
+                               result.details.validateReference?.data?.ControlNumber || 
+                               result.details.validateExistence?.data?.ControlNumber || 'N/A'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Monto:</span>
+                            <span className="text-gray-800 font-bold">
+                              Bs {(result.details.validateP2P?.data?.Amount || 
+                                 result.details.validateReference?.data?.Amount || 
+                                 result.details.validateExistence?.data?.Amount || 0).toFixed(2)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )
                   )}
 
                   <div className="mt-3 pt-2 border-t border-gray-200">
