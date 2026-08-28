@@ -109,3 +109,20 @@ export async function LoadPaginatedUsers({
     throw new Error(mensaje);
   }
 }
+// Dentro de src/apis/user.ts, añade al final:
+export async function updateUser(formdata: any): Promise<TypeApiResponseGeneric> {
+  try {
+    const { data } = await api.post<TypeApiResponseGeneric>('/private/user/updatelogin', formdata);
+    return data;
+  } catch (error) {
+    let mensaje = 'Error Desconocido';
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) {
+        mensaje = errores.join(', ');
+      }
+      throw new Error(mensaje);
+    }
+    throw new Error(mensaje);
+  }
+}

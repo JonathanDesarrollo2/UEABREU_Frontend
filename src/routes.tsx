@@ -32,6 +32,7 @@ import PaymentHistory from './privateViews/PaymentHistory/PaymentHistoryAdmin'
 import AdminRegistrationsList from './privateViews/AdminRegistrationList/AdminRegistrationList'
 import SchoolFeeSettings from './privateViews/SchoolFeeSettings/SchoolFeeSettings'
 import SimuladorCobros from './privateViews/Simulador/CobrosSimulador'
+import EditUser from './privateViews/editUser/EditUsers'
 
 function ListRoutes() {
   return (
@@ -64,6 +65,7 @@ function ListRoutes() {
             <Route index element={<UserDashboard />} />
             <Route path="insert" element={<InsertUser />} />
             <Route path="list" element={<AdminListUsersBackend />} />
+            <Route path="edit" element={<EditUser />} />
           </Route>
           <Route path="Schedule" element={<ScheduleView />} />
           <Route path="Balance" element={<ManualBalance />} />
