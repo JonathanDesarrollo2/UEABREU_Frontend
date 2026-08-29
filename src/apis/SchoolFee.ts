@@ -1,31 +1,26 @@
-// src/apis/schoolFee.ts
+// src/apis/SchoolFee.ts
 import api from '../library/axios';
 import type { SchoolFee } from '../types/SchoolFee';
 
-/**
- * Obtiene la configuración de tarifas para un año escolar.
- * Si no se especifica, devuelve la del año 2026-2027.
- */
-export async function getSchoolFees(schoolYear: string = '2026-2027'): Promise<SchoolFee> {
-  const response = await api.get('/private/fees/fees', { params: { schoolYear } });
-  if (response.data.result) {
-    return response.data.content;
+export async function getSchoolFees(): Promise<SchoolFee> {
+  try {
+    const { data } = await api.get('/private/fees/fees', {
+      params: { schoolYear: '2026-2027' }
+    });
+    return data.content;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.error?.[0] || 'Error al obtener tarifas');
   }
-  throw new Error(response.data.error?.[0] || 'Error al obtener tarifas');
 }
 
-/**
- * Actualiza las tarifas de un año escolar.
- * @param schoolYear – año escolar (ej: '2026-2027')
- * @param data – objeto con los campos a actualizar
- */
 export async function updateSchoolFees(
   schoolYear: string,
-  data: Partial<SchoolFee>
+  payload: Partial<SchoolFee> & { password: string }
 ): Promise<SchoolFee> {
-  const response = await api.put(`/private/fees/fees/${schoolYear}`, data);
-  if (response.data.result) {
-    return response.data.content;
+  try {
+    const { data } = await api.put(`/private/fees/fees/${schoolYear}`, payload);
+    return data.content;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.error?.[0] || 'Error al actualizar tarifas');
   }
-  throw new Error(response.data.error?.[0] || 'Error al actualizar tarifas');
 }
