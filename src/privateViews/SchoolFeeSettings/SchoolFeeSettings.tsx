@@ -280,7 +280,7 @@ const SchoolFeeSettings: React.FC = () => {
         </button>
       </div>
 
-      {/* Historial de cambios */}
+      {/* Historial de cambios con detalle */}
       <div className="mt-10 bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
         <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
           <FaHistory className="text-blue-600" /> Historial de Cambios
@@ -288,18 +288,31 @@ const SchoolFeeSettings: React.FC = () => {
         {auditLogs.length === 0 ? (
           <p className="text-gray-500">No hay cambios registrados.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-4">
             {auditLogs.map((log: any) => (
-              <li key={log.id} className="border-b pb-2">
+              <li key={log.id} className="border-b pb-4">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <FaUser className="text-gray-400" />
                   <span className="font-semibold">{log.user?.username || log.user?.userlogin || 'Admin'}</span>
                   <FaClock className="ml-4 text-gray-400" />
                   <span>{new Date(log.createdAt).toLocaleString('es-VE')}</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Acción: {log.action}
-                </p>
+                <div className="mt-2 text-xs text-gray-700">
+                  {log.details?.changes && log.details.changes.length > 0 ? (
+                    <ul className="ml-4 list-disc space-y-1">
+                      {log.details.changes.map((c: any, idx: number) => (
+                        <li key={idx}>
+                          <strong>{c.campo}:</strong>{' '}
+                          <span className="text-red-600">{String(c.antes)}</span>{' '}
+                          →{' '}
+                          <span className="text-green-600">{String(c.despues)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-500">Sin cambios detectados.</p>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
