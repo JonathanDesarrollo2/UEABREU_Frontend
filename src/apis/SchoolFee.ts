@@ -24,3 +24,12 @@ export async function updateSchoolFees(
     throw new Error(error.response?.data?.error?.[0] || 'Error al actualizar tarifas');
   }
 }
+
+export async function getAuditLogs(): Promise<any[]> {
+  try {
+    const { data } = await api.get('/private/fees/fees/audit-logs');
+    return data.content;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.error?.[0] || 'Error al obtener historial');
+  }
+}

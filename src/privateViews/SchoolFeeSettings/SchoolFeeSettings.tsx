@@ -3,15 +3,17 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import {
   FaSave, FaSpinner, FaMoneyBillWave, FaCalendarAlt, FaHandHoldingUsd,
-  FaPercentage, FaCalendarCheck, FaCalendarPlus, FaCalendarTimes, FaCoins, FaLock
+  FaPercentage, FaCalendarCheck, FaCalendarPlus, FaCalendarTimes, FaCoins, FaLock,
+  FaHistory, FaUser, FaClock
 } from 'react-icons/fa';
 import type { SchoolFee } from '../../types/SchoolFee';
-import { getSchoolFees, updateSchoolFees } from '../../apis/SchoolFee';
+import { getSchoolFees, updateSchoolFees, getAuditLogs } from '../../apis/SchoolFee';
 
 const SchoolFeeSettings: React.FC = () => {
   const [fees, setFees] = useState<SchoolFee | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
   // Estados locales para cada campo
   const [inscriptionFeeUSD, setInscriptionFeeUSD] = useState<number>(80);
@@ -50,6 +52,19 @@ const SchoolFeeSettings: React.FC = () => {
     fetchFees();
   }, []);
 
+  const fetchAuditLogs = async () => {
+    try {
+      const logs = await getAuditLogs();
+      setAuditLogs(logs);
+    } catch (error) {
+      console.error('Error al cargar historial de cambios', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, []);
+
   const handleSave = async () => {
     if (!adminPassword) {
       toast.error('Debes ingresar la contraseña administrativa');
@@ -73,6 +88,7 @@ const SchoolFeeSettings: React.FC = () => {
       setFees(updated);
       setAdminPassword('');
       toast.success('Tarifas actualizadas correctamente');
+      fetchAuditLogs(); // refrescar historial
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar las tarifas');
     } finally {
@@ -97,6 +113,7 @@ const SchoolFeeSettings: React.FC = () => {
       animate={{ opacity: 1, y: 0 }}
       className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
     >
+      {/* Encabezado */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl shadow-xl p-6 mb-8 text-white">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-white/20 rounded-full">
@@ -111,7 +128,9 @@ const SchoolFeeSettings: React.FC = () => {
         </div>
       </div>
 
+      {/* Formulario en dos tarjetas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Tarjeta: Cuotas Principales */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/60 p-6 sm:p-8">
           <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
             <FaMoneyBillWave className="text-blue-600" />
@@ -164,6 +183,7 @@ const SchoolFeeSettings: React.FC = () => {
           </div>
         </div>
 
+        {/* Tarjeta: Pronto Pago y Fechas */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/60 p-6 sm:p-8">
           <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
             <FaCalendarAlt className="text-blue-600" />
@@ -231,11 +251,15 @@ const SchoolFeeSettings: React.FC = () => {
                 className={inputClasses}
                 placeholder="Contraseña requerida para guardar cambios"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                La primera vez que guardes, esta contraseña quedará registrada y no podrá cambiarse.
+              </p>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Botón Guardar */}
       <div className="flex justify-center mt-10">
         <button
           onClick={handleSave}
@@ -254,6 +278,32 @@ const SchoolFeeSettings: React.FC = () => {
             </>
           )}
         </button>
+      </div>
+
+      {/* Historial de cambios */}
+      <div className="mt-10 bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <FaHistory className="text-blue-600" /> Historial de Cambios
+        </h3>
+        {auditLogs.length === 0 ? (
+          <p className="text-gray-500">No hay cambios registrados.</p>
+        ) : (
+          <ul className="space-y-3">
+            {auditLogs.map((log: any) => (
+              <li key={log.id} className="border-b pb-2">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <FaUser className="text-gray-400" />
+                  <span className="font-semibold">{log.user?.username || log.user?.userlogin || 'Admin'}</span>
+                  <FaClock className="ml-4 text-gray-400" />
+                  <span>{new Date(log.createdAt).toLocaleString('es-VE')}</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Acción: {log.action}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="h-8" />
