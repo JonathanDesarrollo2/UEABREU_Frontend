@@ -1,6 +1,6 @@
 // src/views/admin/users/EditUser.tsx
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { FaEdit, FaGraduationCap } from 'react-icons/fa';
@@ -9,7 +9,7 @@ import { FormField } from '../../components/FormField';
 import SpinnerGeneral from '../../layouts/components/spinnerGeneral';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ActionButtons } from '../../components/ActionButtons';
-import { updateUser } from '../../apis/user';
+import { updateUser, getUserById } from '../../apis/user';
 import type { TypeApiResponseGeneric } from '../../types/login';
 
 const studentStatusOptions = [
@@ -70,7 +70,12 @@ interface EditUserForm {
 export default function EditUser() {
   const navigate = useNavigate();
   const location = useLocation();
-  const userData = (location.state as any)?.userData;
+  const initialState = (location.state as any)?.userData;
+
+  const [userData, setUserData] = useState<any>(initialState || null);
+  const [loadingData, setLoadingData] = useState<boolean>(
+    !initialState || !initialState.usermail
+  );
   const [isPending, setIsPending] = useState(false);
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<EditUserForm>({
@@ -116,6 +121,75 @@ export default function EditUser() {
       })) || [],
     },
   });
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (initialState?.id && !initialState.usermail) {
+        try {
+          const res = await getUserById(initialState.id);
+          if (res.result) {
+            setUserData(res.content);
+          } else {
+            toast.error('No se pudo cargar la información del usuario');
+          }
+        } catch (error) {
+          toast.error('Error al cargar usuario');
+        } finally {
+          setLoadingData(false);
+        }
+      } else {
+        setLoadingData(false);
+      }
+    };
+    fetchUser();
+  }, [initialState]);
+
+  // ✅ Reset formulario con datos cargados
+  useEffect(() => {
+    if (userData) {
+      reset({
+        id: userData.id || '',
+        usermail: userData.usermail || '',
+        userlogin: userData.userlogin || '',
+        username: userData.username || '',
+        nivel: userData.nivel || 1,
+        userstatus: userData.userstatus ?? true,
+        userpass: '',
+        userrepass: '',
+        representativeData: {
+          fullName: userData.representative?.fullName || '',
+          identityCard: userData.representative?.identityCard || '',
+          address: userData.representative?.address || '',
+          phone: userData.representative?.phone || '',
+          relationship: userData.representative?.relationship || '',
+          initialBalance: userData.representative?.balance || 0,
+        },
+        studentsData: userData.representative?.students?.map((s: any) => ({
+          id: s.id,
+          fullName: s.fullName || '',
+          identityCard: s.identityCard || '',
+          birthDate: s.birthDate ? new Date(s.birthDate).toISOString().split('T')[0] : '',
+          admissionDate: s.admissionDate ? new Date(s.admissionDate).toISOString().split('T')[0] : '',
+          state: s.state || '',
+          zone: s.zone || '',
+          addressDescription: s.addressDescription || '',
+          phone: s.phone || '',
+          nationality: s.nationality || '',
+          birthCountry: s.birthCountry || '',
+          hasAllergies: s.hasAllergies || false,
+          allergiesDescription: s.allergiesDescription || '',
+          hasDiseases: s.hasDiseases || false,
+          diseasesDescription: s.diseasesDescription || '',
+          emergencyContact: s.emergencyContact || '',
+          emergencyPhone: s.emergencyPhone || '',
+          status: s.status || 'pendiente',
+          currentGrade: s.currentGrade || '1ro',
+          section: s.section || 'A',
+          balance: s.balance || 0,
+        })) || [],
+      });
+    }
+  }, [userData, reset]);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -216,7 +290,7 @@ export default function EditUser() {
     });
   };
 
-  if (isPending) return <SpinnerGeneral />;
+  if (loadingData) return <SpinnerGeneral />;
 
   return (
     <AnimatedPage className="flex justify-center">
@@ -310,7 +384,6 @@ export default function EditUser() {
                     <FormField id={`studentsData.${index}.fullName`} label="Nombre Completo *" required register={register} error={(errors as any)?.studentsData?.[index]?.fullName} />
                     <FormField id={`studentsData.${index}.identityCard`} label="Cédula *" required register={register} error={(errors as any)?.studentsData?.[index]?.identityCard} />
                     <FormField type="date" id={`studentsData.${index}.birthDate`} label="Fecha de Nacimiento *" required register={register} error={(errors as any)?.studentsData?.[index]?.birthDate} />
-                    {/* Fecha de ingreso: input normal con disabled para existentes */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha de Ingreso</label>
                       <input

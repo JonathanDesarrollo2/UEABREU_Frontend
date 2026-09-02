@@ -33,6 +33,7 @@ import AdminRegistrationsList from './privateViews/AdminRegistrationList/AdminRe
 import SchoolFeeSettings from './privateViews/SchoolFeeSettings/SchoolFeeSettings'
 import SimuladorCobros from './privateViews/Simulador/CobrosSimulador'
 import EditUser from './privateViews/editUser/EditUsers'
+import EditApplication from './privateViews/editApplication/EditApplication'
 
 function ListRoutes() {
   return (
@@ -77,6 +78,7 @@ function ListRoutes() {
           <Route path="registrations" element={<AdminRegistrationsList />} />
           <Route path="school-fees" element={<SchoolFeeSettings />} />
           <Route path="simulador-cobros" element={<SimuladorCobros/>} />
+          <Route path="registrations/:id/edit" element={<EditApplication />} />
           
           {/* ✅ NUEVAS RUTAS PARA PROFESORES (estructura modular) */}
           <Route path="teachers">

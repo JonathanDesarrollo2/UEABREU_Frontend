@@ -1,7 +1,6 @@
-// src/views/admin/users/components/LoadListAPI.tsx
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import SpinnerGeneral from '../../../layouts/components/spinnerGeneral'
+import SpinnerGeneral from '../../../layouts/components/spinnerGeneral';
 import ListEmpty from '../../../components/ListEmpty';
 import Pagination from '../../../components/Pagination';
 import type { TypeUserBuscar } from '../../../types/user';
@@ -30,11 +29,9 @@ export default function LoadListAPI({ Buscar }: BusUserProps) {
     setPage(1);
   };
 
-  if (isLoading) {
-    return <SpinnerGeneral />;
-  }
+  if (isLoading) return <SpinnerGeneral />;
 
-  if (isError) {
+  if (isError || !data) {
     return (
       <ListEmpty 
         message="Error cargando la lista de usuarios..."
@@ -50,11 +47,10 @@ export default function LoadListAPI({ Buscar }: BusUserProps) {
     );
   }
 
-  if (!data || data.content.length === 0) {
+  if (!data.content || data.content.length === 0) {
     const mensaje = Buscar.DeBus 
       ? `No hay usuarios que coincidan con "${Buscar.DeBus}"...` 
       : `No hay usuarios registrados...`;
-    
     return (
       <ListEmpty 
         message={mensaje}
@@ -68,6 +64,11 @@ export default function LoadListAPI({ Buscar }: BusUserProps) {
         ]}
       />
     );
+  }
+
+  // ✅ Si totalPages es 0, no mostrar paginación
+  if (data.pagination.totalPages === 0) {
+    return <ListAPIs data={data.content} />;
   }
 
   return (

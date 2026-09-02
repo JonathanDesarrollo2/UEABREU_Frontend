@@ -126,3 +126,18 @@ export async function updateUser(formdata: any): Promise<TypeApiResponseGeneric>
     throw new Error(mensaje);
   }
 }
+
+export async function getUserById(id: string): Promise<any> {
+  try {
+    const { data } = await api.get(`/private/user/${id}`);
+    return data;
+  } catch (error) {
+    let mensaje = 'Error Desconocido';
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) mensaje = errores.join(', ');
+      throw new Error(mensaje);
+    }
+    throw new Error(mensaje);
+  }
+}

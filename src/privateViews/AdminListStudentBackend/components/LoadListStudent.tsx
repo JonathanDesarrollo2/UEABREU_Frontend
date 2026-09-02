@@ -51,7 +51,7 @@ export default function LoadListStudentsAPI({ Buscar }: BusStudentProps) {
     );
   }
 
-  if (data.content.length === 0) {
+  if (!data.content || data.content.length === 0) {
     const mensaje = Buscar.DeBus
       ? `No hay estudiantes que coincidan con "${Buscar.DeBus}"...`
       : `No hay estudiantes registrados...`;

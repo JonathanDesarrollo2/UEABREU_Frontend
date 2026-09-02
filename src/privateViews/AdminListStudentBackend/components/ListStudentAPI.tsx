@@ -94,7 +94,7 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
   };
 
   const handleUpdate = (student: TypeStudent) => {
-    navigate('/admin/students/edit', { state: { studentData: student } });
+    navigate('/admin/users/edit', { state: { userData: { id: student.userId } } });
   };
 
   const handleSaveExoneration = (percent: number) => {

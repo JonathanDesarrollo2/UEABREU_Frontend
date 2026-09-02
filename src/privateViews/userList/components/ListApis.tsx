@@ -55,11 +55,10 @@ export default function ListAPIs({ data }: ListAPIProps) {
         const { token } = data.content;
         localStorage.setItem('tokcattleraising_inCattleRanchCloud', token);
         toast.success(`Sesión iniciada como ${selectedUser.userlogin}`);
-        // Redirigir según nivel
         if (selectedUser.nivel === 1) {
-          navigate('/representante'); // Ajusta la ruta del panel de representante
+          window.location.href = '/representante';
         } else {
-          navigate('/admin/dashboard'); // O dashboard de admin
+          navigate('/admin/dashboard');
         }
         setSelectedUser(null);
       } else {
@@ -215,7 +214,6 @@ export default function ListAPIs({ data }: ListAPIProps) {
           ]}
           extraContent={
             <>
-              {/* Botón de suplantación */}
               <div className="mt-4 mb-4">
                 <button
                   onClick={handleImpersonate}
@@ -262,7 +260,6 @@ export default function ListAPIs({ data }: ListAPIProps) {
                     </div>
                   </div>
 
-                  {/* Lista de Estudiantes */}
                   {selectedUser.representative.students && selectedUser.representative.students.length > 0 && (
                     <div>
                       <h5 className="font-bold mb-2 flex items-center">
@@ -327,7 +324,6 @@ export default function ListAPIs({ data }: ListAPIProps) {
         />
       )}
 
-      {/* Modal de Detalles del Estudiante */}
       {selectedStudent && (
         <GenericModal
           title={`Detalles del Estudiante: ${selectedStudent.fullName}`}
@@ -404,7 +400,6 @@ export default function ListAPIs({ data }: ListAPIProps) {
         />
       )}
 
-      {/* Modal de Confirmación de Eliminación */}
       <ConfirmDeleteModal
         show={!!deleteCandidate}
         onClose={() => setDeleteCandidate(null)}
@@ -415,5 +410,4 @@ export default function ListAPIs({ data }: ListAPIProps) {
       />
     </>
   );
-  
 }
