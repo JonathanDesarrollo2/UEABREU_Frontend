@@ -80,7 +80,7 @@ export default function EditUser() {
   const [isPending, setIsPending] = useState(false);
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
 
-  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<EditUserForm>({
+  const { register, handleSubmit, reset, control, watch, formState: { errors } } = useForm<EditUserForm>({
     defaultValues: {
       id: userData?.id || '',
       usermail: userData?.usermail || '',
@@ -144,7 +144,6 @@ export default function EditUser() {
       }
     };
     fetchUser();
-    // Obtener tasa BCV
     const fetchRate = async () => {
       try {
         const res = await getBCVRateAPI();
@@ -206,7 +205,6 @@ export default function EditUser() {
     control,
     name: 'studentsData',
   });
-
 
   const formatUsd = (val: number) =>
     new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(val);
@@ -394,84 +392,87 @@ export default function EditUser() {
                 <p className="text-sm text-gray-500 mt-2">{fields.length} estudiante(s)</p>
               </div>
 
-              {fields.map((field, index) => (
-                <div key={field.id} className="mb-8 p-6 border border-gray-200 rounded-lg bg-white shadow-sm">
-                  <div className="flex justify-between items-center mb-6">
-                    <h4 className="text-lg font-semibold text-gray-800">
-                      <FaGraduationCap className="inline mr-2 text-blue-500" />
-                      Estudiante #{index + 1}
-                    </h4>
-                    <button type="button" onClick={() => remove(index)} className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200">
-                      Eliminar
-                    </button>
-                  </div>
+              {fields.map((field, index) => {
+                const currentStudentId = watch(`studentsData.${index}.id`);
+                return (
+                  <div key={field.id} className="mb-8 p-6 border border-gray-200 rounded-lg bg-white shadow-sm">
+                    <div className="flex justify-between items-center mb-6">
+                      <h4 className="text-lg font-semibold text-gray-800">
+                        <FaGraduationCap className="inline mr-2 text-blue-500" />
+                        Estudiante #{index + 1}
+                      </h4>
+                      <button type="button" onClick={() => remove(index)} className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200">
+                        Eliminar
+                      </button>
+                    </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField id={`studentsData.${index}.fullName`} label="Nombre Completo *" required register={register} error={(errors as any)?.studentsData?.[index]?.fullName} />
-                    <FormField id={`studentsData.${index}.identityCard`} label="Cédula *" required register={register} error={(errors as any)?.studentsData?.[index]?.identityCard} />
-                    <FormField type="date" id={`studentsData.${index}.birthDate`} label="Fecha de Nacimiento *" required register={register} error={(errors as any)?.studentsData?.[index]?.birthDate} />
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha de Ingreso</label>
-                      <input
-                        type="date"
-                        {...register(`studentsData.${index}.admissionDate`)}
-                        disabled={!!field.id}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField id={`studentsData.${index}.fullName`} label="Nombre Completo *" required register={register} error={(errors as any)?.studentsData?.[index]?.fullName} />
+                      <FormField id={`studentsData.${index}.identityCard`} label="Cédula *" required register={register} error={(errors as any)?.studentsData?.[index]?.identityCard} />
+                      <FormField type="date" id={`studentsData.${index}.birthDate`} label="Fecha de Nacimiento *" required register={register} error={(errors as any)?.studentsData?.[index]?.birthDate} />
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha de Ingreso</label>
+                        <input
+                          type="date"
+                          {...register(`studentsData.${index}.admissionDate`)}
+                          disabled={!!currentStudentId} // ✅ solo deshabilitado si tiene id de BD
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                        />
+                      </div>
+                      <FormField type="select" id={`studentsData.${index}.status`} label="Estado Académico *" required register={register} error={(errors as any)?.studentsData?.[index]?.status} options={studentStatusOptions} />
+                      <FormField type="select" id={`studentsData.${index}.currentGrade`} label="Grado *" required register={register} error={(errors as any)?.studentsData?.[index]?.currentGrade} options={gradeOptions.map(g => ({ value: g, text: g }))} />
+                      <FormField type="select" id={`studentsData.${index}.section`} label="Sección *" required register={register} error={(errors as any)?.studentsData?.[index]?.section} options={sectionOptions.map(s => ({ value: s, text: s }))} />
+                      <div>
+                        <FormField type="number" id={`studentsData.${index}.balance`} label="Saldo Inicial (Bs)" register={register} error={(errors as any)?.studentsData?.[index]?.balance} />
+                        {bcvRate && (
+                          <p className="text-xs text-blue-600 mt-1">
+                            ≈ {formatUsd((userData?.representative?.students?.[index]?.balance || 0) / bcvRate.PriceRateBCV)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                      <FormField id={`studentsData.${index}.nationality`} label="Nacionalidad *" required register={register} error={(errors as any)?.studentsData?.[index]?.nationality} />
+                      <FormField id={`studentsData.${index}.birthCountry`} label="País de Nacimiento *" required register={register} error={(errors as any)?.studentsData?.[index]?.birthCountry} />
+                      <FormField id={`studentsData.${index}.phone`} label="Teléfono" register={register} error={(errors as any)?.studentsData?.[index]?.phone} />
+                      <FormField id={`studentsData.${index}.state`} label="Estado *" required register={register} error={(errors as any)?.studentsData?.[index]?.state} />
+                      <FormField id={`studentsData.${index}.zone`} label="Zona *" required register={register} error={(errors as any)?.studentsData?.[index]?.zone} />
+                    </div>
+
+                    <div className="mt-4">
+                      <label className="text-gray-700 font-bold mb-1">Descripción de la Dirección *</label>
+                      <textarea
+                        {...register(`studentsData.${index}.addressDescription`, { required: 'Este campo es requerido' })}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
                       />
                     </div>
-                    <FormField type="select" id={`studentsData.${index}.status`} label="Estado Académico *" required register={register} error={(errors as any)?.studentsData?.[index]?.status} options={studentStatusOptions} />
-                    <FormField type="select" id={`studentsData.${index}.currentGrade`} label="Grado *" required register={register} error={(errors as any)?.studentsData?.[index]?.currentGrade} options={gradeOptions.map(g => ({ value: g, text: g }))} />
-                    <FormField type="select" id={`studentsData.${index}.section`} label="Sección *" required register={register} error={(errors as any)?.studentsData?.[index]?.section} options={sectionOptions.map(s => ({ value: s, text: s }))} />
-                    <div>
-                      <FormField type="number" id={`studentsData.${index}.balance`} label="Saldo Inicial (Bs)" register={register} error={(errors as any)?.studentsData?.[index]?.balance} />
-                      {bcvRate && (
-                        <p className="text-xs text-blue-600 mt-1">
-                          ≈ {formatUsd((userData?.representative?.students?.[index]?.balance || 0) / bcvRate.PriceRateBCV)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                    <FormField id={`studentsData.${index}.nationality`} label="Nacionalidad *" required register={register} error={(errors as any)?.studentsData?.[index]?.nationality} />
-                    <FormField id={`studentsData.${index}.birthCountry`} label="País de Nacimiento *" required register={register} error={(errors as any)?.studentsData?.[index]?.birthCountry} />
-                    <FormField id={`studentsData.${index}.phone`} label="Teléfono" register={register} error={(errors as any)?.studentsData?.[index]?.phone} />
-                    <FormField id={`studentsData.${index}.state`} label="Estado *" required register={register} error={(errors as any)?.studentsData?.[index]?.state} />
-                    <FormField id={`studentsData.${index}.zone`} label="Zona *" required register={register} error={(errors as any)?.studentsData?.[index]?.zone} />
-                  </div>
-
-                  <div className="mt-4">
-                    <label className="text-gray-700 font-bold mb-1">Descripción de la Dirección *</label>
-                    <textarea
-                      {...register(`studentsData.${index}.addressDescription`, { required: 'Este campo es requerido' })}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                    <div className="p-4 bg-yellow-50 rounded-lg">
-                      <div className="flex items-center mb-2">
-                        <input type="checkbox" id={`studentsData.${index}.hasAllergies`} {...register(`studentsData.${index}.hasAllergies`)} className="h-5 w-5 mr-2" />
-                        <label>¿Alergias?</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                      <div className="p-4 bg-yellow-50 rounded-lg">
+                        <div className="flex items-center mb-2">
+                          <input type="checkbox" id={`studentsData.${index}.hasAllergies`} {...register(`studentsData.${index}.hasAllergies`)} className="h-5 w-5 mr-2" />
+                          <label>¿Alergias?</label>
+                        </div>
+                        <textarea {...register(`studentsData.${index}.allergiesDescription`)} rows={2} className="w-full border rounded-md" />
                       </div>
-                      <textarea {...register(`studentsData.${index}.allergiesDescription`)} rows={2} className="w-full border rounded-md" />
-                    </div>
-                    <div className="p-4 bg-red-50 rounded-lg">
-                      <div className="flex items-center mb-2">
-                        <input type="checkbox" id={`studentsData.${index}.hasDiseases`} {...register(`studentsData.${index}.hasDiseases`)} className="h-5 w-5 mr-2" />
-                        <label>¿Enfermedades?</label>
+                      <div className="p-4 bg-red-50 rounded-lg">
+                        <div className="flex items-center mb-2">
+                          <input type="checkbox" id={`studentsData.${index}.hasDiseases`} {...register(`studentsData.${index}.hasDiseases`)} className="h-5 w-5 mr-2" />
+                          <label>¿Enfermedades?</label>
+                        </div>
+                        <textarea {...register(`studentsData.${index}.diseasesDescription`)} rows={2} className="w-full border rounded-md" />
                       </div>
-                      <textarea {...register(`studentsData.${index}.diseasesDescription`)} rows={2} className="w-full border rounded-md" />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <FormField id={`studentsData.${index}.emergencyContact`} label="Contacto de Emergencia *" required register={register} error={(errors as any)?.studentsData?.[index]?.emergencyContact} />
+                      <FormField id={`studentsData.${index}.emergencyPhone`} label="Tel. Emergencia *" required register={register} error={(errors as any)?.studentsData?.[index]?.emergencyPhone} />
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <FormField id={`studentsData.${index}.emergencyContact`} label="Contacto de Emergencia *" required register={register} error={(errors as any)?.studentsData?.[index]?.emergencyContact} />
-                    <FormField id={`studentsData.${index}.emergencyPhone`} label="Tel. Emergencia *" required register={register} error={(errors as any)?.studentsData?.[index]?.emergencyPhone} />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CollapsibleSection>
 

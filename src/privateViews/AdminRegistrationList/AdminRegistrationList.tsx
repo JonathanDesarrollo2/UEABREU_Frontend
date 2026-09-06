@@ -14,7 +14,9 @@ import {
   FaFileExcel,
   FaSortAmountDown,
   FaSortAmountUp,
+  FaEdit, // ✅ importado
 } from "react-icons/fa";
+import { useNavigate } from "react-router-dom"; // ✅ importado
 import ConfirmModal from "../../components/ConfirmModal";
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -155,6 +157,8 @@ const buildSinglePlanillaContent = (appData: any) => {
 };
 
 const AdminRegistrationsList: React.FC = () => {
+  const navigate = useNavigate(); // ✅ nuevo
+
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -179,7 +183,6 @@ const AdminRegistrationsList: React.FC = () => {
         search: search.trim(),
         sortOrder: sortOrder,
       });
-      // ✅ Se eliminó "/api" extra de la ruta
       const res = await fetch(`${API_BASE}/private/registrations/list?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -205,7 +208,6 @@ const AdminRegistrationsList: React.FC = () => {
   const handleDownload = async (id: string) => {
     console.log(`⬇️ [handleDownload] Generando PDF para solicitud ${id}`);
     try {
-      // ✅ Se eliminó "/api" extra de la ruta
       const res = await fetch(`${API_BASE}/private/registrations/${id}/data`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -252,7 +254,6 @@ const AdminRegistrationsList: React.FC = () => {
         search: search.trim(),
         sortOrder: sortOrder,
       });
-      // ✅ Se eliminó "/api" extra de la ruta
       const listRes = await fetch(`${API_BASE}/private/registrations/list?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -274,7 +275,6 @@ const AdminRegistrationsList: React.FC = () => {
 
       for (let i = 0; i < allApps.length; i++) {
         const app = allApps[i];
-        // ✅ Se eliminó "/api" extra de la ruta
         const dataRes = await fetch(`${API_BASE}/private/registrations/${app.id}/data`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -319,7 +319,6 @@ const AdminRegistrationsList: React.FC = () => {
     }
   };
 
-  // 🔽 FUNCIÓN DE EXPORTACIÓN A EXCEL – INFORMACIÓN COMPLETA + CONTADOR
   const handleExportExcel = async () => {
     setExporting(true);
     try {
@@ -329,7 +328,6 @@ const AdminRegistrationsList: React.FC = () => {
         search: search.trim(),
         sortOrder: sortOrder,
       });
-      // ✅ Se eliminó "/api" extra de la ruta
       const listRes = await fetch(`${API_BASE}/private/registrations/list?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -347,11 +345,9 @@ const AdminRegistrationsList: React.FC = () => {
         return;
       }
 
-      // Crear libro Excel
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Datos Completos');
 
-      // Definir columnas – se añade el contador "N°" al inicio
       sheet.columns = [
         { header: 'N°', key: 'counter', width: 5 },
         { header: 'N° Planilla', key: 'planillaNumber', width: 12 },
@@ -381,7 +377,6 @@ const AdminRegistrationsList: React.FC = () => {
         { header: 'Enfermedades', key: 'diseases', width: 20 },
       ];
 
-      // Estilo de encabezado
       sheet.getRow(1).eachCell((cell) => {
         cell.font = { bold: true };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
@@ -389,10 +384,8 @@ const AdminRegistrationsList: React.FC = () => {
 
       let counter = 0;
 
-      // Llenar filas
       for (let i = 0; i < allApps.length; i++) {
         const app = allApps[i];
-        // ✅ Se eliminó "/api" extra de la ruta
         const dataRes = await fetch(`${API_BASE}/private/registrations/${app.id}/data`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -400,7 +393,6 @@ const AdminRegistrationsList: React.FC = () => {
         if (!dataJson.result) continue;
         const appData = dataJson.content;
 
-        // Si no hay estudiantes, agregar una fila solo con los datos del representante
         if (!appData.students || appData.students.length === 0) {
           counter++;
           sheet.addRow({
@@ -434,7 +426,6 @@ const AdminRegistrationsList: React.FC = () => {
           continue;
         }
 
-        // Una fila por cada estudiante, repitiendo los datos del representante
         for (const est of appData.students) {
           counter++;
           const edad = est.birthDate ? (() => {
@@ -477,7 +468,6 @@ const AdminRegistrationsList: React.FC = () => {
         }
       }
 
-      // Generar archivo y descargar
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob);
@@ -510,12 +500,15 @@ const AdminRegistrationsList: React.FC = () => {
     setShowConfirm(true);
   };
 
+  const handleEdit = (id: string) => {
+    navigate(`/admin/registrations/${id}/edit`);
+  };
+
   const confirmAction = async () => {
     if (!selectedId || !action) return;
     try {
       const url =
         action === "activate"
-          // ✅ Se eliminó "/api" extra de la ruta
           ? `${API_BASE}/private/registrations/${selectedId}/activate`
           : `${API_BASE}/private/registrations/${selectedId}`;
       const method = action === "activate" ? "POST" : "DELETE";
@@ -686,6 +679,13 @@ const AdminRegistrationsList: React.FC = () => {
                             title="Descargar PDF"
                           >
                             <FaDownload className="text-lg" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(app.id)} // ✅ nuevo botón
+                            className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
+                            title="Editar solicitud"
+                          >
+                            <FaEdit className="text-lg" />
                           </button>
                           {!app.userActive && (
                             <button
