@@ -6,10 +6,12 @@ import {
   FaCheckCircle,
   FaCalendarAlt,
   FaUserGraduate,
-  FaCreditCard
+  FaCreditCard,
+  FaExchangeAlt
 } from 'react-icons/fa';
 import { useEffect, useState } from 'react';
 import { getRepresentativeByEmail, getRepresentativeBalance } from '../apis/balance';
+import { getBCVRateAPI, type BCVRateResponse } from '../apis/bank';
 
 interface SessionContext {
   sesionUser?: string;
@@ -30,6 +32,7 @@ export default function RepresDashboard() {
   const [balanceData, setBalanceData] = useState<any>(null);
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [childrenCount, setChildrenCount] = useState(0);
+  const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,13 +57,56 @@ export default function RepresDashboard() {
       }
     };
 
+    const fetchBCVRate = async () => {
+      try {
+        const res = await getBCVRateAPI();
+        if (res.result && res.content) {
+          setBcvRate(res.content);
+        } else {
+          setBcvRate({ PriceRateBCV: 36.66, dtRate: new Date().toLocaleDateString('es-VE') });
+        }
+      } catch (error) {
+        console.error('Error al obtener tasa BCV', error);
+        setBcvRate({ PriceRateBCV: 36.66, dtRate: new Date().toLocaleDateString('es-VE') });
+      }
+    };
+
     fetchData();
+    fetchBCVRate();
   }, [sessionContext.sesionEmail]);
 
   const representative = balanceData?.representative;
   const students = representative?.students || [];
-  const balance = representative?.balance ?? 0;
+  const balanceUSD = representative?.balance ?? 0; // balance está en USD
   const fullName = representative?.fullName || sessionContext.sesionUser;
+
+  // Funciones de conversión y formato
+  const formatBs = (amount: number) => {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: 'VES',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  const formatUsd = (amount: number) => {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  const usdToBs = (usd: number) => {
+    if (!bcvRate || bcvRate.PriceRateBCV <= 0) return 0;
+    return usd * bcvRate.PriceRateBCV;
+  };
+
+  const balanceBs = usdToBs(balanceUSD);
+  const isDebt = balanceUSD < 0;
+  const isCredit = balanceUSD > 0;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
@@ -91,6 +137,16 @@ export default function RepresDashboard() {
             </p>
           </div>
         </div>
+
+        {/* Tasa BCV */}
+        <div className="mt-4 inline-flex items-center bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 text-sm">
+          <FaExchangeAlt className="mr-2" />
+          {bcvRate ? (
+            <span>Tasa BCV: <strong>{bcvRate.PriceRateBCV.toFixed(2)} Bs/USD</strong> ({bcvRate.dtRate})</span>
+          ) : (
+            <span>Cargando tasa...</span>
+          )}
+        </div>
       </motion.div>
 
       {/* --- NUEVA SECCIÓN: Estado de Cuenta por Estudiante --- */}
@@ -103,14 +159,14 @@ export default function RepresDashboard() {
           <h2 className="text-2xl font-bold text-gray-800">Estado de Cuenta</h2>
           <div
             className={`px-4 py-2 rounded-lg text-sm font-semibold ${
-              balance < 0
+              isDebt
                 ? 'bg-red-50 text-red-700'
-                : balance > 0
+                : isCredit
                 ? 'bg-green-50 text-green-700'
                 : 'bg-gray-100 text-gray-700'
             }`}
           >
-            Total: ${balance.toFixed(2)}
+            Total: {formatBs(balanceBs)} <span className="text-xs">≈ {formatUsd(balanceUSD)}</span>
           </div>
         </div>
 
@@ -125,18 +181,19 @@ export default function RepresDashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {students.map((student: any) => {
-              const sBalance = student.balance || 0;
-              const isDebt = sBalance < 0;
-              const isCredit = sBalance > 0;
-              const balanceColor = isDebt ? 'text-red-600' : isCredit ? 'text-green-600' : 'text-gray-600';
-              const bgColor = isDebt
+              const sBalanceUSD = student.balance || 0; // balance en USD
+              const sBalanceBs = usdToBs(sBalanceUSD);
+              const studentIsDebt = sBalanceUSD < 0;
+              const studentIsCredit = sBalanceUSD > 0;
+              const balanceColor = studentIsDebt ? 'text-red-600' : studentIsCredit ? 'text-green-600' : 'text-gray-600';
+              const bgColor = studentIsDebt
                 ? 'bg-red-50 border-red-200'
-                : isCredit
+                : studentIsCredit
                 ? 'bg-green-50 border-green-200'
                 : 'bg-gray-50 border-gray-200';
-              const icon = isDebt ? (
+              const icon = studentIsDebt ? (
                 <FaExclamationTriangle className="text-red-600 text-xl" />
-              ) : isCredit ? (
+              ) : studentIsCredit ? (
                 <FaCheckCircle className="text-green-600 text-xl" />
               ) : (
                 <FaMoneyBillWave className="text-gray-400 text-xl" />
@@ -163,18 +220,21 @@ export default function RepresDashboard() {
 
                   <div className="mt-4">
                     <p className={`text-2xl font-bold ${balanceColor}`}>
-                      ${sBalance.toFixed(2)}
+                      {formatBs(sBalanceBs)}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {isDebt
-                        ? `Deuda de $${Math.abs(sBalance).toFixed(2)}`
-                        : isCredit
+                      ≈ {formatUsd(sBalanceUSD)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {studentIsDebt
+                        ? `Deuda de ${formatBs(Math.abs(sBalanceBs))}`
+                        : studentIsCredit
                         ? 'Saldo a favor'
                         : 'Sin movimientos'}
                     </p>
                   </div>
 
-                  {isDebt && (
+                  {studentIsDebt && (
                     <div className="mt-3 bg-red-100/50 rounded-lg px-3 py-2 text-sm text-red-800 font-medium flex items-center">
                       <FaExclamationTriangle className="mr-2 flex-shrink-0" />
                       Pendiente de pago
@@ -230,4 +290,4 @@ export default function RepresDashboard() {
       </motion.div>
     </div>
   );
-};
+}

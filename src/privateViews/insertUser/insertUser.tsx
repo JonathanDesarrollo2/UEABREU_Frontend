@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { toast } from "react-toastify";
-import { FaUserPlus, FaMoneyBillWave, FaGraduationCap } from 'react-icons/fa';
+import { FaUserPlus, FaMoneyBillWave, FaGraduationCap, FaExchangeAlt } from 'react-icons/fa';
 import { useFieldArray } from 'react-hook-form';
 import { CollapsibleSection } from "../../components/CollapsibleSection";
 import { FormField } from "../../components/FormField";
@@ -11,6 +11,7 @@ import AnimatedPage from "../../components/AnimatedPage";
 import { ActionButtons } from "../../components/ActionButtons";
 import { useInsertUserForm } from "./hook/useUserForm";
 import { useAddUser } from "./hook/useAddUser";
+import { getBCVRateAPI, type BCVRateResponse } from "../../apis/bank";
 
 // Opciones para el estado del estudiante
 const studentStatusOptions = [
@@ -26,7 +27,12 @@ const gradeOptions = ['1ro', '2do', '3ro', '4to', '5to', '6to'];
 const sectionOptions = ['A', 'B', 'C', 'D'];
 
 // Componente para el formulario del representante
-const RepresentativeForm = ({ register, errors }: any) => {
+const RepresentativeForm = ({ register, errors, bcvRate }: any) => {
+  const formatUsd = (val: number) =>
+    new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(val);
+
+  const [initialBalance, setInitialBalance] = useState<number>(0);
+
   return (
     <CollapsibleSection title="Datos del Representante">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 max-w-4xl mx-auto">
@@ -107,15 +113,23 @@ const RepresentativeForm = ({ register, errors }: any) => {
             <FormField 
               type="number"
               id="representativeData.initialBalance" 
-              label="Saldo Inicial (Global)" 
+              label="Saldo Inicial Global (Bs)" 
               register={register} 
               error={errors?.representativeData?.initialBalance} 
               validation={{
                 valueAsNumber: true,
                 validate: (value) => !isNaN(value) || "Debe ser un número válido"
               }}
+              onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
             />
-            <p className="text-xs text-gray-500 mt-1">Si no se asigna saldo por estudiante, este monto se distribuirá equitativamente.</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Si no se asigna saldo por estudiante, este monto se distribuirá equitativamente.
+            </p>
+            {initialBalance > 0 && bcvRate && (
+              <p className="text-xs text-blue-600 mt-1">
+                ≈ {formatUsd(initialBalance / bcvRate.PriceRateBCV)}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -124,11 +138,13 @@ const RepresentativeForm = ({ register, errors }: any) => {
 };
 
 // Componente para el listado de estudiantes (con balance individual y fecha de ingreso)
-const StudentsForm = ({ control, register, errors }: any) => {
+const StudentsForm = ({ control, register, errors, bcvRate }: any) => {
   const { fields, append, remove } = useFieldArray({
     control,
     name: "studentsData"
   });
+
+  const [balances, setBalances] = useState<Record<number, number>>({});
 
   const addStudent = () => {
     append({
@@ -151,9 +167,12 @@ const StudentsForm = ({ control, register, errors }: any) => {
       currentGrade: '1ro',
       section: 'A',
       balance: 0,
-      admissionDate: '' // NUEVO CAMPO: fecha de ingreso vacía por defecto
+      admissionDate: ''
     });
   };
+
+  const formatUsd = (val: number) =>
+    new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(val);
 
   return (
     <CollapsibleSection title="Estudiantes">
@@ -216,7 +235,6 @@ const StudentsForm = ({ control, register, errors }: any) => {
                     register={register} 
                     error={errors?.studentsData?.[index]?.birthDate} 
                   />
-                  {/* NUEVO CAMPO: Fecha de Ingreso */}
                   <FormField 
                     type="date"
                     id={`studentsData.${index}.admissionDate`} 
@@ -257,14 +275,23 @@ const StudentsForm = ({ control, register, errors }: any) => {
                   <FormField 
                     type="number"
                     id={`studentsData.${index}.balance`} 
-                    label="Saldo Inicial" 
+                    label="Saldo Inicial (Bs)" 
                     register={register} 
                     error={errors?.studentsData?.[index]?.balance}
                     validation={{
                       valueAsNumber: true,
                       validate: (value) => !isNaN(value) || "Debe ser un número válido"
                     }}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setBalances(prev => ({ ...prev, [index]: val }));
+                    }}
                   />
+                  {balances[index] !== undefined && balances[index] > 0 && bcvRate && (
+                    <p className="text-xs text-blue-600">
+                      ≈ {formatUsd(balances[index] / bcvRate.PriceRateBCV)}
+                    </p>
+                  )}
                 </div>
 
                 {/* Columna 2 */}
@@ -413,12 +440,25 @@ const StudentsForm = ({ control, register, errors }: any) => {
 export default function InsertUser() {
   const navigate = useNavigate();
   const [formKey, setFormKey] = useState(0);
+  const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const { register, handleSubmit, reset, control, watch, formState: { errors } } = useInsertUserForm();
   const { mutate, reset: resetMutation, isPending } = useAddUser();
 
   const nivel = watch('nivel');
   const isRepresentative = nivel === 1;
   const students = watch('studentsData') || [];
+
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        const res = await getBCVRateAPI();
+        if (res.result && res.content) setBcvRate(res.content);
+      } catch (error) {
+        console.error('Error al obtener tasa BCV', error);
+      }
+    };
+    fetchRate();
+  }, []);
 
   const onSubmit = useCallback(
     (formdata: TypeLogin_insert) => {
@@ -444,9 +484,13 @@ export default function InsertUser() {
     toast.info("Formulario limpiado");
   }, [reset]);
 
-  // Calcular total de saldos de estudiantes para mostrar en el resumen
   const totalStudentBalance = students.reduce((sum: number, student: any) => sum + (Number(student.balance) || 0), 0);
   const globalBalance = watch('representativeData.initialBalance') || 0;
+
+  const formatBs = (val: number) =>
+    new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(val);
+  const formatUsd = (val: number) =>
+    new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(val);
 
   return (
     <>
@@ -462,6 +506,12 @@ export default function InsertUser() {
             <p className="text-gray-600 max-w-2xl mx-auto">
               Complete los datos del usuario. Los campos marcados con <span className="text-red-500">*</span> son obligatorios.
             </p>
+            {bcvRate && (
+              <div className="mt-3 inline-flex items-center bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800">
+                <FaExchangeAlt className="mr-2" />
+                Tasa BCV: {bcvRate.PriceRateBCV.toFixed(2)} Bs/USD
+              </div>
+            )}
           </div>
 
           <ActionButtons 
@@ -576,8 +626,8 @@ export default function InsertUser() {
             {/* Sección condicional para Representante */}
             {isRepresentative && (
               <>
-                <RepresentativeForm register={register} errors={errors} />
-                <StudentsForm control={control} register={register} errors={errors} />
+                <RepresentativeForm register={register} errors={errors} bcvRate={bcvRate} />
+                <StudentsForm control={control} register={register} errors={errors} bcvRate={bcvRate} />
                 
                 {/* Resumen con saldos individuales */}
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 max-w-4xl mx-auto">
@@ -597,16 +647,26 @@ export default function InsertUser() {
                         <ul className="text-sm">
                           {students.map((student: any, idx: number) => (
                             <li key={idx} className="text-gray-700">
-                              {student.fullName || `Estudiante ${idx+1}`}: ${Number(student.balance || 0).toFixed(2)}
+                              {student.fullName || `Estudiante ${idx+1}`}: {formatBs(Number(student.balance || 0))}
+                              {bcvRate && Number(student.balance) > 0 && (
+                                <span className="text-xs text-blue-600 ml-1">
+                                  (≈ {formatUsd(Number(student.balance) / bcvRate.PriceRateBCV)})
+                                </span>
+                              )}
                             </li>
                           ))}
                         </ul>
                         <p className="text-sm font-semibold text-blue-700 mt-2">
-                          Total saldos: ${totalStudentBalance.toFixed(2)}
+                          Total saldos: {formatBs(totalStudentBalance)}
+                          {bcvRate && totalStudentBalance > 0 && (
+                            <span className="text-xs text-blue-600 ml-1">
+                              (≈ {formatUsd(totalStudentBalance / bcvRate.PriceRateBCV)})
+                            </span>
+                          )}
                         </p>
                         {globalBalance !== 0 && (
                           <p className="text-sm text-gray-500 mt-1">
-                            (Saldo global ingresado: ${globalBalance})
+                            (Saldo global ingresado: {formatBs(Number(globalBalance))})
                           </p>
                         )}
                       </div>

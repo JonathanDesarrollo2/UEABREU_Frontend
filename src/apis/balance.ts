@@ -9,7 +9,8 @@ export interface BalanceResponse {
       fullName: string;
       identityCard: string;
       phone: string;
-      balance: number;
+      balance: number;        // ahora en USD
+      balanceUSD: number;     // explícito
       balanceFormatted: string;
       balanceStatus: 'debt' | 'credit' | 'zero';
       debtAmount: number;
@@ -20,14 +21,17 @@ export interface BalanceResponse {
         fullName: string;
         status: string;
         currentGrade: string;
-        balance: number;
+        balance: number;      // USD
+        balanceUSD: number;   // USD
         balanceFormatted: string;
       }>;
     };
     recentTransactions: Array<{
       id: string;
       type: string;
-      amount: number;
+      amount: number;       // Bs original
+      amountUSD: number;    // USD
+      bcvRate: number;
       description: string;
       paymentMethod: string;
       reference: string;
@@ -48,12 +52,12 @@ export async function getRepresentativeBalance(id: string): Promise<BalanceRespo
 export async function manualDeposit(
   representativeId: string,
   data: {
-    amount: number;
+    amount: number; // en Bs
     description: string;
     paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
     reference?: string;
     createdBy?: string;
-    studentId?: string; // ✅ Nuevo: permitir asignar el pago a un estudiante específico
+    studentId?: string;
   }
 ) {
   const response = await api.post(`/private/balance/representative/${representativeId}/deposit`, data);
@@ -64,12 +68,12 @@ export async function manualDeposit(
 export async function manualWithdrawal(
   representativeId: string,
   data: {
-    amount: number;
+    amount: number; // en Bs
     description: string;
     paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
     reference?: string;
     createdBy?: string;
-    studentId?: string; // ✅ Nuevo: permitir retirar de un estudiante específico
+    studentId?: string;
   }
 ) {
   const response = await api.post(`/private/balance/representative/${representativeId}/withdraw`, data);

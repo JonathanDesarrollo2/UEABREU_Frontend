@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FaSearch, FaHistory, FaFilter, FaTimes, FaChevronLeft, FaChevronRight, FaFilePdf, FaFileExcel } from 'react-icons/fa';
+import { FaSearch, FaHistory, FaFilter, FaTimes, FaChevronLeft, FaChevronRight, FaFilePdf, FaFileExcel, FaExchangeAlt } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { getAllTransactions } from '../../apis/balance';
 import { getPaginatedStudentsAPI } from '../../apis/student';
 import api from '../../library/axios';
+import { getBCVRateAPI, type BCVRateResponse } from '../../apis/bank';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import ExcelJS from 'exceljs';
@@ -21,7 +22,7 @@ interface TransactionItem {
   reference: string;
   status: string;
   paymentStatus?: string;
-  balanceAfter?: number;
+  balanceAfter?: number; // USD ahora
   createdAt: string;
   student?: { id: string; fullName: string; currentGrade?: string } | null;
   representative?: { id: string; fullName: string; identityCard: string };
@@ -40,6 +41,8 @@ const PaymentHistory: React.FC = () => {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
+
   const [filters, setFilters] = useState({
     search: '',
     studentId: '',
@@ -94,6 +97,18 @@ const PaymentHistory: React.FC = () => {
         setShowStudentDropdown(true);
       }
     } catch (error) {}
+  }, []);
+
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        const res = await getBCVRateAPI();
+        if (res.result && res.content) setBcvRate(res.content);
+      } catch (error) {
+        console.error('Error al obtener tasa BCV', error);
+      }
+    };
+    fetchRate();
   }, []);
 
   const fetchTransactions = useCallback(async () => {
@@ -189,11 +204,15 @@ const PaymentHistory: React.FC = () => {
     return allTransactions;
   };
 
+  const usdToBs = (usd: number) => {
+    if (!bcvRate || bcvRate.PriceRateBCV <= 0) return 0;
+    return usd * bcvRate.PriceRateBCV;
+  };
+
   const handleExportPDF = async () => {
     setExporting(true);
     try {
       const allTx = await fetchAllTransactionsForExport();
-
       if (allTx.length === 0) {
         toast.error('No hay transacciones para exportar con los filtros actuales.');
         setExporting(false);
@@ -203,9 +222,12 @@ const PaymentHistory: React.FC = () => {
       const tableBody = allTx.map(t => {
         const isFee = t.type === 'fee';
         const isDeposit = t.type === 'deposit';
-        const balanceAfter = t.balanceAfter ?? 0;
-        const pendingAmount = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
-        const creditAmount = balanceAfter > 0 ? balanceAfter : 0;
+        const balanceAfterUSD = t.balanceAfter ?? 0;
+        const pendingUSD = balanceAfterUSD < 0 ? Math.abs(balanceAfterUSD) : 0;
+        const creditUSD = balanceAfterUSD > 0 ? balanceAfterUSD : 0;
+        const pendingBs = usdToBs(pendingUSD);
+        const creditBs = usdToBs(creditUSD);
+        const amountBs = isDeposit ? t.amount : t.amount; // t.amount ya es Bs original
         const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
 
         return [
@@ -214,9 +236,9 @@ const PaymentHistory: React.FC = () => {
           t.student?.fullName || '—',
           t.description || '—',
           isDeposit ? 'DEPÓSITO' : t.type.toUpperCase(),
-          `${isDeposit ? '+' : '-'}${formatCurrencyLocal(t.amount, 'VES')}`,
-          pendingAmount > 0 ? formatCurrencyLocal(pendingAmount, 'VES') : '—',
-          creditAmount > 0 ? formatCurrencyLocal(creditAmount, 'VES') : '—',
+          `${isDeposit ? '+' : '-'}${formatCurrencyLocal(amountBs, 'VES')}`,
+          pendingBs > 0 ? formatCurrencyLocal(pendingBs, 'VES') : '—',
+          creditBs > 0 ? formatCurrencyLocal(creditBs, 'VES') : '—',
           t.bcvRate ? t.bcvRate.toFixed(4) : '—',
           t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—',
           t.reference || '—',
@@ -238,11 +260,7 @@ const PaymentHistory: React.FC = () => {
               headerRows: 1,
               widths: [42, 60, 60, 80, 35, 50, 50, 50, 35, 42, 60, 45],
               body: [
-                [
-                  'Fecha', 'Representante', 'Estudiante', 'Descripción', 'Tipo',
-                  'Monto Bs', 'Pendiente', 'A Favor', 'Tasa',
-                  'USD', 'Referencia', 'Estado'
-                ],
+                ['Fecha', 'Representante', 'Estudiante', 'Descripción', 'Tipo', 'Monto Bs', 'Pendiente', 'A Favor', 'Tasa', 'USD', 'Referencia', 'Estado'],
                 ...tableBody,
               ],
             },
@@ -279,7 +297,6 @@ const PaymentHistory: React.FC = () => {
     setExporting(true);
     try {
       const allTx = await fetchAllTransactionsForExport();
-
       if (allTx.length === 0) {
         toast.error('No hay transacciones para exportar con los filtros actuales.');
         setExporting(false);
@@ -289,20 +306,20 @@ const PaymentHistory: React.FC = () => {
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Historial de Transacciones');
 
-          sheet.columns = [
-            { header: 'Fecha', key: 'date', width: 12 },
-            { header: 'Representante', key: 'rep', width: 25 },
-            { header: 'Estudiante', key: 'student', width: 25 },
-            { header: 'Descripción', key: 'description', width: 30 },
-            { header: 'Tipo', key: 'type', width: 12 },
-            { header: 'Monto Bs', key: 'amount', width: 15 },
-            { header: 'Monto Pendiente', key: 'pending', width: 15 },
-            { header: 'Monto a Favor', key: 'credit', width: 15 },
-            { header: 'Tasa', key: 'rate', width: 12 },
-            { header: 'USD', key: 'usd', width: 12 },
-            { header: 'Referencia', key: 'reference', width: 20 },
-            { header: 'Estado', key: 'status', width: 14 },
-          ];
+      sheet.columns = [
+        { header: 'Fecha', key: 'date', width: 12 },
+        { header: 'Representante', key: 'rep', width: 25 },
+        { header: 'Estudiante', key: 'student', width: 25 },
+        { header: 'Descripción', key: 'description', width: 30 },
+        { header: 'Tipo', key: 'type', width: 12 },
+        { header: 'Monto Bs', key: 'amount', width: 15 },
+        { header: 'Monto Pendiente', key: 'pending', width: 15 },
+        { header: 'Monto a Favor', key: 'credit', width: 15 },
+        { header: 'Tasa', key: 'rate', width: 12 },
+        { header: 'USD', key: 'usd', width: 12 },
+        { header: 'Referencia', key: 'reference', width: 20 },
+        { header: 'Estado', key: 'status', width: 14 },
+      ];
 
       sheet.getRow(1).eachCell(cell => {
         cell.font = { bold: true };
@@ -312,9 +329,12 @@ const PaymentHistory: React.FC = () => {
       allTx.forEach(t => {
         const isFee = t.type === 'fee';
         const isDeposit = t.type === 'deposit';
-        const balanceAfter = t.balanceAfter ?? 0;
-        const pendingAmount = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
-        const creditAmount = balanceAfter > 0 ? balanceAfter : 0;
+        const balanceAfterUSD = t.balanceAfter ?? 0;
+        const pendingUSD = balanceAfterUSD < 0 ? Math.abs(balanceAfterUSD) : 0;
+        const creditUSD = balanceAfterUSD > 0 ? balanceAfterUSD : 0;
+        const pendingBs = usdToBs(pendingUSD);
+        const creditBs = usdToBs(creditUSD);
+        const amountBs = t.amount;
         const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
 
         sheet.addRow({
@@ -323,9 +343,9 @@ const PaymentHistory: React.FC = () => {
           student: t.student?.fullName || '—',
           description: t.description || '—',
           type: isDeposit ? 'DEPÓSITO' : t.type.toUpperCase(),
-          amount: `${isDeposit ? '+' : '-'}${formatCurrencyLocal(t.amount, 'VES')}`,
-          pending: pendingAmount > 0 ? formatCurrencyLocal(pendingAmount, 'VES') : '—',
-          credit: creditAmount > 0 ? formatCurrencyLocal(creditAmount, 'VES') : '—',
+          amount: `${isDeposit ? '+' : '-'}${formatCurrencyLocal(amountBs, 'VES')}`,
+          pending: pendingBs > 0 ? formatCurrencyLocal(pendingBs, 'VES') : '—',
+          credit: creditBs > 0 ? formatCurrencyLocal(creditBs, 'VES') : '—',
           rate: t.bcvRate ? t.bcvRate.toFixed(4) : '—',
           usd: t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—',
           reference: t.reference || '—',
@@ -362,6 +382,22 @@ const PaymentHistory: React.FC = () => {
             <div><h1 className="text-3xl font-bold text-gray-800">Historial de Transacciones</h1><p className="text-gray-600">Consulte todos los movimientos financieros del sistema</p></div>
           </div>
           <div className="hidden md:block bg-white rounded-xl px-5 py-2 shadow-sm"><span className="text-sm text-gray-500">Total registros: </span><span className="font-bold text-blue-700">{pagination.totalRecords}</span></div>
+        </div>
+
+        {/* Tasa BCV */}
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <FaExchangeAlt className="text-blue-600" />
+            <span className="text-sm text-blue-800 font-medium">Tasa BCV del día:</span>
+          </div>
+          {bcvRate ? (
+            <div className="text-right">
+              <span className="text-lg font-bold text-blue-800">{bcvRate.PriceRateBCV.toFixed(2)} Bs/USD</span>
+              <span className="text-xs text-blue-600 ml-2">{bcvRate.dtRate}</span>
+            </div>
+          ) : (
+            <span className="text-red-600 text-sm">No disponible</span>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 mb-8">
@@ -441,8 +477,8 @@ const PaymentHistory: React.FC = () => {
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Descripción</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Tipo</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto (Bs)</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto Pendiente</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto a Favor</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto Pendiente (Bs)</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Monto a Favor (Bs)</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Tasa</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">USD</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Referencia</th>
@@ -453,9 +489,12 @@ const PaymentHistory: React.FC = () => {
                       {transactions.map(t => {
                         const isFee = t.type === 'fee';
                         const isDeposit = t.type === 'deposit';
-                        const balanceAfter = t.balanceAfter ?? 0;
-                        const pendingAmount = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
-                        const creditAmount = balanceAfter > 0 ? balanceAfter : 0;
+                        const balanceAfterUSD = t.balanceAfter ?? 0;
+                        const pendingUSD = balanceAfterUSD < 0 ? Math.abs(balanceAfterUSD) : 0;
+                        const creditUSD = balanceAfterUSD > 0 ? balanceAfterUSD : 0;
+                        const pendingBs = usdToBs(pendingUSD);
+                        const creditBs = usdToBs(creditUSD);
+                        const amountBs = t.amount;
                         const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
 
                         return (
@@ -470,13 +509,13 @@ const PaymentHistory: React.FC = () => {
                               </span>
                             </td>
                             <td className={`px-6 py-4 text-sm font-bold ${isDeposit ? 'text-green-600' : 'text-red-600'}`}>
-                              {isDeposit ? '+' : '-'}{formatCurrencyLocal(t.amount, 'VES')}
+                              {isDeposit ? '+' : '-'}{formatCurrencyLocal(amountBs, 'VES')}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-700">
-                              {pendingAmount > 0 ? formatCurrencyLocal(pendingAmount, 'VES') : '—'}
+                              {pendingBs > 0 ? formatCurrencyLocal(pendingBs, 'VES') : '—'}
                             </td>
                             <td className="px-6 py-4 text-sm text-green-700">
-                              {creditAmount > 0 ? formatCurrencyLocal(creditAmount, 'VES') : '—'}
+                              {creditBs > 0 ? formatCurrencyLocal(creditBs, 'VES') : '—'}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-500">{t.bcvRate ? t.bcvRate.toFixed(4) : '—'}</td>
                             <td className="px-6 py-4 text-sm text-gray-700">{t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—'}</td>

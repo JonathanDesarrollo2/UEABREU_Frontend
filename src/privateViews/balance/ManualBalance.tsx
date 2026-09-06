@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FaMoneyBillWave, FaUser, FaSearch, FaPlus, FaMinus, FaHistory,
-  FaCreditCard, FaInfoCircle, FaArrowLeft, FaCheckCircle, FaTimes
+  FaCreditCard, FaInfoCircle, FaArrowLeft, FaCheckCircle, FaTimes, FaExchangeAlt
 } from 'react-icons/fa';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -10,16 +10,16 @@ import { useRepresentativeSearch } from './hooks/useRepresentativeSearch';
 import { useBalanceTransaction } from './hooks/useBalanceTransaction';
 import { useTransactionHistory } from './hooks/useTransactionHistory';
 import { 
-  formatCurrency, getBalanceColor, getBalanceBgColor, mapPaymentMethodToDisplay 
+  getBalanceColor, getBalanceBgColor, mapPaymentMethodToDisplay 
 } from './utils/balanceUtils';
+import { getBCVRateAPI, type BCVRateResponse } from '../../apis/bank';
 
-// Interfaz para representante (usada en hooks y componente)
 export interface Representative {
   id: string;
   fullName: string;
   identityCard: string;
   phone: string;
-  balance: number;
+  balance: number; // ahora está en USD
   balanceFormatted?: string;
   balanceStatus?: 'debt' | 'zero' | 'credit';
   debtAmount?: number;
@@ -30,15 +30,15 @@ export interface Representative {
     id: string;
     fullName: string;
     status: string;
-    balance?: number;
+    balance?: number; // USD
   }>;
 }
 
 export default function ManualBalance() {
   const navigate = useNavigate();
   const [transactionType, setTransactionType] = useState<'deposit' | 'withdrawal'>('deposit');
+  const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
 
-  // Hooks personalizados
   const {
     searchTerm,
     setSearchTerm,
@@ -62,13 +62,11 @@ export default function ManualBalance() {
     formData,
     setFormData,
     handleSubmit,
-    calculateNewBalance,
     updateTransactionType,
   } = useBalanceTransaction(
     selectedRep,
     transactionType,
     async () => {
-      // Callback tras transacción exitosa: refrescar representante e historial
       if (selectedRep) {
         const updatedRep = await loadRepresentativeDetails(selectedRep.id);
         if (updatedRep) {
@@ -79,13 +77,49 @@ export default function ManualBalance() {
     }
   );
 
-  // Sincronizar descripción al cambiar tipo de transacción
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        const res = await getBCVRateAPI();
+        if (res.result && res.content) {
+          setBcvRate(res.content);
+        }
+      } catch (error) {
+        console.error('Error al obtener tasa BCV', error);
+      }
+    };
+    fetchRate();
+  }, []);
+
+  // Funciones de conversión y formato
+  const formatBs = (amount: number) => {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: 'VES',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  const formatUsd = (amount: number) => {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  const usdToBs = (usd: number) => {
+    if (!bcvRate || bcvRate.PriceRateBCV <= 0) return 0;
+    return usd * bcvRate.PriceRateBCV;
+  };
+
   const handleTransactionTypeChange = (newType: 'deposit' | 'withdrawal') => {
     setTransactionType(newType);
     updateTransactionType(newType);
   };
 
-  // Nueva función para limpiar representante seleccionado
   const handleClearRepresentative = () => {
     setSelectedRep(null);
     setSearchTerm('');
@@ -100,19 +134,26 @@ export default function ManualBalance() {
     }));
   };
 
-  // Seleccionar un estudiante automáticamente si solo hay uno, o permitir selección manual
   const studentOptions = selectedRep?.students || [];
   const hasMultipleStudents = studentOptions.length > 1;
-  
-  // Si solo hay un estudiante, asignarlo automáticamente al formData
+
   if (selectedRep && studentOptions.length === 1 && !formData.studentId) {
     setFormData(prev => ({ ...prev, studentId: studentOptions[0].id }));
   }
 
+  // Calcula nuevo saldo en Bs
+  const calculateNewBalanceBs = () => {
+    if (!selectedRep) return 0;
+    const currentBalanceBs = usdToBs(selectedRep.balance || 0);
+    const amount = formData.amount || 0;
+    return transactionType === 'deposit' 
+      ? currentBalanceBs + amount 
+      : currentBalanceBs - amount;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate(-1)}
@@ -143,6 +184,12 @@ export default function ManualBalance() {
                   {transactionType === 'deposit' ? 'DEPÓSITO' : 'RETIRO'}
                 </span>
               </div>
+              {bcvRate && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-1 text-blue-800 flex items-center gap-1">
+                  <FaExchangeAlt />
+                  <span className="text-sm font-bold">{bcvRate.PriceRateBCV.toFixed(2)} Bs/USD</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -160,7 +207,6 @@ export default function ManualBalance() {
                 </h2>
               </div>
 
-              {/* Barra de búsqueda */}
               <div className="relative mb-6">
                 <div className="relative">
                   <input
@@ -179,7 +225,6 @@ export default function ManualBalance() {
                   </div>
                 </div>
 
-                {/* Resultados de búsqueda */}
                 {searchResults.length > 0 && !selectedRep && (
                   <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                     {searchResults.map((rep) => (
@@ -205,7 +250,7 @@ export default function ManualBalance() {
                             </p>
                           </div>
                           <div className={`px-2 py-1 rounded text-xs font-bold ${getBalanceBgColor(rep.balance || 0)}`}>
-                            {formatCurrency(rep.balance || 0)}
+                            {formatBs(usdToBs(rep.balance || 0))}
                           </div>
                         </div>
                       </div>
@@ -222,7 +267,6 @@ export default function ManualBalance() {
                 )}
               </div>
 
-              {/* Información del representante seleccionado */}
               {selectedRep && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5 mb-6">
                   <div className="flex justify-between items-start mb-4">
@@ -248,10 +292,13 @@ export default function ManualBalance() {
                     </div>
                     <div className="text-right">
                       <div className={`text-2xl font-bold ${getBalanceColor(selectedRep.balance || 0)}`}>
-                        {selectedRep.balanceFormatted || formatCurrency(selectedRep.balance || 0)}
+                        {formatBs(usdToBs(selectedRep.balance || 0))}
                       </div>
                       <div className="text-sm text-gray-600">
                         Saldo actual
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        ≈ {formatUsd(selectedRep.balance || 0)}
                       </div>
                       {selectedRep.balanceStatus && (
                         <div className={`text-xs px-2 py-1 rounded ${selectedRep.balanceStatus === 'debt' ? 'bg-red-100 text-red-800' : selectedRep.balanceStatus === 'credit' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
@@ -261,7 +308,6 @@ export default function ManualBalance() {
                     </div>
                   </div>
 
-                  {/* Botón para limpiar representante */}
                   <button
                     onClick={handleClearRepresentative}
                     className="mb-4 flex items-center space-x-2 text-sm text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors"
@@ -270,7 +316,6 @@ export default function ManualBalance() {
                     <span>Cambiar representante</span>
                   </button>
 
-                  {/* Lista de estudiantes con sus balances individuales */}
                   {studentOptions.length > 0 && (
                     <div className="mb-4">
                       <h4 className="font-semibold text-gray-700 mb-2">
@@ -290,8 +335,9 @@ export default function ManualBalance() {
                             </div>
                             <div className="text-sm text-gray-600 mt-1">
                               Balance: <span className={getBalanceColor(student.balance || 0)}>
-                                {formatCurrency(student.balance || 0)}
+                                {formatBs(usdToBs(student.balance || 0))}
                               </span>
+                              <span className="text-xs text-gray-400"> ≈ {formatUsd(student.balance || 0)}</span>
                             </div>
                           </div>
                         ))}
@@ -311,7 +357,6 @@ export default function ManualBalance() {
                 </div>
               )}
 
-              {/* Historial de transacciones */}
               {showHistory && selectedRep && transactions.length > 0 && (
                 <div className="mt-6">
                   <h4 className="font-semibold text-gray-700 mb-3">
@@ -340,11 +385,16 @@ export default function ManualBalance() {
                           </div>
                           <div className="text-right">
                             <div className={`text-lg font-bold ${transaction.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
-                              {transaction.type === 'deposit' ? '+' : '-'}{formatCurrency(transaction.amount || 0)}
+                              {transaction.type === 'deposit' ? '+' : '-'}{formatBs(transaction.amount || 0)}
                             </div>
                             <div className="text-sm text-gray-600 capitalize">
                               {mapPaymentMethodToDisplay(transaction.paymentMethod || 'cash')}
                             </div>
+                            {transaction.amountUSD !== undefined && (
+                              <div className="text-xs text-gray-400">
+                                ≈ {formatUsd(transaction.amountUSD)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -367,7 +417,6 @@ export default function ManualBalance() {
                 </h2>
               </div>
 
-              {/* Selector de tipo */}
               <div className="flex space-x-2 mb-6">
                 <button
                   type="button"
@@ -386,7 +435,6 @@ export default function ManualBalance() {
               </div>
 
               <form onSubmit={handleSubmit}>
-                {/* Selección de estudiante (si hay más de uno) */}
                 {selectedRep && studentOptions.length > 1 && (
                   <div className="mb-6">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -401,17 +449,16 @@ export default function ManualBalance() {
                       <option value="">Seleccione un estudiante</option>
                       {studentOptions.map(student => (
                         <option key={student.id} value={student.id}>
-                          {student.fullName} (Balance: {formatCurrency(student.balance || 0)})
+                          {student.fullName} (Balance: {formatBs(usdToBs(student.balance || 0))})
                         </option>
                       ))}
                     </select>
                   </div>
                 )}
 
-                {/* Monto */}
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Monto (USD) *
+                    Monto (Bs) *
                   </label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
@@ -430,7 +477,6 @@ export default function ManualBalance() {
                   </div>
                 </div>
 
-                {/* Descripción */}
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Descripción *
@@ -444,7 +490,6 @@ export default function ManualBalance() {
                   />
                 </div>
 
-                {/* Método de pago */}
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Método de Pago *
@@ -463,7 +508,6 @@ export default function ManualBalance() {
                   </select>
                 </div>
 
-                {/* Referencia */}
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Referencia (opcional)
@@ -477,34 +521,32 @@ export default function ManualBalance() {
                   />
                 </div>
 
-                {/* Resumen de saldo */}
                 {selectedRep && formData.amount > 0 && (
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-700 font-medium">Saldo actual:</span>
-                      <span className="font-bold text-gray-800">{formatCurrency(selectedRep.balance || 0)}</span>
+                      <span className="font-bold text-gray-800">{formatBs(usdToBs(selectedRep.balance || 0))}</span>
                     </div>
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-700 font-medium">
                         {transactionType === 'deposit' ? 'Depósito:' : 'Retiro:'}
                       </span>
                       <span className={`font-bold ${transactionType === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
-                        {transactionType === 'deposit' ? '+' : '-'}{formatCurrency(formData.amount)}
+                        {transactionType === 'deposit' ? '+' : '-'}{formatBs(formData.amount)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-blue-200">
                       <span className="text-gray-800 font-semibold">Nuevo saldo:</span>
-                      <span className={`text-xl font-bold ${getBalanceColor(calculateNewBalance())}`}>
-                        {formatCurrency(calculateNewBalance())}
+                      <span className={`text-xl font-bold ${getBalanceColor(usdToBs(selectedRep.balance || 0) + (transactionType === 'deposit' ? formData.amount : -formData.amount))}`}>
+                        {formatBs(calculateNewBalanceBs())}
                       </span>
                     </div>
                   </div>
                 )}
 
-                {/* Validación para retiros */}
                 {transactionType === 'withdrawal' && selectedRep && formData.amount > 0 && (
                   <div className="mb-6">
-                    {formData.amount > (selectedRep.balance || 0) ? (
+                    {formData.amount > usdToBs(selectedRep.balance || 0) ? (
                       <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                         <div className="flex items-center space-x-2 text-red-700">
                           <FaInfoCircle />
@@ -522,12 +564,11 @@ export default function ManualBalance() {
                   </div>
                 )}
 
-                {/* Botón de envío */}
                 <button
                   type="submit"
                   disabled={
                     loading || !selectedRep || formData.amount <= 0 || 
-                    (transactionType === 'withdrawal' && formData.amount > (selectedRep?.balance || 0)) ||
+                    (transactionType === 'withdrawal' && formData.amount > usdToBs(selectedRep?.balance || 0)) ||
                     (hasMultipleStudents && !formData.studentId)
                   }
                   className={`w-full py-3 rounded-xl font-semibold transition-all ${

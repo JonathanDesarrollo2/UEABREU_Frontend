@@ -47,6 +47,10 @@ export const useRepresentativeSearch = () => {
       const response = await api.get(`/private/balance/representative/${id}/balance`);
       if (response.data.result) {
         const repData = response.data.content?.representative || response.data.content;
+        // Asegurarse de que balanceUSD esté presente (si no, usar balance)
+        if (repData && repData.balanceUSD === undefined) {
+          repData.balanceUSD = repData.balance;
+        }
         setSelectedRep(repData);
         toast.success('Representante seleccionado');
         return repData;
@@ -60,7 +64,6 @@ export const useRepresentativeSearch = () => {
     }
   };
 
-  // Búsqueda con debounce
   useEffect(() => {
     const delaySearch = setTimeout(() => {
       if (searchTerm.trim().length >= 2) {

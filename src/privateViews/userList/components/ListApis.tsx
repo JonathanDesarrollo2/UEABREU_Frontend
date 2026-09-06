@@ -1,5 +1,5 @@
 // src/views/admin/users/components/ListAPI.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { 
   FaEdit, 
@@ -17,6 +17,7 @@ import { useDeleteUser } from '../hooks/useDeleteUser';
 import GenericModal from '../../../components/GenricModal';
 import ConfirmDeleteModal from '../../../components/ConfirmDeleteModal';
 import api from '../../../library/axios';
+import { getBCVRateAPI, type BCVRateResponse } from '../../../apis/bank';
 
 interface ListAPIProps {
   data: TypeUser_full[];
@@ -28,8 +29,24 @@ export default function ListAPIs({ data }: ListAPIProps) {
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; userlogin: string } | null>(null);
   const [impersonating, setImpersonating] = useState(false);
-  
+  const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
+
   const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
+
+  // Obtener tasa BCV al montar
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        const res = await getBCVRateAPI();
+        if (res.result && res.content) {
+          setBcvRate(res.content);
+        }
+      } catch (error) {
+        console.error('Error al obtener tasa BCV', error);
+      }
+    };
+    fetchRate();
+  }, []);
 
   const handleDelete = () => {
     if (deleteCandidate) {
@@ -84,13 +101,28 @@ export default function ListAPIs({ data }: ListAPIProps) {
     return new Date(date).toLocaleDateString('es-ES');
   };
 
-  const formatCurrency = (amount: number) => {
+  // Funciones de formato de moneda
+  const formatBs = (amount: number) => {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: 'VES',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  const formatUsd = (amount: number) => {
     return new Intl.NumberFormat('es-VE', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(amount);
+  };
+
+  const usdToBs = (usd: number) => {
+    if (!bcvRate || bcvRate.PriceRateBCV <= 0) return 0;
+    return usd * bcvRate.PriceRateBCV;
   };
 
   return (
@@ -113,6 +145,8 @@ export default function ListAPIs({ data }: ListAPIProps) {
           <tbody>
             {data.map((user) => {
               const nivelInfo = getNivelText(user.nivel);
+              const balanceUSD = user.representative?.balance ?? 0;
+              const balanceBs = usdToBs(balanceUSD);
               const balanceInfo = user.representative?.balanceStatus;
               
               return (
@@ -141,11 +175,14 @@ export default function ListAPIs({ data }: ListAPIProps) {
                   </td>
                   <td className="py-3 px-4">
                     {user.nivel === 1 && user.representative ? (
-                      <div className="flex items-center">
-                        <FaMoneyBillWave className={`mr-1 ${balanceInfo === 'debt' ? 'text-red-500' : balanceInfo === 'credit' ? 'text-green-500' : 'text-gray-500'}`} />
-                        <span className={`font-semibold ${balanceInfo === 'debt' ? 'text-red-600' : balanceInfo === 'credit' ? 'text-green-600' : 'text-gray-600'}`}>
-                          {user.representative.balanceFormatted || 'Bs 0,00'}
-                        </span>
+                      <div className="flex flex-col">
+                        <div className="flex items-center">
+                          <FaMoneyBillWave className={`mr-1 ${balanceInfo === 'debt' ? 'text-red-500' : balanceInfo === 'credit' ? 'text-green-500' : 'text-gray-500'}`} />
+                          <span className={`font-semibold ${balanceInfo === 'debt' ? 'text-red-600' : balanceInfo === 'credit' ? 'text-green-600' : 'text-gray-600'}`}>
+                            {formatBs(balanceBs)}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-400">≈ {formatUsd(balanceUSD)}</span>
                       </div>
                     ) : (
                       <span className="text-gray-400">N/A</span>
@@ -255,7 +292,8 @@ export default function ListAPIs({ data }: ListAPIProps) {
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-600">Saldo Actual:</label>
                       <p className={`text-xl font-bold ${selectedUser.representative.balanceStatus === 'debt' ? 'text-red-600' : selectedUser.representative.balanceStatus === 'credit' ? 'text-green-600' : 'text-gray-600'}`}>
-                        {selectedUser.representative.balanceFormatted || 'Bs 0,00'}
+                        {formatBs(usdToBs(selectedUser.representative.balance || 0))}
+                        <span className="text-xs text-gray-500 ml-2">≈ {formatUsd(selectedUser.representative.balance || 0)}</span>
                       </p>
                     </div>
                   </div>
@@ -268,6 +306,8 @@ export default function ListAPIs({ data }: ListAPIProps) {
                       <div className="space-y-3 max-h-72 overflow-y-auto">
                         {selectedUser.representative.students.map((student) => {
                           const studentAny = student as any;
+                          const studentBalanceUSD = studentAny.balance || 0;
+                          const studentBalanceBs = usdToBs(studentBalanceUSD);
                           return (
                             <div 
                               key={student.id} 
@@ -287,9 +327,10 @@ export default function ListAPIs({ data }: ListAPIProps) {
                                   <span className={`inline-block px-2 py-1 rounded text-xs mb-1 ${student.status === 'regular' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                     {student.status || 'pendiente'}
                                   </span>
-                                  <p className={`text-sm font-semibold ${studentAny.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                    Saldo: {formatCurrency(studentAny.balance || 0)}
+                                  <p className={`text-sm font-semibold ${studentBalanceUSD < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                    Saldo: {formatBs(studentBalanceBs)}
                                   </p>
+                                  <p className="text-xs text-gray-400">≈ {formatUsd(studentBalanceUSD)}</p>
                                 </div>
                               </div>
                             </div>
@@ -388,7 +429,8 @@ export default function ListAPIs({ data }: ListAPIProps) {
                 <div className="mt-3 p-3 bg-gray-50 rounded">
                   <label className="block text-sm font-medium text-gray-600">Saldo del Estudiante:</label>
                   <p className={`text-lg font-semibold ${selectedStudent.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {formatCurrency(selectedStudent.balance)}
+                    {formatBs(usdToBs(selectedStudent.balance))}
+                    <span className="text-xs text-gray-500 ml-2">≈ {formatUsd(selectedStudent.balance)}</span>
                   </p>
                 </div>
               )}

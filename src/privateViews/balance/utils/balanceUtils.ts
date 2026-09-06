@@ -1,11 +1,21 @@
 // Utilidades compartidas: formato de moneda, colores según saldo, validación UUID, mapeo de métodos de pago
-export const formatCurrency = (amount: number): string => {
+
+export const formatCurrency = (amount: number, currency: 'VES' | 'USD' = 'USD'): string => {
   return new Intl.NumberFormat('es-VE', {
     style: 'currency',
-    currency: 'USD',
+    currency: currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(amount);
+};
+
+// Nuevas funciones para facilitar conversión
+export const formatBs = (amount: number): string => {
+  return formatCurrency(amount, 'VES');
+};
+
+export const formatUsd = (amount: number): string => {
+  return formatCurrency(amount, 'USD');
 };
 
 export const getBalanceColor = (balance: number): string => {

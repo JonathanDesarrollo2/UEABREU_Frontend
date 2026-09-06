@@ -3,13 +3,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { toast } from 'react-toastify';
-import { FaEdit, FaGraduationCap } from 'react-icons/fa';
+import { FaEdit, FaGraduationCap, FaExchangeAlt } from 'react-icons/fa';
 import { CollapsibleSection } from '../../components/CollapsibleSection';
 import { FormField } from '../../components/FormField';
 import SpinnerGeneral from '../../layouts/components/spinnerGeneral';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ActionButtons } from '../../components/ActionButtons';
 import { updateUser, getUserById } from '../../apis/user';
+import { getBCVRateAPI, type BCVRateResponse } from '../../apis/bank';
 import type { TypeApiResponseGeneric } from '../../types/login';
 
 const studentStatusOptions = [
@@ -77,6 +78,7 @@ export default function EditUser() {
     !initialState || !initialState.usermail
   );
   const [isPending, setIsPending] = useState(false);
+  const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<EditUserForm>({
     defaultValues: {
@@ -142,9 +144,18 @@ export default function EditUser() {
       }
     };
     fetchUser();
+    // Obtener tasa BCV
+    const fetchRate = async () => {
+      try {
+        const res = await getBCVRateAPI();
+        if (res.result && res.content) setBcvRate(res.content);
+      } catch (error) {
+        console.error('Error al obtener tasa BCV', error);
+      }
+    };
+    fetchRate();
   }, [initialState]);
 
-  // ✅ Reset formulario con datos cargados
   useEffect(() => {
     if (userData) {
       reset({
@@ -195,6 +206,10 @@ export default function EditUser() {
     control,
     name: 'studentsData',
   });
+
+
+  const formatUsd = (val: number) =>
+    new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(val);
 
   const onSubmit = async (formData: EditUserForm) => {
     setIsPending(true);
@@ -303,6 +318,12 @@ export default function EditUser() {
           <p className="text-gray-600 max-w-2xl mx-auto">
             Modifique los datos del usuario y sus estudiantes.
           </p>
+          {bcvRate && (
+            <div className="mt-3 inline-flex items-center bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800">
+              <FaExchangeAlt className="mr-2" />
+              Tasa BCV: {bcvRate.PriceRateBCV.toFixed(2)} Bs/USD
+            </div>
+          )}
         </div>
 
         <ActionButtons onCancel={handleCancel} onClear={handleClear} />
@@ -350,10 +371,15 @@ export default function EditUser() {
                 <FormField
                   type="number"
                   id="representativeData.initialBalance"
-                  label="Saldo Inicial (Global)"
+                  label="Saldo Inicial (Bs)"
                   register={register}
                   error={errors.representativeData?.initialBalance}
                 />
+                {bcvRate && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    ≈ {formatUsd((userData?.representative?.balance || 0) / bcvRate.PriceRateBCV)}
+                  </p>
+                )}
               </div>
             </div>
           </CollapsibleSection>
@@ -396,7 +422,14 @@ export default function EditUser() {
                     <FormField type="select" id={`studentsData.${index}.status`} label="Estado Académico *" required register={register} error={(errors as any)?.studentsData?.[index]?.status} options={studentStatusOptions} />
                     <FormField type="select" id={`studentsData.${index}.currentGrade`} label="Grado *" required register={register} error={(errors as any)?.studentsData?.[index]?.currentGrade} options={gradeOptions.map(g => ({ value: g, text: g }))} />
                     <FormField type="select" id={`studentsData.${index}.section`} label="Sección *" required register={register} error={(errors as any)?.studentsData?.[index]?.section} options={sectionOptions.map(s => ({ value: s, text: s }))} />
-                    <FormField type="number" id={`studentsData.${index}.balance`} label="Saldo Inicial" register={register} error={(errors as any)?.studentsData?.[index]?.balance} />
+                    <div>
+                      <FormField type="number" id={`studentsData.${index}.balance`} label="Saldo Inicial (Bs)" register={register} error={(errors as any)?.studentsData?.[index]?.balance} />
+                      {bcvRate && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          ≈ {formatUsd((userData?.representative?.students?.[index]?.balance || 0) / bcvRate.PriceRateBCV)}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
