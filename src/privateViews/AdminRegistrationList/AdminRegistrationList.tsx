@@ -1,3 +1,4 @@
+// src/views/admin/registrations/AdminRegistrationsList.tsx
 import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
@@ -14,9 +15,9 @@ import {
   FaFileExcel,
   FaSortAmountDown,
   FaSortAmountUp,
-  FaEdit, // ✅ importado
+  FaEdit,
 } from "react-icons/fa";
-import { useNavigate } from "react-router-dom"; // ✅ importado
+import { useNavigate } from "react-router-dom";
 import ConfirmModal from "../../components/ConfirmModal";
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -24,7 +25,6 @@ import ExcelJS from 'exceljs';
 
 (pdfMake as any).vfs = pdfFonts.vfs;
 
-// ✅ La variable ya incluye /api al final (ej: https://test.appservices.ueabreu.com/api)
 const API_BASE = import.meta.env.VITE_API_BASE_LOCAL || "https://appservices.ueabreu.com/api";
 
 interface Application {
@@ -34,9 +34,9 @@ interface Application {
   representativeName: string;
   userActive: boolean;
   createdAt: string;
+  userId?: string;
 }
 
-// Helper para construir la lista de páginas con ellipsis
 const buildPageNumbers = (current: number, total: number): (number | "...")[] => {
   if (total <= 7) {
     return Array.from({ length: total }, (_, i) => i + 1);
@@ -64,7 +64,6 @@ const buildPageNumbers = (current: number, total: number): (number | "...")[] =>
   return pages;
 };
 
-// Función que construye el contenido de una planilla individual (para PDF)
 const buildSinglePlanillaContent = (appData: any) => {
   const calcEdad = (fecha: string) => {
     if (!fecha) return '';
@@ -157,7 +156,7 @@ const buildSinglePlanillaContent = (appData: any) => {
 };
 
 const AdminRegistrationsList: React.FC = () => {
-  const navigate = useNavigate(); // ✅ nuevo
+  const navigate = useNavigate();
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -188,7 +187,11 @@ const AdminRegistrationsList: React.FC = () => {
       });
       const data = await res.json();
       if (data.result) {
-        setApplications(data.content);
+        const apps = (data.content || []).map((app: any) => ({
+          ...app,
+          userId: app.userId || app.user?.id || undefined,
+        }));
+        setApplications(apps);
         setTotalPages(data.pagination.totalPages);
         setTotalRecords(data.pagination.totalRecords);
       } else {
@@ -500,8 +503,12 @@ const AdminRegistrationsList: React.FC = () => {
     setShowConfirm(true);
   };
 
-  const handleEdit = (id: string) => {
-    navigate(`/admin/registrations/${id}/edit`);
+  const handleEdit = (app: Application) => {
+    if (app.userId) {
+      navigate('/admin/users/edit', { state: { userData: { id: app.userId } } });
+    } else {
+      toast.error("No se pudo obtener el ID del usuario para editar");
+    }
   };
 
   const confirmAction = async () => {
@@ -681,7 +688,7 @@ const AdminRegistrationsList: React.FC = () => {
                             <FaDownload className="text-lg" />
                           </button>
                           <button
-                            onClick={() => handleEdit(app.id)} // ✅ nuevo botón
+                            onClick={() => handleEdit(app)}
                             className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
                             title="Editar solicitud"
                           >
