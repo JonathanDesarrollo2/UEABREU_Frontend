@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
+import { isValidUUID } from '../utils/balanceUtils';
 import api from '../../../library/axios';
-import { isValidUUID } from '../utils/balanceUtils'
 
 export interface TransactionForm {
   amount: number;
@@ -9,13 +9,13 @@ export interface TransactionForm {
   paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
   reference?: string;
   createdBy?: string;
-  studentId?: string; // NUEVO: para asignar a estudiante específico
+  studentId?: string;
 }
 
 export const useBalanceTransaction = (
   selectedRep: any,
   transactionType: 'deposit' | 'withdrawal',
-  onSuccess: () => void // callback para refrescar datos después de transacción exitosa
+  onSuccess: () => void
 ) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<TransactionForm>({
@@ -27,7 +27,6 @@ export const useBalanceTransaction = (
     studentId: undefined,
   });
 
-  // Resetear descripción cuando cambia el tipo de transacción
   const updateTransactionType = (newType: 'deposit' | 'withdrawal') => {
     setFormData(prev => ({
       ...prev,
@@ -37,28 +36,18 @@ export const useBalanceTransaction = (
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!selectedRep) {
       toast.error('Selecciona un representante primero');
       return;
     }
-
     if (!formData.amount || formData.amount <= 0) {
       toast.error('El monto debe ser mayor a 0');
       return;
     }
 
-    if (transactionType === 'withdrawal' && formData.amount > (selectedRep.balance || 0)) {
-      toast.error('Saldo insuficiente para este retiro');
-      return;
-    }
-
-    // Si el representante tiene estudiantes y no se ha seleccionado uno, mostrar advertencia o forzar selección
-    // (esta validación se puede manejar en el componente)
-
     setLoading(true);
     try {
-      const endpoint = transactionType === 'deposit' 
+      const endpoint = transactionType === 'deposit'
         ? `/private/balance/representative/${selectedRep.id}/deposit`
         : `/private/balance/representative/${selectedRep.id}/withdraw`;
 
@@ -74,25 +63,22 @@ export const useBalanceTransaction = (
         paymentMethod: formData.paymentMethod,
         reference: formData.reference || `MANUAL-${Date.now()}`,
         createdBy: validCreatedBy,
-        studentId: formData.studentId || undefined, // incluir studentId si existe
+        studentId: formData.studentId || undefined,
       };
 
       const response = await api.post(endpoint, transactionData);
 
       if (response.data.result) {
         toast.success(
-          transactionType === 'deposit' 
-            ? '✅ Depósito registrado exitosamente'
-            : '✅ Retiro registrado exitosamente'
+          transactionType === 'deposit' ? '✅ Depósito registrado exitosamente' : '✅ Retiro registrado exitosamente'
         );
-        // Limpiar monto y referencia, mantener método de pago y descripción base
         setFormData(prev => ({
           ...prev,
           amount: 0,
           reference: '',
           description: transactionType === 'deposit' ? 'Depósito manual' : 'Retiro manual',
         }));
-        onSuccess(); // Recargar detalles del representante e historial
+        onSuccess();
       } else {
         const errorMsg = response.data.error?.join(', ') || 'Error al procesar la transacción';
         toast.error(errorMsg);
@@ -111,21 +97,11 @@ export const useBalanceTransaction = (
     }
   };
 
-  const calculateNewBalance = () => {
-    if (!selectedRep) return 0;
-    const currentBalance = selectedRep.balance || 0;
-    const amount = formData.amount || 0;
-    return transactionType === 'deposit' 
-      ? currentBalance + amount 
-      : currentBalance - amount;
-  };
-
   return {
     loading,
     formData,
     setFormData,
     handleSubmit,
-    calculateNewBalance,
     updateTransactionType,
   };
 };
