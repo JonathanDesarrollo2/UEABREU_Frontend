@@ -80,14 +80,16 @@ export async function manualWithdrawal(
   return response.data;
 }
 
-// Mover un pago de un estudiante a otro
+// Mover un pago (parcial o total) de un estudiante a otro
 export async function movePaymentBetweenStudents(
   transactionId: string,
-  targetStudentId: string
+  targetStudentId: string,
+  amountToMove: number  // monto en Bs
 ) {
   const response = await api.post('/private/balance/transaction/move', {
     transactionId,
     targetStudentId,
+    amountToMove,
   });
   return response.data;
 }

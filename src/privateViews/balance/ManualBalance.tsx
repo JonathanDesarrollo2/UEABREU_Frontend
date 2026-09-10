@@ -84,6 +84,7 @@ export default function ManualBalance() {
   // Estado para mover pago
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [moveTargetStudentId, setMoveTargetStudentId] = useState<string>('');
+  const [moveAmountBs, setMoveAmountBs] = useState<number>(0);
   const [movingPayment, setMovingPayment] = useState(false);
 
   useEffect(() => {
@@ -141,6 +142,9 @@ export default function ManualBalance() {
     return transactionType === 'deposit' ? currentBalanceBs + amount : currentBalanceBs - amount;
   };
 
+  // Transacción seleccionada para mover
+  const selectedTransaction = transactions.find(t => t.id === selectedTransactionId);
+
   const openMoveModal = (transaction: any) => {
     if (!selectedRep || !transaction || transaction.type !== 'deposit' || transaction.status !== 'completed') return;
     if (!hasMultipleStudents) {
@@ -149,6 +153,8 @@ export default function ManualBalance() {
     }
     setSelectedTransactionId(transaction.id);
     setMoveTargetStudentId('');
+    // Prellenar con el monto completo de la transacción
+    setMoveAmountBs(transaction.amount || 0);
     setShowMoveModal(true);
   };
 
@@ -156,6 +162,7 @@ export default function ManualBalance() {
     setShowMoveModal(false);
     setSelectedTransactionId(null);
     setMoveTargetStudentId('');
+    setMoveAmountBs(0);
   };
 
   const handleMovePayment = async () => {
@@ -163,9 +170,18 @@ export default function ManualBalance() {
       toast.error('Selecciona el estudiante destino');
       return;
     }
+    if (!moveAmountBs || moveAmountBs <= 0) {
+      toast.error('Ingresa un monto válido a mover');
+      return;
+    }
+    if (selectedTransaction && moveAmountBs > (selectedTransaction.amount || 0)) {
+      toast.error('El monto a mover no puede ser mayor al monto original del pago');
+      return;
+    }
+
     setMovingPayment(true);
     try {
-      const res = await movePaymentBetweenStudents(selectedTransactionId, moveTargetStudentId);
+      const res = await movePaymentBetweenStudents(selectedTransactionId, moveTargetStudentId, moveAmountBs);
       if (res.result) {
         toast.success(res.content?.message || 'Pago movido exitosamente');
         closeMoveModal();
@@ -354,7 +370,6 @@ export default function ManualBalance() {
                           {transaction.amountUSD !== undefined && (
                             <div className="text-xs text-gray-400">≈ {formatUsd(transaction.amountUSD)}</div>
                           )}
-                          {/* ✅ Solo mostrar "Mover" si el representante tiene más de un estudiante */}
                           {hasMultipleStudents && transaction.type === 'deposit' && transaction.status === 'completed' && (
                             <button
                               onClick={() => openMoveModal(transaction)}
@@ -469,8 +484,8 @@ export default function ManualBalance() {
         </div>
       </div>
 
-      {/* ✅ Modal para mover pago (fondo semitransparente y diseño mejorado) */}
-      {showMoveModal && selectedRep && (
+      {/* Modal para mover pago (parcial o total) */}
+      {showMoveModal && selectedRep && selectedTransaction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200">
             <div className="flex items-center justify-between mb-4">
@@ -486,10 +501,24 @@ export default function ManualBalance() {
                 <FaTimes />
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-5">
-              Selecciona el estudiante destino. El pago original será marcado como revertido y se creará un nuevo depósito con la misma tasa y monto.
+            <p className="text-sm text-gray-600 mb-4">
+              Puedes mover todo o parte del pago. El monto se manejará con la tasa histórica del pago original.
             </p>
-            <div className="mb-5">
+
+            {/* Info de la transacción origen */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Monto original:</span>
+                <span className="font-bold text-gray-800">{formatBs(selectedTransaction.amount || 0)}</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-gray-600">Tasa original:</span>
+                <span className="text-gray-700">{selectedTransaction.bcvRate ? selectedTransaction.bcvRate.toFixed(4) : '—'} Bs/USD</span>
+              </div>
+            </div>
+
+            {/* Estudiante destino */}
+            <div className="mb-4">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Estudiante destino</label>
               <select
                 value={moveTargetStudentId}
@@ -498,12 +527,43 @@ export default function ManualBalance() {
               >
                 <option value="">Seleccionar...</option>
                 {studentOptions
-                  .filter(s => s.id !== transactions.find(t => t.id === selectedTransactionId)?.studentId)
+                  .filter(s => s.id !== selectedTransaction.studentId)
                   .map(student => (
                     <option key={student.id} value={student.id}>{student.fullName}</option>
                   ))}
               </select>
             </div>
+
+            {/* Monto a mover */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Monto a mover (Bs)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={selectedTransaction.amount || 0}
+                value={moveAmountBs || ''}
+                onChange={(e) => setMoveAmountBs(parseFloat(e.target.value) || 0)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="0.00"
+              />
+              {moveAmountBs > 0 && moveAmountBs < (selectedTransaction.amount || 0) && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Quedarán {formatBs((selectedTransaction.amount || 0) - moveAmountBs)} en el estudiante origen.
+                </p>
+              )}
+              {moveAmountBs === (selectedTransaction.amount || 0) && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Se moverá el pago completo. La transacción original quedará como revertida.
+                </p>
+              )}
+              {moveAmountBs > (selectedTransaction.amount || 0) && (
+                <p className="text-xs text-red-600 mt-1">
+                  El monto no puede superar el original ({formatBs(selectedTransaction.amount || 0)}).
+                </p>
+              )}
+            </div>
+
             <div className="flex justify-end space-x-3">
               <button
                 onClick={closeMoveModal}
@@ -513,7 +573,7 @@ export default function ManualBalance() {
               </button>
               <button
                 onClick={handleMovePayment}
-                disabled={movingPayment || !moveTargetStudentId}
+                disabled={movingPayment || !moveTargetStudentId || moveAmountBs <= 0 || moveAmountBs > (selectedTransaction.amount || 0)}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors inline-flex items-center gap-2"
               >
                 {movingPayment ? (
