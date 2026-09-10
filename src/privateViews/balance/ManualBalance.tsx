@@ -143,6 +143,10 @@ export default function ManualBalance() {
 
   const openMoveModal = (transaction: any) => {
     if (!selectedRep || !transaction || transaction.type !== 'deposit' || transaction.status !== 'completed') return;
+    if (!hasMultipleStudents) {
+      toast.info('El representante debe tener al menos 2 estudiantes para mover un pago');
+      return;
+    }
     setSelectedTransactionId(transaction.id);
     setMoveTargetStudentId('');
     setShowMoveModal(true);
@@ -350,7 +354,8 @@ export default function ManualBalance() {
                           {transaction.amountUSD !== undefined && (
                             <div className="text-xs text-gray-400">≈ {formatUsd(transaction.amountUSD)}</div>
                           )}
-                          {transaction.type === 'deposit' && transaction.status === 'completed' && (
+                          {/* ✅ Solo mostrar "Mover" si el representante tiene más de un estudiante */}
+                          {hasMultipleStudents && transaction.type === 'deposit' && transaction.status === 'completed' && (
                             <button
                               onClick={() => openMoveModal(transaction)}
                               className="mt-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 text-xs"
@@ -464,27 +469,61 @@ export default function ManualBalance() {
         </div>
       </div>
 
-      {/* Modal para mover pago */}
+      {/* ✅ Modal para mover pago (fondo semitransparente y diseño mejorado) */}
       {showMoveModal && selectedRep && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Mover Pago a Otro Estudiante</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Selecciona el estudiante destino. El pago original será marcado como revertido y se creará un nuevo depósito.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <FaExchangeAlt className="text-indigo-600" />
+                Mover Pago
+              </h3>
+              <button
+                onClick={closeMoveModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Cerrar"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-5">
+              Selecciona el estudiante destino. El pago original será marcado como revertido y se creará un nuevo depósito con la misma tasa y monto.
             </p>
-            <div className="mb-4">
+            <div className="mb-5">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Estudiante destino</label>
-              <select value={moveTargetStudentId} onChange={(e) => setMoveTargetStudentId(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg">
+              <select
+                value={moveTargetStudentId}
+                onChange={(e) => setMoveTargetStudentId(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
                 <option value="">Seleccionar...</option>
-                {studentOptions.filter(s => s.id !== selectedTransactionId && s.id !== transactions.find(t => t.id === selectedTransactionId)?.studentId).map(student => (
-                  <option key={student.id} value={student.id}>{student.fullName}</option>
-                ))}
+                {studentOptions
+                  .filter(s => s.id !== transactions.find(t => t.id === selectedTransactionId)?.studentId)
+                  .map(student => (
+                    <option key={student.id} value={student.id}>{student.fullName}</option>
+                  ))}
               </select>
             </div>
             <div className="flex justify-end space-x-3">
-              <button onClick={closeMoveModal} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">Cancelar</button>
-              <button onClick={handleMovePayment} disabled={movingPayment || !moveTargetStudentId} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
-                {movingPayment ? 'Moviendo...' : 'Mover Pago'}
+              <button
+                onClick={closeMoveModal}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleMovePayment}
+                disabled={movingPayment || !moveTargetStudentId}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors inline-flex items-center gap-2"
+              >
+                {movingPayment ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Moviendo...
+                  </>
+                ) : (
+                  'Mover Pago'
+                )}
               </button>
             </div>
           </div>
