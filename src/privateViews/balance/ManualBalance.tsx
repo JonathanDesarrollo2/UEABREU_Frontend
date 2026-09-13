@@ -301,9 +301,9 @@ export default function ManualBalance() {
                         {formatBs(usdToBs(selectedRep.balance || 0))}
                       </div>
                       <div className="text-sm text-gray-600">Saldo actual</div>
-                      <div className="text-xs text-gray-500">≈ {formatUsd(selectedRep.balance || 0)}</div>
+                      <div className="text-base font-bold text-green-600 mt-1">≈ {formatUsd(selectedRep.balance || 0)}</div>
                       {selectedRep.balanceStatus && (
-                        <div className={`text-xs px-2 py-1 rounded ${selectedRep.balanceStatus === 'debt' ? 'bg-red-100 text-red-800' : selectedRep.balanceStatus === 'credit' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        <div className={`text-xs px-2 py-1 rounded mt-1 ${selectedRep.balanceStatus === 'debt' ? 'bg-red-100 text-red-800' : selectedRep.balanceStatus === 'credit' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                           {selectedRep.balanceStatus === 'debt' ? 'EN DEUDA' : selectedRep.balanceStatus === 'credit' ? 'CON CRÉDITO' : 'SALDO CERO'}
                         </div>
                       )}
@@ -325,7 +325,7 @@ export default function ManualBalance() {
                             </div>
                             <div className="text-sm text-gray-600 mt-1">
                               Balance: <span className={getBalanceColor(student.balance || 0)}>{formatBs(usdToBs(student.balance || 0))}</span>
-                              <span className="text-xs text-gray-400"> ≈ {formatUsd(student.balance || 0)}</span>
+                              <span className="text-base font-bold text-green-600 ml-1"> ≈ {formatUsd(student.balance || 0)}</span>
                             </div>
                           </div>
                         ))}
@@ -368,7 +368,7 @@ export default function ManualBalance() {
                           </div>
                           <div className="text-sm text-gray-600 capitalize">{mapPaymentMethodToDisplay(transaction.paymentMethod || 'cash')}</div>
                           {transaction.amountUSD !== undefined && (
-                            <div className="text-xs text-gray-400">≈ {formatUsd(transaction.amountUSD)}</div>
+                            <div className="text-base font-bold text-green-600">≈ {formatUsd(transaction.amountUSD)}</div>
                           )}
                           {hasMultipleStudents && transaction.type === 'deposit' && transaction.status === 'completed' && (
                             <button

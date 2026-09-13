@@ -9,7 +9,6 @@ import { getAllTransactions, getAccountStatement } from '../../apis/balance';
 import { getPaginatedStudentsAPI } from '../../apis/student';
 import api from '../../library/axios';
 import { getBCVRateAPI, type BCVRateResponse } from '../../apis/bank';
-import { getSchoolFees } from '../../apis/SchoolFee';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import ExcelJS from 'exceljs';
@@ -49,18 +48,14 @@ interface TransactionItem {
   paymentStatus?: string;
   balanceAfter?: number;
   createdAt: string;
-  student?: { id: string; fullName: string; currentGrade?: string } | null;
+  student?: { id: string; fullName: string; currentGrade?: string; section?: string } | null;
   representative?: { id: string; fullName: string; identityCard: string };
   metadata?: TransactionMetadata | null;
   creator?: TransactionCreator | null;
 }
 
-interface SchoolYearOption {
-  value: string;
-  label: string;
-  startDate: string;
-  endDate: string;
-}
+const GRADE_OPTIONS = ['1ro', '2do', '3ro', '4to', '5to', '6to'];
+const SECTION_OPTIONS = ['A', 'B', 'C', 'D'];
 
 const formatCurrencyLocal = (amount: number, currency: 'VES' | 'USD') => {
   return new Intl.NumberFormat('es-VE', {
@@ -76,7 +71,6 @@ const PaymentHistory: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
-  const [schoolYearOptions, setSchoolYearOptions] = useState<SchoolYearOption[]>([]);
 
   const [filters, setFilters] = useState({
     search: '',
@@ -86,7 +80,8 @@ const PaymentHistory: React.FC = () => {
     endDate: '',
     createdByRole: '' as '' | 'admin' | 'representative' | 'system',
     balanceStatus: 'all' as 'all' | 'debtors' | 'creditors',
-    schoolYear: 'all' as string,
+    studentGrade: '',
+    studentSection: '',
     page: 1,
     limit: 20,
   });
@@ -100,7 +95,6 @@ const PaymentHistory: React.FC = () => {
   const [studentResults, setStudentResults] = useState<any[]>([]);
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
 
-  // Modal de estado de cuenta
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountData, setAccountData] = useState<any>(null);
@@ -118,24 +112,6 @@ const PaymentHistory: React.FC = () => {
       mainScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
     }
   };
-
-  // Cargar año escolar
-  useEffect(() => {
-    const fetchSchoolYear = async () => {
-      try {
-        const fees = await getSchoolFees();
-        const label = fees.schoolYear || '2026-2027';
-        const startDate = (fees as any).inscriptionStartDate || (fees as any).monthlyFeeStartDate || '';
-        const endDate = (fees as any).schoolYearEndDate || '';
-        setSchoolYearOptions([
-          { value: label, label: `Año escolar ${label}`, startDate, endDate }
-        ]);
-      } catch (error) {
-        console.error('Error al cargar año escolar:', error);
-      }
-    };
-    fetchSchoolYear();
-  }, []);
 
   const searchReps = useCallback(async (term: string) => {
     if (term.length < 2) { setRepResults([]); return; }
@@ -184,6 +160,8 @@ const PaymentHistory: React.FC = () => {
         search: filters.search || undefined,
         createdByRole: filters.createdByRole || undefined,
         balanceStatus: filters.balanceStatus !== 'all' ? filters.balanceStatus : undefined,
+        studentGrade: filters.studentGrade || undefined,
+        studentSection: filters.studentSection || undefined,
       });
       if (response.result) {
         setTransactions(response.content.transactions);
@@ -215,28 +193,11 @@ const PaymentHistory: React.FC = () => {
     fetchTransactions();
   };
 
-  const handleSchoolYearChange = (value: string) => {
-    if (value === 'all') {
-      setFilters(prev => ({ ...prev, schoolYear: 'all', startDate: '', endDate: '', page: 1 }));
-      return;
-    }
-    const opt = schoolYearOptions.find(o => o.value === value);
-    if (opt) {
-      setFilters(prev => ({
-        ...prev,
-        schoolYear: value,
-        startDate: opt.startDate || '',
-        endDate: opt.endDate || '',
-        page: 1,
-      }));
-    }
-  };
-
   const clearFilters = () => {
     setFilters({
       search: '', studentId: '', representativeId: '',
       startDate: '', endDate: '', createdByRole: '',
-      balanceStatus: 'all', schoolYear: 'all',
+      balanceStatus: 'all', studentGrade: '', studentSection: '',
       page: 1, limit: 20
     });
     setRepSearchTerm('');
@@ -302,6 +263,8 @@ const PaymentHistory: React.FC = () => {
         endDate: filters.endDate || undefined,
         createdByRole: filters.createdByRole || undefined,
         balanceStatus: filters.balanceStatus !== 'all' ? filters.balanceStatus : undefined,
+        studentGrade: filters.studentGrade || undefined,
+        studentSection: filters.studentSection || undefined,
         page,
         limit,
       });
@@ -626,15 +589,29 @@ const PaymentHistory: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-1">Año escolar</label>
+              <label className="block text-sm font-semibold text-gray-600 mb-1">Año del estudiante</label>
               <select
-                value={filters.schoolYear}
-                onChange={(e) => handleSchoolYearChange(e.target.value)}
+                value={filters.studentGrade}
+                onChange={(e) => setFilters(prev => ({ ...prev, studentGrade: e.target.value, page: 1 }))}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl"
               >
-                <option value="all">Todos los años</option>
-                {schoolYearOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                <option value="">Todos los años</option>
+                {GRADE_OPTIONS.map(g => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-600 mb-1">Sección</label>
+              <select
+                value={filters.studentSection}
+                onChange={(e) => setFilters(prev => ({ ...prev, studentSection: e.target.value, page: 1 }))}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl"
+              >
+                <option value="">Todas las secciones</option>
+                {SECTION_OPTIONS.map(s => (
+                  <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
@@ -647,8 +624,8 @@ const PaymentHistory: React.FC = () => {
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl"
               >
                 <option value="all">Todos</option>
-                <option value="debtors">Deudores (saldo negativo)</option>
-                <option value="creditors">Al día (saldo ≥ 0)</option>
+                <option value="debtors">Representantes Deudores</option>
+                <option value="creditors">Representantes con pagos al día</option>
               </select>
             </div>
 
@@ -667,8 +644,8 @@ const PaymentHistory: React.FC = () => {
             </div>
 
             <div className="flex space-x-2 md:col-span-2">
-              <div className="flex-1"><label className="block text-sm font-semibold text-gray-600 mb-1">Desde</label><input type="date" value={filters.startDate} onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value, schoolYear: 'all' }))} className="w-full px-2 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl" /></div>
-              <div className="flex-1"><label className="block text-sm font-semibold text-gray-600 mb-1">Hasta</label><input type="date" value={filters.endDate} onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value, schoolYear: 'all' }))} className="w-full px-2 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl" /></div>
+              <div className="flex-1"><label className="block text-sm font-semibold text-gray-600 mb-1">Desde</label><input type="date" value={filters.startDate} onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))} className="w-full px-2 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl" /></div>
+              <div className="flex-1"><label className="block text-sm font-semibold text-gray-600 mb-1">Hasta</label><input type="date" value={filters.endDate} onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))} className="w-full px-2 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl" /></div>
             </div>
           </div>
 
@@ -763,14 +740,8 @@ const PaymentHistory: React.FC = () => {
                               {creditBs > 0 ? formatCurrencyLocal(creditBs, 'VES') : '—'}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-500">{t.bcvRate ? t.bcvRate.toFixed(4) : '—'}</td>
-                            <td className="px-6 py-4">
-                              {t.amountUSD !== undefined ? (
-                                <span className="text-base font-extrabold text-green-600">
-                                  {formatCurrencyLocal(t.amountUSD, 'USD')}
-                                </span>
-                              ) : (
-                                <span className="text-sm text-gray-400">—</span>
-                              )}
+                            <td className="px-6 py-4 text-sm text-gray-700">
+                              {t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—'}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-500 font-mono">{t.reference || '—'}</td>
                             <td className="px-6 py-4">{renderCreator(t)}</td>
@@ -833,19 +804,19 @@ const PaymentHistory: React.FC = () => {
                     <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                       <p className="text-xs font-medium text-red-700">Total Cargos</p>
                       <p className="text-lg font-bold text-red-800 mt-1">{formatCurrencyLocal(accountData.summary.totalCargosBs, 'VES')}</p>
-                      <p className="text-xs text-red-700 font-bold">≈ {formatCurrencyLocal(accountData.summary.totalCargosUSD, 'USD')}</p>
+                      <p className="text-xs text-red-700">≈ {formatCurrencyLocal(accountData.summary.totalCargosUSD, 'USD')}</p>
                     </div>
                     <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                       <p className="text-xs font-medium text-green-700">Total Abonos</p>
                       <p className="text-lg font-bold text-green-800 mt-1">{formatCurrencyLocal(accountData.summary.totalAbonosBs, 'VES')}</p>
-                      <p className="text-xs text-green-700 font-bold">≈ {formatCurrencyLocal(accountData.summary.totalAbonosUSD, 'USD')}</p>
+                      <p className="text-xs text-green-700">≈ {formatCurrencyLocal(accountData.summary.totalAbonosUSD, 'USD')}</p>
                     </div>
                     <div className={`border rounded-xl p-4 ${accountData.summary.saldoFinalUSD < 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
                       <p className={`text-xs font-medium ${accountData.summary.saldoFinalUSD < 0 ? 'text-red-700' : 'text-blue-700'}`}>Saldo Final</p>
                       <p className={`text-lg font-bold mt-1 ${accountData.summary.saldoFinalUSD < 0 ? 'text-red-800' : 'text-blue-800'}`}>
                         {formatCurrencyLocal(accountData.summary.saldoFinalUSD * (bcvRate?.PriceRateBCV || 0), 'VES')}
                       </p>
-                      <p className={`text-xs font-bold ${accountData.summary.saldoFinalUSD < 0 ? 'text-red-700' : 'text-blue-700'}`}>
+                      <p className={`text-xs ${accountData.summary.saldoFinalUSD < 0 ? 'text-red-700' : 'text-blue-700'}`}>
                         ≈ {formatCurrencyLocal(accountData.summary.saldoFinalUSD, 'USD')}
                       </p>
                     </div>
@@ -871,7 +842,7 @@ const PaymentHistory: React.FC = () => {
                               <p className={`text-sm font-bold ${s.balance < 0 ? 'text-red-600' : s.balance > 0 ? 'text-green-600' : 'text-gray-600'}`}>
                                 {formatCurrencyLocal((s.balance || 0) * (bcvRate?.PriceRateBCV || 0), 'VES')}
                               </p>
-                              <p className="text-xs font-bold text-green-600">≈ {formatCurrencyLocal(s.balance || 0, 'USD')}</p>
+                              <p className="text-xs text-gray-500">≈ {formatCurrencyLocal(s.balance || 0, 'USD')}</p>
                             </div>
                           </div>
                         ))}
@@ -914,7 +885,7 @@ const PaymentHistory: React.FC = () => {
                                   <td className={`px-3 py-2 text-xs text-right font-bold ${isDeposit ? 'text-green-700' : 'text-red-700'}`}>
                                     {isDeposit ? '+' : '-'}{formatCurrencyLocal(t.amount || 0, 'VES')}
                                   </td>
-                                  <td className="px-3 py-2 text-xs text-right font-extrabold text-green-600">
+                                  <td className="px-3 py-2 text-xs text-right text-gray-700">
                                     {t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—'}
                                   </td>
                                 </tr>
