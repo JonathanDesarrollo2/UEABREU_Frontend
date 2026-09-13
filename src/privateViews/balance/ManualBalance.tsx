@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FaMoneyBillWave, FaUser, FaSearch, FaPlus, FaMinus, FaHistory,
-  FaCreditCard, FaInfoCircle, FaArrowLeft, FaCheckCircle, FaTimes, FaExchangeAlt
+  FaCreditCard, FaInfoCircle, FaArrowLeft, FaCheckCircle, FaTimes,
+  FaExchangeAlt, FaUserShield, FaUserTie, FaCog, FaArrowRight
 } from 'react-icons/fa';
 import 'react-toastify/dist/ReactToastify.css';
 import { toast } from 'react-toastify';
@@ -21,7 +22,7 @@ export interface Representative {
   fullName: string;
   identityCard: string;
   phone: string;
-  balance: number; // USD
+  balance: number;
   balanceFormatted?: string;
   balanceStatus?: 'debt' | 'zero' | 'credit';
   debtAmount?: number;
@@ -32,7 +33,7 @@ export interface Representative {
     id: string;
     fullName: string;
     status: string;
-    balance?: number; // USD
+    balance?: number;
   }>;
 }
 
@@ -81,7 +82,6 @@ export default function ManualBalance() {
     }
   );
 
-  // Estado para mover pago
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [moveTargetStudentId, setMoveTargetStudentId] = useState<string>('');
   const [moveAmountBs, setMoveAmountBs] = useState<number>(0);
@@ -142,7 +142,6 @@ export default function ManualBalance() {
     return transactionType === 'deposit' ? currentBalanceBs + amount : currentBalanceBs - amount;
   };
 
-  // Transacción seleccionada para mover
   const selectedTransaction = transactions.find(t => t.id === selectedTransactionId);
 
   const openMoveModal = (transaction: any) => {
@@ -153,7 +152,6 @@ export default function ManualBalance() {
     }
     setSelectedTransactionId(transaction.id);
     setMoveTargetStudentId('');
-    // Prellenar con el monto completo de la transacción
     setMoveAmountBs(transaction.amount || 0);
     setShowMoveModal(true);
   };
@@ -198,6 +196,96 @@ export default function ManualBalance() {
     } finally {
       setMovingPayment(false);
     }
+  };
+
+  // Render de la info del movimiento (de quién a quién)
+  const renderMoveInfo = (transaction: any) => {
+    const meta = transaction.metadata;
+    if (!meta) return null;
+
+    if (meta.isMoved && meta.movedFromStudentName && meta.movedToStudentName) {
+      return (
+        <div className="mt-2 bg-indigo-50 border border-indigo-200 rounded-lg p-2 text-xs text-indigo-800">
+          <div className="flex items-center gap-1 font-semibold">
+            <FaExchangeAlt className="text-[10px]" />
+            Pago movido
+          </div>
+          <div className="flex items-center gap-1 mt-1 flex-wrap">
+            <span className="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-indigo-200">
+              <FaUser className="text-[10px] text-gray-400" />
+              {meta.movedFromStudentName}
+            </span>
+            <FaArrowRight className="text-[10px] text-indigo-500" />
+            <span className="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-indigo-200">
+              <FaUser className="text-[10px] text-gray-400" />
+              {meta.movedToStudentName}
+            </span>
+          </div>
+          {meta.movedAmountBs !== undefined && (
+            <div className="text-[11px] text-indigo-600 mt-1">
+              Monto movido: {formatBs(meta.movedAmountBs)}
+              {meta.movedAmountUSD !== undefined && ` (≈ ${formatUsd(meta.movedAmountUSD)})`}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (meta.isMovedRemainder && meta.movedToStudentName) {
+      return (
+        <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800">
+          <div className="flex items-center gap-1 font-semibold">
+            <FaExchangeAlt className="text-[10px]" />
+            Remanente de un pago movido
+          </div>
+          <div className="mt-1">
+            El resto del pago se movió a:{' '}
+            <span className="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-amber-200">
+              <FaUser className="text-[10px] text-gray-400" />
+              {meta.movedToStudentName}
+            </span>
+          </div>
+          {meta.remainingAmountBs !== undefined && (
+            <div className="text-[11px] text-amber-700 mt-1">
+              Este remanente: {formatBs(meta.remainingAmountBs)}
+              {meta.remainingAmountUSD !== undefined && ` (≈ ${formatUsd(meta.remainingAmountUSD)})`}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // Render del "Hecho por"
+  const renderCreator = (transaction: any) => {
+    const c = transaction.creator;
+    if (!c) {
+      if (transaction.type === 'fee' || transaction.type === 'adjustment') {
+        return (
+          <div className="inline-flex items-center gap-1 text-xs text-gray-500">
+            <FaCog className="text-[10px]" /> Sistema
+          </div>
+        );
+      }
+      return null;
+    }
+    if (c.role === 'admin') {
+      return (
+        <div className="inline-flex items-center gap-1 text-xs text-blue-700 font-semibold">
+          <FaUserShield className="text-[10px]" /> Admin {c.username || c.userlogin}
+        </div>
+      );
+    }
+    if (c.role === 'representative') {
+      return (
+        <div className="inline-flex items-center gap-1 text-xs text-green-700 font-semibold">
+          <FaUserTie className="text-[10px]" /> Representante
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -345,30 +433,40 @@ export default function ManualBalance() {
                   <div className="space-y-3">
                     {transactions.map((transaction) => (
                       <div key={transaction.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 flex-wrap gap-1">
                             <span className={`px-2 py-1 rounded text-xs font-bold ${transaction.type === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                               {transaction.type === 'deposit' ? 'DEPÓSITO' : 'RETIRO'}
                             </span>
                             <span className="text-sm text-gray-600">
                               {transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString('es-VE') : 'N/A'}
                             </span>
+                            {transaction.status && (
+                              <span className={`text-xs px-2 py-1 rounded ${transaction.status === 'completed' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                {transaction.status === 'completed' ? 'Completado' : transaction.status}
+                              </span>
+                            )}
+                            {renderCreator(transaction)}
                           </div>
                           <p className="text-gray-800 mt-1">{transaction.description || 'Sin descripción'}</p>
                           {transaction.reference && <p className="text-xs text-gray-500 mt-1">Ref: {transaction.reference}</p>}
-                          {transaction.status && (
-                            <span className={`text-xs px-2 py-1 rounded ${transaction.status === 'completed' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                              {transaction.status === 'completed' ? 'Completado' : transaction.status}
-                            </span>
-                          )}
+
+                          {/* ⭐ Información del movimiento: de quién a quién */}
+                          {renderMoveInfo(transaction)}
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <div className={`text-lg font-bold ${transaction.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
                             {transaction.type === 'deposit' ? '+' : '-'}{formatBs(transaction.amount || 0)}
                           </div>
                           <div className="text-sm text-gray-600 capitalize">{mapPaymentMethodToDisplay(transaction.paymentMethod || 'cash')}</div>
                           {transaction.amountUSD !== undefined && (
                             <div className="text-base font-bold text-green-600">≈ {formatUsd(transaction.amountUSD)}</div>
+                          )}
+                          {transaction.student && (
+                            <div className="text-xs text-gray-500 mt-1 inline-flex items-center gap-1">
+                              <FaUser className="text-[10px]" />
+                              {transaction.student.fullName}
+                            </div>
                           )}
                           {hasMultipleStudents && transaction.type === 'deposit' && transaction.status === 'completed' && (
                             <button
@@ -484,7 +582,7 @@ export default function ManualBalance() {
         </div>
       </div>
 
-      {/* Modal para mover pago (parcial o total) */}
+      {/* Modal para mover pago */}
       {showMoveModal && selectedRep && selectedTransaction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200">
@@ -505,7 +603,6 @@ export default function ManualBalance() {
               Puedes mover todo o parte del pago. El monto se manejará con la tasa histórica del pago original.
             </p>
 
-            {/* Info de la transacción origen */}
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Monto original:</span>
@@ -515,9 +612,14 @@ export default function ManualBalance() {
                 <span className="text-gray-600">Tasa original:</span>
                 <span className="text-gray-700">{selectedTransaction.bcvRate ? selectedTransaction.bcvRate.toFixed(4) : '—'} Bs/USD</span>
               </div>
+              {selectedTransaction.student && (
+                <div className="flex justify-between mt-1">
+                  <span className="text-gray-600">Desde estudiante:</span>
+                  <span className="font-semibold text-gray-800">{selectedTransaction.student.fullName}</span>
+                </div>
+              )}
             </div>
 
-            {/* Estudiante destino */}
             <div className="mb-4">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Estudiante destino</label>
               <select
@@ -534,7 +636,6 @@ export default function ManualBalance() {
               </select>
             </div>
 
-            {/* Monto a mover */}
             <div className="mb-5">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Monto a mover (Bs)</label>
               <input
