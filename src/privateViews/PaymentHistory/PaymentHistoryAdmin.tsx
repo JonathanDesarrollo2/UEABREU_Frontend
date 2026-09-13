@@ -25,6 +25,8 @@ interface TransactionMetadata {
   movedToStudentName?: string;
   movedAmountBs?: number;
   movedAmountUSD?: number;
+  remainingAmountBs?: number;
+  remainingAmountUSD?: number;
 }
 
 interface TransactionCreator {
@@ -48,7 +50,7 @@ interface TransactionItem {
   paymentStatus?: string;
   balanceAfter?: number;
   createdAt: string;
-  student?: { id: string; fullName: string; currentGrade?: string; section?: string } | null;
+  student?: { id: string; fullName: string; currentGrade?: string; section?: string; balance?: number } | null;
   representative?: { id: string; fullName: string; identityCard: string };
   metadata?: TransactionMetadata | null;
   creator?: TransactionCreator | null;
@@ -705,6 +707,9 @@ const PaymentHistory: React.FC = () => {
                         const amountBs = t.amount;
                         const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
 
+                        const studentBalance = t.student?.balance ?? 0;
+                        const studentBalanceBs = studentBalance * (bcvRate?.PriceRateBCV || 0);
+
                         return (
                           <tr key={t.id} className="hover:bg-blue-50/30 transition-colors">
                             <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '-'}</td>
@@ -720,7 +725,27 @@ const PaymentHistory: React.FC = () => {
                                 </button>
                               ) : '—'}
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-700">{t.student?.fullName || '—'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-700">
+                              <div>{t.student?.fullName || '—'}</div>
+                              {t.student && studentBalance > 0 && (
+                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">
+                                  <FaBalanceScale className="text-[10px]" />
+                                  Saldo: {formatCurrencyLocal(studentBalanceBs, 'VES')}
+                                  <span className="text-green-600 font-bold">
+                                    ≈ {formatCurrencyLocal(studentBalance, 'USD')}
+                                  </span>
+                                </div>
+                              )}
+                              {t.student && studentBalance < 0 && (
+                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded px-2 py-0.5">
+                                  <FaBalanceScale className="text-[10px]" />
+                                  Saldo: {formatCurrencyLocal(studentBalanceBs, 'VES')}
+                                  <span className="text-red-600 font-bold">
+                                    ≈ {formatCurrencyLocal(studentBalance, 'USD')}
+                                  </span>
+                                </div>
+                              )}
+                            </td>
                             <td className="px-6 py-4 text-sm text-gray-600 max-w-[260px]">
                               <div className="truncate">{t.description || '—'}</div>
                               {renderMoveInfo(t)}
