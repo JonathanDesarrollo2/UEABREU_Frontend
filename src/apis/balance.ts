@@ -157,3 +157,63 @@ export async function getAllTransactions(params?: any) {
   const response = await api.get('/private/balance/transactions', { params });
   return response.data;
 }
+// ============================================================
+// ESTADO DE CUENTA POR REPRESENTANTE
+// ============================================================
+export interface AccountStatementTransaction {
+  id: string;
+  type: string;
+  amount: number;
+  amountUSD?: number;
+  bcvRate?: number;
+  description: string;
+  paymentMethod: string;
+  reference: string;
+  status: string;
+  createdAt: string;
+  balanceAfter?: number;
+  student?: { id: string; fullName: string } | null;
+}
+
+export interface AccountStatementResponse {
+  result: boolean;
+  content: {
+    representative: {
+      id: string;
+      fullName: string;
+      identityCard: string;
+      phone: string;
+      email: string;
+      balanceUSD: number;
+      students: Array<{
+        id: string;
+        fullName: string;
+        identityCard: string;
+        status: string;
+        currentGrade: string;
+        balance: number;
+      }>;
+    };
+    summary: {
+      totalCargosUSD: number;
+      totalAbonosUSD: number;
+      totalCargosBs: number;
+      totalAbonosBs: number;
+      saldoFinalUSD: number;
+      transactionCount: number;
+    };
+    transactions: AccountStatementTransaction[];
+  };
+  error: string[];
+}
+
+export async function getAccountStatement(
+  representativeId: string,
+  params?: { startDate?: string; endDate?: string; studentId?: string }
+): Promise<AccountStatementResponse> {
+  const response = await api.get(
+    `/private/balance/representative/${representativeId}/account-statement`,
+    { params }
+  );
+  return response.data;
+}

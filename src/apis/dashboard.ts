@@ -1,5 +1,17 @@
 import api from "../library/axios";
 
+export interface ChartRepresentative {
+  id: string;
+  fullName: string;
+  identityCard: string;
+  phone?: string;
+  email?: string;
+  studentCount: number;
+  balanceUSD: number;
+  debtAmountUSD?: number;
+  creditAmountUSD?: number;
+}
+
 export interface DashboardStats {
   teachers: {
     total: number;
@@ -30,10 +42,15 @@ export interface DashboardStats {
     monthlyCollected: number; // USD
     pendingTransactions: number;
   };
+  chartData: {
+    debtors: ChartRepresentative[];
+    creditors: ChartRepresentative[];
+    zeroBalance: ChartRepresentative[];
+  };
   recentTransactions: Array<{
     id: string;
     type: string;
-    amount: number;          // Bs original
+    amount: number;
     amountUSD?: number;
     bcvRate?: number;
     representativeName: string;
@@ -45,7 +62,7 @@ export interface DashboardStats {
     id: string;
     fullName: string;
     identityCard: string;
-    debtAmount: number;      // USD
+    debtAmount: number;
     studentCount: number;
   }>;
   topTeachers: Array<{
@@ -64,8 +81,6 @@ export interface DashboardStats {
 
 export async function getDashboardStatsAPI(): Promise<DashboardStats> {
   try {
-    console.log('🔄 Iniciando carga de dashboard...');
-
     const promises = [
       api.get('/private/academic/teacher/list', { params: { page: 1, limit: 100 } }),
       api.get('/private/user/students/list', { params: { limit: 1000 } }),
@@ -114,10 +129,8 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
       ? userStatsRes.value.data.content
       : {};
 
-    // Calcular estadísticas de docentes
     const activeTeachers = teachers.filter((t: any) => t.status === true || t.status === 'active').length;
 
-    // Calcular estudiantes por estado
     const studentsByStatus = {
       regular: students.filter((s: any) => s.status === 'regular').length,
       pendiente: students.filter((s: any) => s.status === 'pendiente').length,
@@ -126,7 +139,6 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
       inactivo: students.filter((s: any) => s.status === 'inactivo' || s.status === false).length,
     };
 
-    // Calcular representantes
     const repsWithDebt = reps.filter((r: any) => {
       const balance = r.balanceUSD ?? r.balance ?? 0;
       return balance < 0;
@@ -143,7 +155,6 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
       ? Math.round(((reps.length - repsWithDebt) / reps.length) * 100)
       : 0;
 
-    // ✅ Datos financieros desde backend (ya en USD)¿
     const totalDebtUSD = financial.general?.totalDebtUSD ?? financial.totalDebtUSD ?? 0;
     const totalCreditUSD = financial.general?.totalCreditUSD ?? financial.totalCreditUSD ?? 0;
     const totalDepositsUSD = financial.monthlyTransactions?.totalDepositsUSD
@@ -152,11 +163,10 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
     const monthlyCollectedUSD = totalDepositsUSD;
     const pendingTransactions = financial.monthlyTransactions?.transactionCount ?? 0;
 
-    // Procesar transacciones recientes
     const formattedTransactions = recentTransactions.map((t: any) => ({
       id: t.id || '',
       type: t.type || 'deposit',
-      amount: t.amount || 0,          // Bs original
+      amount: t.amount || 0,
       amountUSD: t.amountUSD ?? 0,
       bcvRate: t.bcvRate ?? 0,
       representativeName: t.representative?.fullName || t.representativeName || 'N/A',
@@ -165,7 +175,6 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
       paymentStatus: t.paymentStatus || undefined,
     }));
 
-    // Procesar top deudores (debtAmount está en USD)
     const formattedTopDebtors = topDebtors.map((d: any) => ({
       id: d.id || '',
       fullName: d.fullName || 'N/A',
@@ -174,12 +183,17 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
       studentCount: d.studentCount || 0,
     }));
 
-    // Usar estadísticas de usuarios
     const userStatsData = {
       totalUsers: userStats.summary?.totalUsers || userStats.users?.total || 0,
       totalStudents: userStats.summary?.totalStudents || userStats.students?.total || 0,
       totalTeachers: userStats.summary?.totalTeachers || userStats.teachers?.total || 0,
       totalRepresentatives: userStats.summary?.totalRepresentatives || userStats.representatives?.total || 0
+    };
+
+    const chartData = {
+      debtors: financial.chartData?.debtors || [],
+      creditors: financial.chartData?.creditors || [],
+      zeroBalance: financial.chartData?.zeroBalance || [],
     };
 
     const result: DashboardStats = {
@@ -201,11 +215,12 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
         paymentPercentage
       },
       financial: {
-        totalDebt: totalDebtUSD,        // USD
-        totalCredit: totalCreditUSD,    // USD
-        monthlyCollected: monthlyCollectedUSD, // USD
+        totalDebt: totalDebtUSD,
+        totalCredit: totalCreditUSD,
+        monthlyCollected: monthlyCollectedUSD,
         pendingTransactions
       },
+      chartData,
       recentTransactions: formattedTransactions,
       topDebtors: formattedTopDebtors,
       topTeachers: teachers.slice(0, 5).map((t: any) => ({
@@ -222,20 +237,11 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
       }
     };
 
-    console.log('🎉 Dashboard cargado exitosamente:', result);
     return result;
 
   } catch (error: any) {
     console.error('❌ Error cargando dashboard stats:', error);
-    console.error('Detalles del error:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      url: error.config?.url
-    });
-
-    // Retornar datos por defecto en caso de error
-    const defaultData: DashboardStats = {
+    return {
       teachers: { total: 0, active: 0, inactive: 0 },
       students: {
         total: 0,
@@ -244,76 +250,68 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
       },
       representatives: { total: 0, withDebt: 0, withCredit: 0, zeroBalance: 0, paymentPercentage: 0 },
       financial: { totalDebt: 0, totalCredit: 0, monthlyCollected: 0, pendingTransactions: 0 },
+      chartData: { debtors: [], creditors: [], zeroBalance: [] },
       recentTransactions: [],
       topDebtors: [],
       topTeachers: [],
       summary: { totalUsers: 0, totalSchedules: 0, totalSubjects: 0, totalAssignments: 0 }
     };
-
-    console.log('🔄 Retornando datos por defecto:', defaultData);
-    return defaultData;
   }
 }
 
 export async function getDashboardSectionData(section: string) {
   try {
-    console.log(`📥 Obteniendo datos para sección: ${section}`);
-
     switch (section) {
       case 'financial': {
         const financialRes = await api.get('/private/balance/statistics/financial');
-        return {
-          result: true,
-          content: financialRes.data?.content || {},
-          error: []
-        };
+        return { result: true, content: financialRes.data?.content || {}, error: [] };
       }
       case 'teachers': {
         const teachersRes = await api.get('/private/academic/teacher/list', { params: { limit: 100 } });
-        return {
-          result: true,
-          content: teachersRes.data?.content || [],
-          error: []
-        };
+        return { result: true, content: teachersRes.data?.content || [], error: [] };
       }
       case 'students': {
         const studentsRes = await api.get('/private/user/students/list', { params: { limit: 100 } });
-        return {
-          result: true,
-          content: studentsRes.data?.content || [],
-          error: []
-        };
+        return { result: true, content: studentsRes.data?.content || [], error: [] };
       }
       case 'transactions': {
         const transactionsRes = await api.get('/private/balance/transactions/recent', { params: { limit: 20 } });
-        return {
-          result: true,
-          content: transactionsRes.data?.content || [],
-          error: []
-        };
+        return { result: true, content: transactionsRes.data?.content || [], error: [] };
       }
       case 'debtors': {
         const debtorsRes = await api.get('/private/balance/representatives/top-debtors', { params: { limit: 10 } });
-        return {
-          result: true,
-          content: debtorsRes.data?.content?.debtors || [],
-          error: []
-        };
+        return { result: true, content: debtorsRes.data?.content?.debtors || [], error: [] };
       }
       default:
         throw new Error('Sección no válida');
     }
   } catch (error: any) {
-    console.error(`❌ Error cargando datos de ${section}:`, error);
-    console.error('Detalles:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status
-    });
-    return {
-      result: false,
-      content: [],
-      error: [error.message || 'Error al cargar datos']
-    };
+    return { result: false, content: [], error: [error.message || 'Error al cargar datos'] };
   }
+}
+
+// 🔹 NUEVO: transacciones filtradas por rol del creador
+export async function getTransactionsByRoleAPI(params: {
+  createdByRole?: '' | 'admin' | 'representative' | 'system';
+  limit?: number;
+  page?: number;
+  startDate?: string;
+  endDate?: string;
+  representativeId?: string;
+  studentId?: string;
+  search?: string;
+}) {
+  const response = await api.get('/private/balance/transactions', {
+    params: {
+      limit: params.limit ?? 20,
+      page: params.page ?? 1,
+      createdByRole: params.createdByRole || undefined,
+      startDate: params.startDate || undefined,
+      endDate: params.endDate || undefined,
+      representativeId: params.representativeId || undefined,
+      studentId: params.studentId || undefined,
+      search: params.search || undefined,
+    },
+  });
+  return response.data;
 }
