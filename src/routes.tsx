@@ -34,6 +34,7 @@ import SchoolFeeSettings from './privateViews/SchoolFeeSettings/SchoolFeeSetting
 import SimuladorCobros from './privateViews/Simulador/CobrosSimulador'
 import EditUser from './privateViews/editUser/EditUsers'
 import EditApplication from './privateViews/editApplication/EditApplication'
+import StudentsRanking from './privateViews/studentRanking/StudentRanking'
 
 function ListRoutes() {
   return (
@@ -74,7 +75,8 @@ function ListRoutes() {
           <Route path="listStudents" element={<AdminListStudentsBackend />} />
           <Route path="ListTeacher" element={<AdminListTeachersBackend />} />
           <Route path="Settings" element={<InscriptionSettings />} />
-          <Route path="transactions" element={<PaymentHistory />} />   // NUEVA RUTA
+          <Route path="transactions" element={<PaymentHistory />} />
+          <Route path="ranking" element={<StudentsRanking />} />
           <Route path="registrations" element={<AdminRegistrationsList />} />
           <Route path="school-fees" element={<SchoolFeeSettings />} />
           <Route path="simulador-cobros" element={<SimuladorCobros/>} />

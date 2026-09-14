@@ -300,11 +300,6 @@ const PaymentHistory: React.FC = () => {
       const tableBody = allTx.map(t => {
         const isFee = t.type === 'fee';
         const isDeposit = t.type === 'deposit';
-        const balanceAfterUSD = t.balanceAfter ?? 0;
-        const pendingUSD = balanceAfterUSD < 0 ? Math.abs(balanceAfterUSD) : 0;
-        const creditUSD = balanceAfterUSD > 0 ? balanceAfterUSD : 0;
-        const pendingBs = usdToBs(pendingUSD);
-        const creditBs = usdToBs(creditUSD);
         const amountBs = t.amount;
         const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
 
@@ -323,13 +318,13 @@ const PaymentHistory: React.FC = () => {
           t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '—',
           t.representative?.fullName || '—',
           t.student?.fullName || '—',
+          t.student?.currentGrade || '—',
+          t.student?.section || '—',
           desc,
           isDeposit ? 'DEPÓSITO' : t.type.toUpperCase(),
           `${isDeposit ? '+' : '-'}${formatCurrencyLocal(amountBs, 'VES')}`,
-          pendingBs > 0 ? formatCurrencyLocal(pendingBs, 'VES') : '—',
-          creditBs > 0 ? formatCurrencyLocal(creditBs, 'VES') : '—',
-          t.bcvRate ? t.bcvRate.toFixed(4) : '—',
           t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—',
+          t.bcvRate ? t.bcvRate.toFixed(4) : '—',
           t.reference || '—',
           creatorText,
           displayStatus,
@@ -348,9 +343,9 @@ const PaymentHistory: React.FC = () => {
           {
             table: {
               headerRows: 1,
-              widths: [42, 55, 55, 90, 35, 50, 50, 50, 32, 42, 55, 50, 45],
+              widths: [42, 60, 70, 30, 30, 100, 35, 55, 45, 32, 55, 45, 45],
               body: [
-                ['Fecha', 'Representante', 'Estudiante', 'Descripción', 'Tipo', 'Monto Bs', 'Pendiente', 'A Favor', 'Tasa', 'USD', 'Referencia', 'Hecho por', 'Estado'],
+                ['Fecha', 'Representante', 'Estudiante', 'Año', 'Sección', 'Descripción', 'Tipo', 'Monto Bs', 'USD', 'Tasa', 'Referencia', 'Hecho por', 'Estado'],
                 ...tableBody,
               ],
             },
@@ -399,13 +394,13 @@ const PaymentHistory: React.FC = () => {
         { header: 'Fecha', key: 'date', width: 12 },
         { header: 'Representante', key: 'rep', width: 25 },
         { header: 'Estudiante', key: 'student', width: 25 },
+        { header: 'Año', key: 'grade', width: 8 },
+        { header: 'Sección', key: 'section', width: 8 },
         { header: 'Descripción', key: 'description', width: 35 },
         { header: 'Tipo', key: 'type', width: 12 },
         { header: 'Monto Bs', key: 'amount', width: 15 },
-        { header: 'Monto Pendiente', key: 'pending', width: 15 },
-        { header: 'Monto a Favor', key: 'credit', width: 15 },
-        { header: 'Tasa', key: 'rate', width: 12 },
         { header: 'USD', key: 'usd', width: 12 },
+        { header: 'Tasa', key: 'rate', width: 12 },
         { header: 'Referencia', key: 'reference', width: 20 },
         { header: 'Hecho por', key: 'creator', width: 15 },
         { header: 'Estado', key: 'status', width: 14 },
@@ -419,11 +414,6 @@ const PaymentHistory: React.FC = () => {
       allTx.forEach(t => {
         const isFee = t.type === 'fee';
         const isDeposit = t.type === 'deposit';
-        const balanceAfterUSD = t.balanceAfter ?? 0;
-        const pendingUSD = balanceAfterUSD < 0 ? Math.abs(balanceAfterUSD) : 0;
-        const creditUSD = balanceAfterUSD > 0 ? balanceAfterUSD : 0;
-        const pendingBs = usdToBs(pendingUSD);
-        const creditBs = usdToBs(creditUSD);
         const amountBs = t.amount;
         const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
 
@@ -442,13 +432,13 @@ const PaymentHistory: React.FC = () => {
           date: t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '—',
           rep: t.representative?.fullName || '—',
           student: t.student?.fullName || '—',
+          grade: t.student?.currentGrade || '—',
+          section: t.student?.section || '—',
           description: desc,
           type: isDeposit ? 'DEPÓSITO' : t.type.toUpperCase(),
           amount: `${isDeposit ? '+' : '-'}${formatCurrencyLocal(amountBs, 'VES')}`,
-          pending: pendingBs > 0 ? formatCurrencyLocal(pendingBs, 'VES') : '—',
-          credit: creditBs > 0 ? formatCurrencyLocal(creditBs, 'VES') : '—',
-          rate: t.bcvRate ? t.bcvRate.toFixed(4) : '—',
           usd: t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—',
+          rate: t.bcvRate ? t.bcvRate.toFixed(4) : '—',
           reference: t.reference || '—',
           creator: creatorText,
           status: displayStatus,
@@ -541,7 +531,6 @@ const PaymentHistory: React.FC = () => {
           <div className="hidden md:block bg-white rounded-xl px-5 py-2 shadow-sm"><span className="text-sm text-gray-500">Total registros: </span><span className="font-bold text-blue-700">{pagination.totalRecords}</span></div>
         </div>
 
-        {/* Tasa BCV */}
         <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <FaExchangeAlt className="text-blue-600" />
@@ -557,7 +546,6 @@ const PaymentHistory: React.FC = () => {
           )}
         </div>
 
-        {/* Filtros */}
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 mb-8">
           <div className="flex items-center space-x-2 mb-6"><FaFilter className="text-blue-600" /><h2 className="text-lg font-bold text-gray-700">Filtros de búsqueda</h2></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -663,7 +651,6 @@ const PaymentHistory: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabla */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
           {loading ? (
             <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div></div>
@@ -797,7 +784,6 @@ const PaymentHistory: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal de Estado de Cuenta */}
       {showAccountModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-gray-200 flex flex-col">

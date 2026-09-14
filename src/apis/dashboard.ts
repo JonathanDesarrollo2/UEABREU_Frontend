@@ -1,23 +1,21 @@
 import api from "../library/axios";
 
-export interface ChartRepresentative {
+export interface ChartStudent {
   id: string;
   fullName: string;
   identityCard: string;
-  phone?: string;
-  email?: string;
-  studentCount: number;
+  currentGrade: string;
+  section: string;
   balanceUSD: number;
   debtAmountUSD?: number;
   creditAmountUSD?: number;
+  representativeId?: string;
+  representativeName?: string;
+  representativeIdentityCard?: string;
 }
 
 export interface DashboardStats {
-  teachers: {
-    total: number;
-    active: number;
-    inactive: number;
-  };
+  teachers: { total: number; active: number; inactive: number };
   students: {
     total: number;
     active: number;
@@ -37,15 +35,15 @@ export interface DashboardStats {
     paymentPercentage: number;
   };
   financial: {
-    totalDebt: number;       // USD
-    totalCredit: number;     // USD
-    monthlyCollected: number; // USD
+    totalDebt: number;
+    totalCredit: number;
+    monthlyCollected: number;
     pendingTransactions: number;
   };
   chartData: {
-    debtors: ChartRepresentative[];
-    creditors: ChartRepresentative[];
-    zeroBalance: ChartRepresentative[];
+    debtors: ChartStudent[];
+    creditors: ChartStudent[];
+    zeroBalance: ChartStudent[];
   };
   recentTransactions: Array<{
     id: string;
@@ -62,8 +60,10 @@ export interface DashboardStats {
     id: string;
     fullName: string;
     identityCard: string;
+    currentGrade?: string;
+    section?: string;
     debtAmount: number;
-    studentCount: number;
+    representativeName?: string;
   }>;
   topTeachers: Array<{
     id: string;
@@ -92,7 +92,6 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
     ];
 
     const results = await Promise.allSettled(promises);
-
     const teachersRes = results[0];
     const studentsRes = results[1];
     const repsRes = results[2];
@@ -101,33 +100,16 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
     const recentTransactionsRes = results[5];
     const userStatsRes = results[6];
 
-    const teachers = teachersRes.status === 'fulfilled' && teachersRes.value.data?.result
-      ? teachersRes.value.data.content
-      : [];
-
-    const students = studentsRes.status === 'fulfilled' && studentsRes.value.data?.result
-      ? studentsRes.value.data.content
-      : [];
-
+    const teachers = teachersRes.status === 'fulfilled' && teachersRes.value.data?.result ? teachersRes.value.data.content : [];
+    const students = studentsRes.status === 'fulfilled' && studentsRes.value.data?.result ? studentsRes.value.data.content : [];
     const reps = repsRes.status === 'fulfilled' && repsRes.value.data?.result
-      ? (repsRes.value.data.content?.representatives || repsRes.value.data.content || [])
-      : [];
-
-    const financial = financialRes.status === 'fulfilled' && financialRes.value.data?.result
-      ? financialRes.value.data.content
-      : {};
-
+      ? (repsRes.value.data.content?.representatives || repsRes.value.data.content || []) : [];
+    const financial = financialRes.status === 'fulfilled' && financialRes.value.data?.result ? financialRes.value.data.content : {};
     const topDebtors = topDebtorsRes.status === 'fulfilled' && topDebtorsRes.value.data?.result
-      ? (topDebtorsRes.value.data.content?.debtors || [])
-      : [];
-
+      ? (topDebtorsRes.value.data.content?.debtors || []) : [];
     const recentTransactions = recentTransactionsRes.status === 'fulfilled' && recentTransactionsRes.value.data?.result
-      ? recentTransactionsRes.value.data.content
-      : [];
-
-    const userStats = userStatsRes.status === 'fulfilled' && userStatsRes.value.data?.result
-      ? userStatsRes.value.data.content
-      : {};
+      ? recentTransactionsRes.value.data.content : [];
+    const userStats = userStatsRes.status === 'fulfilled' && userStatsRes.value.data?.result ? userStatsRes.value.data.content : {};
 
     const activeTeachers = teachers.filter((t: any) => t.status === true || t.status === 'active').length;
 
@@ -139,27 +121,14 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
       inactivo: students.filter((s: any) => s.status === 'inactivo' || s.status === false).length,
     };
 
-    const repsWithDebt = reps.filter((r: any) => {
-      const balance = r.balanceUSD ?? r.balance ?? 0;
-      return balance < 0;
-    }).length;
-    const repsWithCredit = reps.filter((r: any) => {
-      const balance = r.balanceUSD ?? r.balance ?? 0;
-      return balance > 0;
-    }).length;
-    const repsZero = reps.filter((r: any) => {
-      const balance = r.balanceUSD ?? r.balance ?? 0;
-      return balance === 0;
-    }).length;
-    const paymentPercentage = reps.length > 0
-      ? Math.round(((reps.length - repsWithDebt) / reps.length) * 100)
-      : 0;
+    const repsWithDebt = reps.filter((r: any) => (r.balanceUSD ?? r.balance ?? 0) < 0).length;
+    const repsWithCredit = reps.filter((r: any) => (r.balanceUSD ?? r.balance ?? 0) > 0).length;
+    const repsZero = reps.filter((r: any) => (r.balanceUSD ?? r.balance ?? 0) === 0).length;
+    const paymentPercentage = reps.length > 0 ? Math.round(((reps.length - repsWithDebt) / reps.length) * 100) : 0;
 
     const totalDebtUSD = financial.general?.totalDebtUSD ?? financial.totalDebtUSD ?? 0;
     const totalCreditUSD = financial.general?.totalCreditUSD ?? financial.totalCreditUSD ?? 0;
-    const totalDepositsUSD = financial.monthlyTransactions?.totalDepositsUSD
-      ?? financial.totalDepositsUSD
-      ?? 0;
+    const totalDepositsUSD = financial.monthlyTransactions?.totalDepositsUSD ?? financial.totalDepositsUSD ?? 0;
     const monthlyCollectedUSD = totalDepositsUSD;
     const pendingTransactions = financial.monthlyTransactions?.transactionCount ?? 0;
 
@@ -179,8 +148,10 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
       id: d.id || '',
       fullName: d.fullName || 'N/A',
       identityCard: d.identityCard || 'N/A',
+      currentGrade: d.currentGrade || 'Sin grado',
+      section: d.section || '-',
       debtAmount: d.debtAmount || Math.abs(d.balanceUSD || d.balance || 0),
-      studentCount: d.studentCount || 0,
+      representativeName: d.representativeName || '—',
     }));
 
     const userStatsData = {
@@ -196,7 +167,7 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
       zeroBalance: financial.chartData?.zeroBalance || [],
     };
 
-    const result: DashboardStats = {
+    return {
       teachers: {
         total: teachers.length,
         active: activeTeachers,
@@ -236,18 +207,11 @@ export async function getDashboardStatsAPI(): Promise<DashboardStats> {
         totalAssignments: 0
       }
     };
-
-    return result;
-
   } catch (error: any) {
     console.error('❌ Error cargando dashboard stats:', error);
     return {
       teachers: { total: 0, active: 0, inactive: 0 },
-      students: {
-        total: 0,
-        active: 0,
-        byStatus: { regular: 0, pendiente: 0, repitiente: 0, condicionado: 0, inactivo: 0 }
-      },
+      students: { total: 0, active: 0, byStatus: { regular: 0, pendiente: 0, repitiente: 0, condicionado: 0, inactivo: 0 } },
       representatives: { total: 0, withDebt: 0, withCredit: 0, zeroBalance: 0, paymentPercentage: 0 },
       financial: { totalDebt: 0, totalCredit: 0, monthlyCollected: 0, pendingTransactions: 0 },
       chartData: { debtors: [], creditors: [], zeroBalance: [] },
@@ -263,24 +227,24 @@ export async function getDashboardSectionData(section: string) {
   try {
     switch (section) {
       case 'financial': {
-        const financialRes = await api.get('/private/balance/statistics/financial');
-        return { result: true, content: financialRes.data?.content || {}, error: [] };
+        const r = await api.get('/private/balance/statistics/financial');
+        return { result: true, content: r.data?.content || {}, error: [] };
       }
       case 'teachers': {
-        const teachersRes = await api.get('/private/academic/teacher/list', { params: { limit: 100 } });
-        return { result: true, content: teachersRes.data?.content || [], error: [] };
+        const r = await api.get('/private/academic/teacher/list', { params: { limit: 100 } });
+        return { result: true, content: r.data?.content || [], error: [] };
       }
       case 'students': {
-        const studentsRes = await api.get('/private/user/students/list', { params: { limit: 100 } });
-        return { result: true, content: studentsRes.data?.content || [], error: [] };
+        const r = await api.get('/private/user/students/list', { params: { limit: 100 } });
+        return { result: true, content: r.data?.content || [], error: [] };
       }
       case 'transactions': {
-        const transactionsRes = await api.get('/private/balance/transactions/recent', { params: { limit: 20 } });
-        return { result: true, content: transactionsRes.data?.content || [], error: [] };
+        const r = await api.get('/private/balance/transactions/recent', { params: { limit: 20 } });
+        return { result: true, content: r.data?.content || [], error: [] };
       }
       case 'debtors': {
-        const debtorsRes = await api.get('/private/balance/representatives/top-debtors', { params: { limit: 10 } });
-        return { result: true, content: debtorsRes.data?.content?.debtors || [], error: [] };
+        const r = await api.get('/private/balance/representatives/top-debtors', { params: { limit: 10 } });
+        return { result: true, content: r.data?.content?.debtors || [], error: [] };
       }
       default:
         throw new Error('Sección no válida');
@@ -290,7 +254,6 @@ export async function getDashboardSectionData(section: string) {
   }
 }
 
-// 🔹 NUEVO: transacciones filtradas por rol del creador
 export async function getTransactionsByRoleAPI(params: {
   createdByRole?: '' | 'admin' | 'representative' | 'system';
   limit?: number;

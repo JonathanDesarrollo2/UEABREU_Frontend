@@ -2,32 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  FaUsers,
-  FaUserGraduate,
-  FaChalkboardTeacher,
-  FaMoneyCheck,
-  FaChartLine,
-  FaSchool,
-  FaExclamationTriangle,
-  FaSync,
-  FaArrowUp,
-  FaArrowDown,
-  FaPercentage,
-  FaDollarSign,
-  FaUserCheck,
-  FaClock,
-  FaBalanceScale,
-  FaExchangeAlt,
-  FaUserShield,
-  FaUserTie,
-  FaCog,
-  FaChartPie,
+  FaUsers, FaUserGraduate, FaChalkboardTeacher, FaMoneyCheck, FaChartLine,
+  FaSchool, FaExclamationTriangle, FaSync, FaArrowUp, FaArrowDown,
+  FaPercentage, FaDollarSign, FaUserCheck, FaClock, FaBalanceScale,
+  FaExchangeAlt, FaUserShield, FaUserTie, FaCog, FaChartPie,
 } from 'react-icons/fa';
 import {
-  getDashboardStatsAPI,
-  getTransactionsByRoleAPI,
-  type DashboardStats,
-  type ChartRepresentative,
+  getDashboardStatsAPI, getTransactionsByRoleAPI,
+  type DashboardStats, type ChartStudent,
 } from '../apis/dashboard';
 import { getBCVRateAPI, type BCVRateResponse } from '../apis/bank';
 import { toast } from 'react-toastify';
@@ -40,11 +22,8 @@ interface SessionContext {
 }
 
 const typeLabels: Record<string, string> = {
-  deposit: 'Depósito',
-  withdrawal: 'Retiro',
-  payment: 'Pago',
-  fee: 'Cargo',
-  adjustment: 'Ajuste',
+  deposit: 'Depósito', withdrawal: 'Retiro', payment: 'Pago',
+  fee: 'Cargo', adjustment: 'Ajuste',
 };
 
 const getTypeLabel = (type: string) => typeLabels[type] || type;
@@ -58,21 +37,10 @@ const getTypeColor = (type: string) => {
   }
 };
 
-// ────────────────────────────────────────────────────────────────
-// Componente de gráfica doughnut SVG
-// ────────────────────────────────────────────────────────────────
-const DoughnutChart: React.FC<{
-  debtors: number;
-  creditors: number;
-  zero: number;
-}> = ({ debtors, creditors, zero }) => {
+const DoughnutChart: React.FC<{ debtors: number; creditors: number; zero: number }> = ({ debtors, creditors, zero }) => {
   const total = debtors + creditors + zero;
   if (total === 0) {
-    return (
-      <div className="flex items-center justify-center py-10 text-gray-400 text-sm">
-        Sin datos para mostrar
-      </div>
-    );
+    return <div className="flex items-center justify-center py-10 text-gray-400 text-sm">Sin datos para mostrar</div>;
   }
 
   const r = 60;
@@ -101,13 +69,7 @@ const DoughnutChart: React.FC<{
             if (seg.value === 0) return null;
             return (
               <circle
-                key={i}
-                cx={cx}
-                cy={cy}
-                r={r}
-                fill="none"
-                stroke={seg.color}
-                strokeWidth={20}
+                key={i} cx={cx} cy={cy} r={r} fill="none" stroke={seg.color} strokeWidth={20}
                 strokeDasharray={`${dash} ${circumference - dash}`}
                 strokeDashoffset={-currentOffset}
                 transform={`rotate(-90 ${cx} ${cy})`}
@@ -117,7 +79,7 @@ const DoughnutChart: React.FC<{
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-2xl font-bold text-gray-800">{total}</span>
-          <span className="text-xs text-gray-500">Representantes</span>
+          <span className="text-xs text-gray-500">Estudiantes</span>
         </div>
       </div>
       <div className="space-y-2">
@@ -144,10 +106,8 @@ export default function AdminDashboard() {
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const [loadingRate, setLoadingRate] = useState(true);
 
-  // Filtro de representantes por estado
-  const [repFilter, setRepFilter] = useState<'all' | 'debtors' | 'creditors' | 'zero'>('all');
+  const [studentFilter, setStudentFilter] = useState<'all' | 'debtors' | 'creditors' | 'zero'>('all');
 
-  // Filtro de transacciones por rol
   const [transactionRole, setTransactionRole] = useState<'' | 'admin' | 'representative' | 'system'>('');
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
   const [loadingFilteredTx, setLoadingFilteredTx] = useState(false);
@@ -157,9 +117,7 @@ export default function AdminDashboard() {
       try {
         setLoadingRate(true);
         const response = await getBCVRateAPI();
-        if (response.result && response.content) {
-          setBcvRate(response.content);
-        }
+        if (response.result && response.content) setBcvRate(response.content);
       } catch (err: any) {
         setBcvRate({
           PriceRateBCV: 36.6642,
@@ -180,49 +138,17 @@ export default function AdminDashboard() {
         setStats(data);
         setLastUpdated(new Date().toLocaleTimeString());
         setRetryCount(0);
-        if (data.teachers.total > 0 || data.students.total > 0 || data.representatives.total > 0) {
-          toast.success('Dashboard actualizado correctamente', { position: "top-right", autoClose: 3000 });
-        } else {
-          toast.info('Dashboard cargado, pero no hay datos disponibles aún', { position: "top-right", autoClose: 3000 });
-        }
       } else {
         if (retryCount >= 2) {
-          toast.warning('No se pudieron cargar los datos del dashboard. Verifica la conexión.', { position: "top-right", autoClose: 5000 });
+          toast.warning('No se pudieron cargar los datos del dashboard.', { position: "top-right", autoClose: 5000 });
         }
         setRetryCount(prev => prev + 1);
-        if (!stats) {
-          setStats({
-            teachers: { total: 0, active: 0, inactive: 0 },
-            students: { total: 0, active: 0, byStatus: { regular: 0, pendiente: 0, repitiente: 0, condicionado: 0, inactivo: 0 } },
-            representatives: { total: 0, withDebt: 0, withCredit: 0, zeroBalance: 0, paymentPercentage: 0 },
-            financial: { totalDebt: 0, totalCredit: 0, monthlyCollected: 0, pendingTransactions: 0 },
-            chartData: { debtors: [], creditors: [], zeroBalance: [] },
-            recentTransactions: [],
-            topDebtors: [],
-            topTeachers: [],
-            summary: { totalUsers: 0, totalSchedules: 0, totalSubjects: 0, totalAssignments: 0 }
-          });
-        }
       }
     } catch (error) {
-      console.error('❌ Error en loadDashboardData:', error);
       if (retryCount >= 2) {
         toast.error('Error crítico al cargar el dashboard', { position: "top-right", autoClose: 5000 });
       }
       setRetryCount(prev => prev + 1);
-      if (!stats) {
-        setStats({
-          teachers: { total: 0, active: 0, inactive: 0 },
-          students: { total: 0, active: 0, byStatus: { regular: 0, pendiente: 0, repitiente: 0, condicionado: 0, inactivo: 0 } },
-          representatives: { total: 0, withDebt: 0, withCredit: 0, zeroBalance: 0, paymentPercentage: 0 },
-          financial: { totalDebt: 0, totalCredit: 0, monthlyCollected: 0, pendingTransactions: 0 },
-          chartData: { debtors: [], creditors: [], zeroBalance: [] },
-          recentTransactions: [],
-          topDebtors: [],
-          topTeachers: [],
-          summary: { totalUsers: 0, totalSchedules: 0, totalSubjects: 0, totalAssignments: 0 }
-        });
-      }
     } finally {
       setLoading(false);
     }
@@ -234,18 +160,13 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Cargar transacciones filtradas por rol
   const fetchFilteredTransactions = useCallback(async (role: '' | 'admin' | 'representative' | 'system') => {
     setLoadingFilteredTx(true);
     try {
       const res = await getTransactionsByRoleAPI({ createdByRole: role, limit: 20, page: 1 });
-      if (res.result) {
-        setFilteredTransactions(res.content.transactions || []);
-      } else {
-        setFilteredTransactions([]);
-      }
+      if (res.result) setFilteredTransactions(res.content.transactions || []);
+      else setFilteredTransactions([]);
     } catch (err) {
-      console.error('Error al cargar transacciones filtradas:', err);
       setFilteredTransactions([]);
     } finally {
       setLoadingFilteredTx(false);
@@ -271,9 +192,7 @@ export default function AdminDashboard() {
     return formatter.format(amount);
   };
 
-  const calculatePercentage = (value: number, total: number) => {
-    return total > 0 ? Math.round((value / total) * 100) : 0;
-  };
+  const calculatePercentage = (value: number, total: number) => total > 0 ? Math.round((value / total) * 100) : 0;
 
   if (loading && !stats) {
     return (
@@ -281,9 +200,6 @@ export default function AdminDashboard() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
           <p className="mt-4 text-gray-600 text-lg font-medium">Cargando dashboard...</p>
-          <p className="text-gray-400 text-sm mt-2">
-            {retryCount > 0 ? `Reintento ${retryCount}...` : 'Obteniendo datos en tiempo real'}
-          </p>
           <button onClick={loadDashboardData} className="mt-4 text-sm text-blue-600 hover:text-blue-800 flex items-center justify-center mx-auto">
             <FaSync className="mr-2" /> Reintentar ahora
           </button>
@@ -292,30 +208,7 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!stats) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-2xl mx-auto mt-10">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <FaExclamationTriangle className="h-12 w-12 text-red-400" />
-            </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-medium text-red-800">Error al cargar el dashboard</h3>
-              <div className="mt-2 text-sm text-red-700">
-                <p>No se pudieron obtener los datos del sistema.</p>
-              </div>
-              <div className="mt-4">
-                <button onClick={loadDashboardData} className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700">
-                  <FaSync className="mr-2" /> Reintentar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (!stats) return null;
 
   const totalDebtBs = usdToBs(stats.financial.totalDebt);
   const totalCreditBs = usdToBs(stats.financial.totalCredit);
@@ -372,18 +265,16 @@ export default function AdminDashboard() {
     { status: 'Inactivo', count: stats.students.byStatus.inactivo, color: 'bg-gray-100 text-gray-800' }
   ];
 
-  // Filtro de representantes según estado
-  const filteredRepresentatives: ChartRepresentative[] = (() => {
+  const filteredStudents: ChartStudent[] = (() => {
     const { debtors, creditors, zeroBalance } = stats.chartData;
-    if (repFilter === 'debtors') return debtors;
-    if (repFilter === 'creditors') return creditors;
-    if (repFilter === 'zero') return zeroBalance;
+    if (studentFilter === 'debtors') return debtors;
+    if (studentFilter === 'creditors') return creditors;
+    if (studentFilter === 'zero') return zeroBalance;
     return [...debtors, ...creditors, ...zeroBalance];
   })();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-6">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -394,10 +285,7 @@ export default function AdminDashboard() {
             <h1 className="text-2xl md:text-3xl font-bold mb-2">Dashboard Administrativo</h1>
             <p className="text-indigo-200">Sistema de Gestión Escolar - {sessionContext.sesionUser || 'Administrador'}</p>
             <div className="flex items-center mt-2 space-x-4 text-sm">
-              <span className="flex items-center">
-                <FaClock className="mr-2" />
-                Última actualización: {lastUpdated || 'No disponible'}
-              </span>
+              <span className="flex items-center"><FaClock className="mr-2" /> Última actualización: {lastUpdated || 'No disponible'}</span>
               <button onClick={loadDashboardData} disabled={loading} className="flex items-center bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition-colors disabled:opacity-50">
                 <FaSync className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
                 {loading ? 'Actualizando...' : 'Actualizar'}
@@ -417,7 +305,6 @@ export default function AdminDashboard() {
         </div>
       </motion.div>
 
-      {/* Tasa BCV */}
       <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <FaExchangeAlt className="text-blue-600" />
@@ -433,12 +320,9 @@ export default function AdminDashboard() {
             <span className="text-lg font-bold text-blue-800">{bcvRate.PriceRateBCV.toFixed(2)} Bs/USD</span>
             <span className="text-xs text-blue-600 ml-2">{bcvRate.dtRate}</span>
           </div>
-        ) : (
-          <span className="text-red-600 text-sm">No disponible</span>
-        )}
+        ) : <span className="text-red-600 text-sm">No disponible</span>}
       </div>
 
-      {/* Tabs */}
       <div className="mb-8">
         <div className="flex space-x-1 bg-white rounded-xl p-1 shadow-sm">
           <button onClick={() => setActiveTab('overview')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${activeTab === 'overview' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
@@ -453,7 +337,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ─── TAB OVERVIEW ─────────────────────────────── */}
       {activeTab === 'overview' && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -466,9 +349,7 @@ export default function AdminDashboard() {
                 className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300"
               >
                 <div className="flex items-center justify-between mb-6">
-                  <div className={`p-3 rounded-xl ${stat.color} text-white shadow-md`}>
-                    <stat.icon size={24} />
-                  </div>
+                  <div className={`p-3 rounded-xl ${stat.color} text-white shadow-md`}><stat.icon size={24} /></div>
                   <div className="text-right">
                     <span className={`text-sm font-medium flex items-center ${stat.trend === 'up' ? 'text-green-600' : stat.trend === 'down' ? 'text-red-600' : 'text-gray-600'}`}>
                       {stat.trend === 'up' ? <FaArrowUp className="mr-1" /> : stat.trend === 'down' ? <FaArrowDown className="mr-1" /> : null}
@@ -481,8 +362,7 @@ export default function AdminDashboard() {
                 <p className="text-gray-600 text-sm mt-1">{stat.description}</p>
                 <div className="mt-4">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Progreso</span>
-                    <span>{stat.percentage}%</span>
+                    <span>Progreso</span><span>{stat.percentage}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div className={`h-2 rounded-full transition-all duration-500 ${stat.trend === 'up' ? 'bg-green-500' : stat.trend === 'down' ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(stat.percentage, 100)}%` }}></div>
@@ -492,44 +372,30 @@ export default function AdminDashboard() {
             ))}
           </div>
 
-          {/* Gráfica de representantes (nueva) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
-            >
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
               <div className="flex items-center mb-6">
-                <div className="p-3 rounded-xl bg-gradient-to-r from-purple-100 to-pink-100 text-purple-600 mr-4">
-                  <FaChartPie size={24} />
-                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-r from-purple-100 to-pink-100 text-purple-600 mr-4"><FaChartPie size={24} /></div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Distribución de Representantes</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Distribución de Estudiantes</h3>
                   <p className="text-gray-600 text-sm">Estado de pago general</p>
                 </div>
               </div>
               <DoughnutChart
-                debtors={stats.representatives.withDebt}
-                creditors={stats.representatives.withCredit}
-                zero={stats.representatives.zeroBalance}
+                debtors={stats.chartData.debtors.length}
+                creditors={stats.chartData.creditors.length}
+                zero={stats.chartData.zeroBalance.length}
               />
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
-            >
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
               <div className="flex items-center mb-6">
-                <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-600 mr-4">
-                  <FaUserGraduate size={24} />
-                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-600 mr-4"><FaUserGraduate size={24} /></div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Estado de Estudiantes</h3>
                   <p className="text-gray-600 text-sm">Distribución por estado académico</p>
                 </div>
               </div>
-
               <div className="space-y-4">
                 {studentStatusData.map((status) => (
                   <div key={status.status} className="flex items-center justify-between">
@@ -544,173 +410,101 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
-
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex justify-between items-center">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{stats.students.active}</div>
-                    <div className="text-xs text-gray-500">Activos</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{stats.students.total - stats.students.active}</div>
-                    <div className="text-xs text-gray-500">No activos</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{stats.students.total}</div>
-                    <div className="text-xs text-gray-500">Total</div>
-                  </div>
+                  <div className="text-center"><div className="text-2xl font-bold text-gray-900">{stats.students.active}</div><div className="text-xs text-gray-500">Activos</div></div>
+                  <div className="text-center"><div className="text-2xl font-bold text-gray-900">{stats.students.total - stats.students.active}</div><div className="text-xs text-gray-500">No activos</div></div>
+                  <div className="text-center"><div className="text-2xl font-bold text-gray-900">{stats.students.total}</div><div className="text-xs text-gray-500">Total</div></div>
                 </div>
               </div>
             </motion.div>
           </div>
 
-          {/* Balance financiero */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 lg:col-span-2"
-            >
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 lg:col-span-2">
               <div className="flex items-center mb-6">
-                <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-600 mr-4">
-                  <FaBalanceScale size={24} />
-                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-600 mr-4"><FaBalanceScale size={24} /></div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Balance Financiero</h3>
                   <p className="text-gray-600 text-sm">Resumen de ingresos y deudas</p>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-green-700">Recaudado (Bs)</span>
-                    <FaArrowUp className="text-green-600" />
-                  </div>
+                  <div className="flex items-center justify-between"><span className="text-sm font-medium text-green-700">Recaudado (Bs)</span><FaArrowUp className="text-green-600" /></div>
                   <p className="text-2xl font-bold text-green-800 mt-2">{formatCurrency(monthlyCollectedBs, 'VES')}</p>
                   <p className="text-sm text-green-600 mt-1">Este mes</p>
-                  {bcvRate && (
-                    <p className="text-sm text-green-700 mt-1 font-bold">≈ {formatCurrency(stats.financial.monthlyCollected, 'USD')}</p>
-                  )}
+                  {bcvRate && <p className="text-sm text-green-700 mt-1 font-bold">≈ {formatCurrency(stats.financial.monthlyCollected, 'USD')}</p>}
                 </div>
-
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-red-700">Por Cobrar (Bs)</span>
-                    <FaArrowDown className="text-red-600" />
-                  </div>
+                  <div className="flex items-center justify-between"><span className="text-sm font-medium text-red-700">Por Cobrar (Bs)</span><FaArrowDown className="text-red-600" /></div>
                   <p className="text-2xl font-bold text-red-800 mt-2">{formatCurrency(totalDebtBs, 'VES')}</p>
                   <p className="text-sm text-red-600 mt-1">Deuda total</p>
-                  {bcvRate && (
-                    <p className="text-sm text-red-700 mt-1 font-bold">≈ {formatCurrency(stats.financial.totalDebt, 'USD')}</p>
-                  )}
+                  {bcvRate && <p className="text-sm text-red-700 mt-1 font-bold">≈ {formatCurrency(stats.financial.totalDebt, 'USD')}</p>}
                 </div>
-
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-blue-700">Saldo a Favor (Bs)</span>
-                    <FaArrowUp className="text-blue-600" />
-                  </div>
+                  <div className="flex items-center justify-between"><span className="text-sm font-medium text-blue-700">Saldo a Favor (Bs)</span><FaArrowUp className="text-blue-600" /></div>
                   <p className="text-2xl font-bold text-blue-800 mt-2">{formatCurrency(totalCreditBs, 'VES')}</p>
                   <p className="text-sm text-blue-600 mt-1">Crédito disponible</p>
-                  {bcvRate && (
-                    <p className="text-sm text-blue-700 mt-1 font-bold">≈ {formatCurrency(stats.financial.totalCredit, 'USD')}</p>
-                  )}
+                  {bcvRate && <p className="text-sm text-blue-700 mt-1 font-bold">≈ {formatCurrency(stats.financial.totalCredit, 'USD')}</p>}
                 </div>
-
                 <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-purple-700">Pendientes</span>
-                    <FaExclamationTriangle className="text-purple-600" />
-                  </div>
+                  <div className="flex items-center justify-between"><span className="text-sm font-medium text-purple-700">Pendientes</span><FaExclamationTriangle className="text-purple-600" /></div>
                   <p className="text-2xl font-bold text-purple-800 mt-2">{stats.financial.pendingTransactions}</p>
                   <p className="text-sm text-purple-600 mt-1">Transacciones pendientes</p>
                 </div>
               </div>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
-            >
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
               <div className="flex items-center mb-6">
-                <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-600 mr-4">
-                  <FaUsers size={24} />
-                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-600 mr-4"><FaUsers size={24} /></div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Estado de Representantes</h3>
                   <p className="text-gray-600 text-sm">Distribución por estado de pago</p>
                 </div>
               </div>
-
               <div className="space-y-4">
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
                   <div className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
-                      <span className="font-medium text-green-800">Al día</span>
-                    </div>
+                    <div className="flex items-center"><div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div><span className="font-medium text-green-800">Al día</span></div>
                     <span className="text-2xl font-bold text-green-900">{stats.representatives.total - stats.representatives.withDebt}</span>
                   </div>
                 </div>
-
                 <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-4">
                   <div className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-red-500 mr-3"></div>
-                      <span className="font-medium text-red-800">Con deuda</span>
-                    </div>
+                    <div className="flex items-center"><div className="w-3 h-3 rounded-full bg-red-500 mr-3"></div><span className="font-medium text-red-800">Con deuda</span></div>
                     <span className="text-2xl font-bold text-red-900">{stats.representatives.withDebt}</span>
                   </div>
                 </div>
-
                 <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4">
                   <div className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-blue-500 mr-3"></div>
-                      <span className="font-medium text-blue-800">Con saldo a favor</span>
-                    </div>
+                    <div className="flex items-center"><div className="w-3 h-3 rounded-full bg-blue-500 mr-3"></div><span className="font-medium text-blue-800">Con saldo a favor</span></div>
                     <span className="text-2xl font-bold text-blue-900">{stats.representatives.withCredit}</span>
                   </div>
                 </div>
               </div>
-
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="grid grid-cols-2 gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-bold text-green-600">{stats.representatives.paymentPercentage}%</div>
-                    <div className="text-xs text-gray-500">Tasa de pago</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-red-600">{calculatePercentage(stats.representatives.withDebt, stats.representatives.total)}%</div>
-                    <div className="text-xs text-gray-500">En mora</div>
-                  </div>
+                  <div><div className="text-2xl font-bold text-green-600">{stats.representatives.paymentPercentage}%</div><div className="text-xs text-gray-500">Tasa de pago</div></div>
+                  <div><div className="text-2xl font-bold text-red-600">{calculatePercentage(stats.representatives.withDebt, stats.representatives.total)}%</div><div className="text-xs text-gray-500">En mora</div></div>
                 </div>
               </div>
             </motion.div>
           </div>
 
-          {/* Top deudores */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
-                  <div className="p-3 rounded-xl bg-gradient-to-r from-red-100 to-orange-100 text-red-600 mr-4">
-                    <FaExclamationTriangle size={24} />
-                  </div>
+                  <div className="p-3 rounded-xl bg-gradient-to-r from-red-100 to-orange-100 text-red-600 mr-4"><FaExclamationTriangle size={24} /></div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">Top Deudores</h3>
-                    <p className="text-gray-600 text-sm">Representantes con mayor deuda</p>
+                    <p className="text-gray-600 text-sm">Estudiantes con mayor deuda</p>
                   </div>
                 </div>
-                <span className="text-sm font-medium text-gray-500">Total: {stats.representatives.withDebt}</span>
+                <span className="text-sm font-medium text-gray-500">Total: {stats.chartData.debtors.length}</span>
               </div>
-
               {stats.topDebtors.length === 0 ? (
                 <div className="text-center py-8">
                   <FaUserCheck className="text-green-400 text-4xl mx-auto mb-3" />
@@ -727,13 +521,14 @@ export default function AdminDashboard() {
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-red-100 text-red-600 font-bold mr-3">{index + 1}</div>
                           <div>
                             <p className="font-medium text-gray-900">{debtor.fullName}</p>
-                            <p className="text-sm text-gray-500">{debtor.identityCard}</p>
+                            <p className="text-sm text-gray-500">
+                              {debtor.currentGrade || 'Sin grado'} {debtor.section ? `• ${debtor.section}` : ''} • {debtor.representativeName || '—'}
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-red-600">{formatCurrency(debtBs, 'VES')}</p>
                           {bcvRate && <p className="text-sm text-red-700 font-bold">≈ {formatCurrency(debtor.debtAmount, 'USD')}</p>}
-                          <p className="text-sm text-gray-500">{debtor.studentCount} estudiante(s)</p>
                         </div>
                       </div>
                     );
@@ -742,26 +537,18 @@ export default function AdminDashboard() {
               )}
             </motion.div>
 
-            {/* Placeholder para balance visual, si quieres algo extra */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
               <div className="flex items-center mb-6">
-                <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-600 mr-4">
-                  <FaUserCheck size={24} />
-                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-600 mr-4"><FaUserCheck size={24} /></div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Al día / Con crédito</h3>
-                  <p className="text-gray-600 text-sm">Representantes solventes</p>
+                  <p className="text-gray-600 text-sm">Estudiantes solventes</p>
                 </div>
               </div>
-
               {stats.chartData.creditors.length === 0 ? (
                 <div className="text-center py-8">
                   <FaExclamationTriangle className="text-amber-400 text-4xl mx-auto mb-3" />
-                  <p className="text-gray-600">Ningún representante con saldo a favor</p>
+                  <p className="text-gray-600">Ningún estudiante con saldo a favor</p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[400px] overflow-y-auto">
@@ -771,7 +558,9 @@ export default function AdminDashboard() {
                       <div key={cred.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
                         <div>
                           <p className="font-medium text-gray-900">{cred.fullName}</p>
-                          <p className="text-sm text-gray-500">{cred.identityCard}</p>
+                          <p className="text-sm text-gray-500">
+                            {cred.currentGrade || 'Sin grado'} {cred.section ? `• ${cred.section}` : ''} • {cred.representativeName || '—'}
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-green-600">{formatCurrency(creditBs, 'VES')}</p>
@@ -787,10 +576,8 @@ export default function AdminDashboard() {
         </>
       )}
 
-      {/* ─── TAB FINANCIERO ─────────────────────────────── */}
       {activeTab === 'financial' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-          {/* Cards resumen */}
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Panel Financiero Detallado</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -820,15 +607,12 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Filtro de representantes */}
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <div className="flex items-center">
-                <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-600 mr-4">
-                  <FaUsers size={24} />
-                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-600 mr-4"><FaUserGraduate size={24} /></div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Listado de Representantes</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Listado de Estudiantes</h3>
                   <p className="text-gray-600 text-sm">Filtra por estado de pago</p>
                 </div>
               </div>
@@ -841,12 +625,8 @@ export default function AdminDashboard() {
                 ].map(btn => (
                   <button
                     key={btn.key}
-                    onClick={() => setRepFilter(btn.key as any)}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                      repFilter === btn.key
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : btn.color
-                    }`}
+                    onClick={() => setStudentFilter(btn.key as any)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${studentFilter === btn.key ? 'bg-indigo-600 text-white shadow-md' : btn.color}`}
                   >
                     {btn.label}
                   </button>
@@ -854,38 +634,36 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {filteredRepresentatives.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No hay representantes para este filtro.
-              </div>
+            {filteredStudents.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No hay estudiantes para este filtro.</div>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-gray-200">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estudiante</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grado</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sección</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Representante</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cédula</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estudiantes</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Saldo (Bs)</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Saldo (USD)</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredRepresentatives.map(rep => {
-                      const balance = rep.balanceUSD || 0;
+                    {filteredStudents.map(s => {
+                      const balance = s.balanceUSD || 0;
                       const stateLabel = balance < 0 ? 'Deudor' : balance > 0 ? 'Al día' : 'Sin saldo';
                       const stateColor = balance < 0 ? 'bg-red-100 text-red-800' : balance > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
                       return (
-                        <tr key={rep.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{rep.fullName}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{rep.identityCard}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{rep.studentCount}</td>
+                        <tr key={s.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.fullName}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{s.currentGrade || 'Sin grado'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{s.section || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{s.representativeName || '—'}</td>
                           <td className="px-4 py-3 text-sm font-bold text-gray-800">{formatCurrency(usdToBs(balance), 'VES')}</td>
                           <td className="px-4 py-3 text-sm font-extrabold text-green-600">{formatCurrency(balance, 'USD')}</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${stateColor}`}>{stateLabel}</span>
-                          </td>
+                          <td className="px-4 py-3"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${stateColor}`}>{stateLabel}</span></td>
                         </tr>
                       );
                     })}
@@ -895,13 +673,10 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {/* Filtro de transacciones por rol */}
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <div className="flex items-center">
-                <div className="p-3 rounded-xl bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-600 mr-4">
-                  <FaMoneyCheck size={24} />
-                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-600 mr-4"><FaMoneyCheck size={24} /></div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Transacciones por responsable</h3>
                   <p className="text-gray-600 text-sm">Pagos realizados por administradores o representantes</p>
@@ -917,23 +692,16 @@ export default function AdminDashboard() {
                   <button
                     key={btn.key}
                     onClick={() => setTransactionRole(btn.key as any)}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                      transactionRole === btn.key
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${transactionRole === btn.key ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                   >
-                    {btn.icon}
-                    {btn.label}
+                    {btn.icon}{btn.label}
                   </button>
                 ))}
               </div>
             </div>
 
             {loadingFilteredTx ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
-              </div>
+              <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div></div>
             ) : filteredTransactions.length === 0 ? (
               <div className="text-center py-8 bg-gray-50 rounded-lg">
                 <FaMoneyCheck className="text-gray-400 text-4xl mx-auto mb-3" />
@@ -963,9 +731,7 @@ export default function AdminDashboard() {
                       return (
                         <tr key={tx.id} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('es-VE') : '—'}</td>
-                          <td className={`px-4 py-3 text-sm font-semibold ${roleColor} inline-flex items-center gap-1`}>
-                            <RoleIcon className="text-xs" /> {roleLabel}
-                          </td>
+                          <td className={`px-4 py-3 text-sm font-semibold ${roleColor} inline-flex items-center gap-1`}><RoleIcon className="text-xs" /> {roleLabel}</td>
                           <td className="px-4 py-3 text-sm text-gray-900">{tx.representative?.fullName || '—'}</td>
                           <td className="px-4 py-3 text-sm text-gray-700">{tx.student?.fullName || '—'}</td>
                           <td className="px-4 py-3 text-sm text-gray-700 max-w-[250px] truncate">
@@ -979,69 +745,8 @@ export default function AdminDashboard() {
                           <td className={`px-4 py-3 text-sm font-bold ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
                             {tx.type === 'deposit' ? '+' : '-'}{formatCurrency(tx.amount || 0, 'VES')}
                           </td>
-                          <td className="px-4 py-3 text-base font-extrabold text-green-600">
-                            {tx.amountUSD !== undefined ? formatCurrency(tx.amountUSD, 'USD') : '—'}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(tx.type)}`}>
-                              {getTypeLabel(tx.type)}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* Transacciones recientes (las de stats) */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Últimas transacciones registradas</h3>
-            {stats.recentTransactions.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 rounded-lg">
-                <FaMoneyCheck className="text-gray-400 text-4xl mx-auto mb-3" />
-                <p className="text-gray-600">No hay transacciones recientes</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto rounded-lg border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Representante</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto (Bs)</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tasa</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">USD</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {stats.recentTransactions.map((tx: any) => {
-                      const usdAmount = tx.amountUSD !== undefined ? tx.amountUSD : (tx.amount / (bcvRate?.PriceRateBCV || 1));
-                      const bcvRateTx = tx.bcvRate !== undefined ? tx.bcvRate : (bcvRate?.PriceRateBCV || 0);
-                      const amountBs = tx.amount;
-                      return (
-                        <tr key={tx.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{tx.date || 'N/A'}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900">{tx.representativeName}</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">{tx.description || getTypeLabel(tx.type)}</td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(tx.type)}`}>
-                              {getTypeLabel(tx.type)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{formatCurrency(amountBs, 'VES')}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{bcvRateTx.toFixed(4)}</td>
-                          <td className="px-4 py-3 text-base font-extrabold text-green-600">{formatCurrency(usdAmount, 'USD')}</td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${tx.status === 'completed' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                              {tx.status === 'completed' ? 'Completado' : tx.status}
-                            </span>
-                          </td>
+                          <td className="px-4 py-3 text-sm font-bold text-green-600">{tx.amountUSD !== undefined ? formatCurrency(tx.amountUSD, 'USD') : '—'}</td>
+                          <td className="px-4 py-3"><span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(tx.type)}`}>{getTypeLabel(tx.type)}</span></td>
                         </tr>
                       );
                     })}
@@ -1053,7 +758,6 @@ export default function AdminDashboard() {
         </motion.div>
       )}
 
-      {/* ─── TAB ACADÉMICO ─────────────────────────────── */}
       {activeTab === 'academic' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Panel Académico</h2>
@@ -1061,71 +765,35 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-6">
                 <div className="flex items-center mb-4">
-                  <div className="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
-                    <FaChalkboardTeacher size={20} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-blue-700">Docentes</p>
-                    <p className="text-2xl font-bold text-blue-800 mt-1">{stats.teachers.total}</p>
-                  </div>
+                  <div className="p-3 rounded-full bg-blue-100 text-blue-600 mr-4"><FaChalkboardTeacher size={20} /></div>
+                  <div><p className="text-sm font-medium text-blue-700">Docentes</p><p className="text-2xl font-bold text-blue-800 mt-1">{stats.teachers.total}</p></div>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-blue-600">Activos</span>
-                    <span className="font-medium">{stats.teachers.active}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-blue-600">Inactivos</span>
-                    <span className="font-medium">{stats.teachers.inactive}</span>
-                  </div>
+                  <div className="flex justify-between text-sm"><span className="text-blue-600">Activos</span><span className="font-medium">{stats.teachers.active}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-blue-600">Inactivos</span><span className="font-medium">{stats.teachers.inactive}</span></div>
                 </div>
               </div>
-
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
                 <div className="flex items-center mb-4">
-                  <div className="p-3 rounded-full bg-green-100 text-green-600 mr-4">
-                    <FaUserGraduate size={20} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-green-700">Estudiantes</p>
-                    <p className="text-2xl font-bold text-green-800 mt-1">{stats.students.total}</p>
-                  </div>
+                  <div className="p-3 rounded-full bg-green-100 text-green-600 mr-4"><FaUserGraduate size={20} /></div>
+                  <div><p className="text-sm font-medium text-green-700">Estudiantes</p><p className="text-2xl font-bold text-green-800 mt-1">{stats.students.total}</p></div>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-green-600">Regulares</span>
-                    <span className="font-medium">{stats.students.byStatus.regular}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-green-600">Pendientes</span>
-                    <span className="font-medium">{stats.students.byStatus.pendiente}</span>
-                  </div>
+                  <div className="flex justify-between text-sm"><span className="text-green-600">Regulares</span><span className="font-medium">{stats.students.byStatus.regular}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-green-600">Pendientes</span><span className="font-medium">{stats.students.byStatus.pendiente}</span></div>
                 </div>
               </div>
-
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6">
                 <div className="flex items-center mb-4">
-                  <div className="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
-                    <FaUsers size={20} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-purple-700">Representantes</p>
-                    <p className="text-2xl font-bold text-purple-800 mt-1">{stats.representatives.total}</p>
-                  </div>
+                  <div className="p-3 rounded-full bg-purple-100 text-purple-600 mr-4"><FaUsers size={20} /></div>
+                  <div><p className="text-sm font-medium text-purple-700">Representantes</p><p className="text-2xl font-bold text-purple-800 mt-1">{stats.representatives.total}</p></div>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-purple-600">Al día</span>
-                    <span className="font-medium">{stats.representatives.total - stats.representatives.withDebt}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-purple-600">Con deuda</span>
-                    <span className="font-medium">{stats.representatives.withDebt}</span>
-                  </div>
+                  <div className="flex justify-between text-sm"><span className="text-purple-600">Al día</span><span className="font-medium">{stats.representatives.total - stats.representatives.withDebt}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-purple-600">Con deuda</span><span className="font-medium">{stats.representatives.withDebt}</span></div>
                 </div>
               </div>
             </div>
-
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribución de Estudiantes por Estado</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -1144,14 +812,7 @@ export default function AdminDashboard() {
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8 text-center text-gray-500 text-sm">
         <p>Sistema de Gestión Escolar v1.0 • Última actualización: {lastUpdated || 'No disponible'}</p>
-        <p className="mt-1">
-          {stats.summary.totalUsers} usuarios • {stats.teachers.total} docentes • {stats.students.total} estudiantes • {stats.representatives.total} representantes
-        </p>
-        {retryCount > 0 && (
-          <p className="mt-2 text-amber-600 text-xs">
-            Se han realizado {retryCount} intentos de carga. Si persisten los problemas, contacte al administrador.
-          </p>
-        )}
+        <p className="mt-1">{stats.summary.totalUsers} usuarios • {stats.teachers.total} docentes • {stats.students.total} estudiantes • {stats.representatives.total} representantes</p>
       </motion.div>
     </div>
   );

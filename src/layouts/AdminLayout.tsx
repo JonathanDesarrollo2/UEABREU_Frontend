@@ -14,7 +14,8 @@ import {
   FaChalkboardTeacher,
   FaClipboardList,
   FaHistory,
-  FaFlask
+  FaFlask,
+  FaTrophy
 } from 'react-icons/fa';
 import { FaDollarSign } from 'react-icons/fa6';
 
@@ -44,6 +45,7 @@ export default function AdminLayout() {
     { name: 'Inscripciones', icon: FaClipboardList, path: '/admin/settings' },
     { name: 'Pagos', icon: FaMoneyCheck, path: '/admin/Balance' },
     { name: 'Historial de Pagos', icon: FaHistory, path: '/admin/transactions' },
+    { name: 'Ranking Estudiantes', icon: FaTrophy, path: '/admin/ranking' },
     { name: 'Usuarios', icon: FaUser, path: '/admin/users/list' },
     { name: 'Nuevo Usuario', icon: FaUserPlus, path: '/admin/users/insert' },
     { name: 'Horario', icon: FaCalendar, path: '/admin/Schedule' },
@@ -72,7 +74,6 @@ export default function AdminLayout() {
             </button>
           </div>
           <div className="flex-1 h-0 pt-6 pb-4 overflow-y-auto">
-            {/* Logo con imagen, mismo tamaño que en RepresLayout */}
             <div className="flex-shrink-0 flex items-center px-5 pb-6">
               <div className="flex items-center justify-center w-20 h-20 rounded-xl">
                 <img 
@@ -88,7 +89,6 @@ export default function AdminLayout() {
               </div>
             </div>
             
-            {/* Información del administrador (sin ACTIVO) */}
             {sessionContext.sesionUser && (
               <div className="px-5 py-4 bg-gray-700 mx-3 mt-4 rounded-lg">
                 <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Administrativo</p>
@@ -116,7 +116,6 @@ export default function AdminLayout() {
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-72 bg-gray-800 shadow-sm">
           <div className="flex-1 flex flex-col pt-6 pb-4 overflow-y-auto">
-            {/* Logo con imagen, mismo tamaño que en RepresLayout */}
             <div className="flex items-center px-6 pb-6">
               <div className="flex items-center justify-center w-24 h-24 rounded-xl">
                 <img 
@@ -132,7 +131,6 @@ export default function AdminLayout() {
               </div>
             </div>
             
-            {/* Información del administrador (sin ACTIVO) */}
             {sessionContext.sesionUser && (
               <div className="px-5 py-5 bg-gray-700 mx-4 mt-4 rounded-xl">
                 <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Administrativo</p>
@@ -158,7 +156,6 @@ export default function AdminLayout() {
 
       {/* Main content */}
       <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
-        {/* Header móvil */}
         <div className="lg:hidden">
           <div className="flex items-center justify-between bg-gray-100 px-5 py-4 shadow-sm">
             <div className="flex items-center">
@@ -176,7 +173,6 @@ export default function AdminLayout() {
           </div>
         </div>
 
-        {/* Header principal */}
         <header className="bg-gray-800 shadow-sm">
           <div className="flex justify-between items-center px-7 py-5">
             <div className="hidden lg:block">
@@ -190,7 +186,6 @@ export default function AdminLayout() {
                 <p className="text-sm text-gray-400 font-medium">Administrativo</p>
               </div>
               
-              {/* Botón de cerrar sesión (sin cambios) */}
               <button
                 onClick={handleLogout}
                 className="flex items-center space-x-3 bg-gray-700 hover:bg-blue-500 text-gray-300 hover:text-white px-5 py-3 rounded-lg transition-all duration-200 border-2 border-blue-500 hover:border-blue-400 shadow-sm font-bold text-base"
