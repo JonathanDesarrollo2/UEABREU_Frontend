@@ -35,7 +35,7 @@ interface PaymentValidationProps {
 }
 
 const DEFAULT_BANK_ACCOUNT = '01910001482101010049';
-const DEFAULT_PHONE = '';
+const DEFAULT_PHONE = '580000000000';
 const DEFAULT_REQUEST_DATE = new Date().toISOString().split('T')[0];
 
 export default function PaymentValidation({ representativeId }: PaymentValidationProps) {
