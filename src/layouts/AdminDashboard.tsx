@@ -11,7 +11,7 @@ import {
   getDashboardStatsAPI, getTransactionsByRoleAPI,
   type DashboardStats, type ChartStudent,
 } from '../apis/dashboard';
-import { getBCVRateAPI, type BCVRateResponse } from '../apis/bank';
+import { getStoredRateAPI, type BCVRateResponse } from '../apis/bank';
 import { toast } from 'react-toastify';
 
 interface SessionContext {
@@ -116,13 +116,10 @@ export default function AdminDashboard() {
     const fetchBCVRate = async () => {
       try {
         setLoadingRate(true);
-        const response = await getBCVRateAPI();
+        const response = await getStoredRateAPI();
         if (response.result && response.content) setBcvRate(response.content);
       } catch (err: any) {
-        setBcvRate({
-          PriceRateBCV: 36.6642,
-          dtRate: new Date().toLocaleDateString('es-VE').split('/').reverse().join('/')
-        });
+        setBcvRate(null);
       } finally {
         setLoadingRate(false);
       }

@@ -5,7 +5,7 @@ import {
   FaTrophy, FaArrowUp, FaArrowDown, FaUserGraduate
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import { getBCVRateAPI, type BCVRateResponse } from '../../apis/bank';
+import { getStoredRateAPI, type BCVRateResponse } from '../../apis/bank';
 import api from '../../library/axios';
 
 interface StudentRankingItem {
@@ -74,7 +74,7 @@ export default function StudentsRanking() {
   useEffect(() => {
     const fetchRate = async () => {
       try {
-        const res = await getBCVRateAPI();
+        const res = await getStoredRateAPI();
         if (res.result && res.content) setBcvRate(res.content);
       } catch (err) {
         console.error('Error al obtener tasa BCV', err);

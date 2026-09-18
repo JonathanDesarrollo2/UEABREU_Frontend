@@ -11,7 +11,7 @@ import {
 } from 'react-icons/fa';
 import { useEffect, useState } from 'react';
 import { getRepresentativeByEmail, getRepresentativeBalance } from '../apis/balance';
-import { getBCVRateAPI, type BCVRateResponse } from '../apis/bank';
+import { getStoredRateAPI, type BCVRateResponse } from '../apis/bank';
 
 interface SessionContext {
   sesionUser?: string;
@@ -59,7 +59,7 @@ export default function RepresDashboard() {
 
     const fetchBCVRate = async () => {
       try {
-        const res = await getBCVRateAPI();
+        const res = await getStoredRateAPI();
         if (res.result && res.content) {
           setBcvRate(res.content);
         } else {

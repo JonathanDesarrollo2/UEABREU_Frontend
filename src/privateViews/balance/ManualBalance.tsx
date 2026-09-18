@@ -14,7 +14,7 @@ import { useTransactionHistory } from './hooks/useTransactionHistory';
 import {
   getBalanceColor, getBalanceBgColor, mapPaymentMethodToDisplay
 } from './utils/balanceUtils';
-import { getBCVRateAPI, type BCVRateResponse } from '../../apis/bank';
+import { getStoredRateAPI, type BCVRateResponse } from '../../apis/bank';
 import { movePaymentBetweenStudents } from '../../apis/balance';
 
 export interface Representative {
@@ -90,7 +90,7 @@ export default function ManualBalance() {
   useEffect(() => {
     const fetchRate = async () => {
       try {
-        const res = await getBCVRateAPI();
+        const res = await getStoredRateAPI();
         if (res.result && res.content) setBcvRate(res.content);
       } catch (error) {
         console.error('Error al obtener tasa BCV', error);
@@ -511,6 +511,13 @@ export default function ManualBalance() {
                     </select>
                   </div>
                 )}
+
+                <div className="mb-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-semibold text-gray-700 mb-2">Fecha del pago *</label><input type="date" value={formData.paymentDate} onChange={(e) => setFormData({...formData, paymentDate: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg" required /></div>
+                    <div><label className="block text-sm font-semibold text-gray-700 mb-2">Hora del pago *</label><input type="time" value={formData.paymentTime} onChange={(e) => setFormData({...formData, paymentTime: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg" required /></div>
+                  </div>
+                </div>
 
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Monto (Bs) *</label>

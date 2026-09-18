@@ -17,7 +17,7 @@ import { useDeleteUser } from '../hooks/useDeleteUser';
 import GenericModal from '../../../components/GenricModal';
 import ConfirmDeleteModal from '../../../components/ConfirmDeleteModal';
 import api from '../../../library/axios';
-import { getBCVRateAPI, type BCVRateResponse } from '../../../apis/bank';
+import { getStoredRateAPI, type BCVRateResponse } from '../../../apis/bank';
 
 interface ListAPIProps {
   data: TypeUser_full[];
@@ -37,7 +37,7 @@ export default function ListAPIs({ data }: ListAPIProps) {
   useEffect(() => {
     const fetchRate = async () => {
       try {
-        const res = await getBCVRateAPI();
+        const res = await getStoredRateAPI();
         if (res.result && res.content) {
           setBcvRate(res.content);
         }

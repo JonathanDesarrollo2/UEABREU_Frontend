@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   cascadedValidationAPI,
   type BankValidationRequest,
-  getBCVRateAPI,
+  getStoredRateAPI,
   type BCVRateResponse
 } from '../../apis/bank';
 import {
@@ -47,6 +47,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
     AccountNumber: DEFAULT_BANK_ACCOUNT,
     PhoneNumber: DEFAULT_PHONE,
     RequestDate: DEFAULT_REQUEST_DATE,
+    PaymentTime: '12:00',
   });
 
   const [loading, setLoading] = useState(false);
@@ -76,21 +77,18 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
     const fetchBCVRate = async () => {
       try {
         setLoadingRate(true);
-        const response = await getBCVRateAPI();
+        const response = await getStoredRateAPI(formData.RequestDate);
         if (response.result && response.content) {
           setBcvRate(response.content);
         }
       } catch (err: any) {
-        setBcvRate({
-          PriceRateBCV: 36.6642,
-          dtRate: new Date().toLocaleDateString('es-VE')
-        });
+        setBcvRate(null);
       } finally {
         setLoadingRate(false);
       }
     };
     fetchBCVRate();
-  }, []);
+  }, [formData.RequestDate]);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -162,7 +160,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
         PhoneNumber: formData.PhoneNumber,
         ClientID: formData.ClientID,
         Reference: formData.Reference,
-        RequestDate: formData.RequestDate,
+            RequestDate: `${formData.RequestDate}T${formData.PaymentTime}:00`,
         Amount: formData.Amount,
       };
 
@@ -172,7 +170,16 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
         return;
       }
 
-      setResult(response.content);
+      // El banco puede intentar sus tres métodos internamente, pero al
+      // representante solo se le comunica el resultado final, nunca la
+      // estrategia o el método que encontró el movimiento.
+      setResult({
+        ...response.content,
+        details: undefined,
+        message: response.content.overallResult === 'success'
+          ? 'Pago registrado con éxito'
+          : 'No se encontró el pago con los datos suministrados'
+      });
 
       if (
         response.content.overallResult === 'success' &&
@@ -186,6 +193,8 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
             paymentMethod: 'pago_movil' as const,
             reference: formData.Reference,
             studentId: selectedStudentId || undefined,
+            paymentDate: formData.RequestDate,
+            paymentTime: formData.PaymentTime,
           };
           const depositRes = await manualDeposit(representativeId, depositPayload);
           setDepositResult(depositRes);
@@ -510,17 +519,22 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">
-                        Fecha
+                         <label className="block text-sm font-medium text-gray-600 mb-1">
+                         Fecha del pago *
                       </label>
                       <input
                         type="date"
                         name="RequestDate"
                         value={formData.RequestDate}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+                         className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         required
+                       />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-medium text-gray-600 mb-1">Hora del pago *</label>
+                       <input type="time" name="PaymentTime" value={formData.PaymentTime} onChange={handleChange} required className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                     </div>
                   </div>
                 </div>
 

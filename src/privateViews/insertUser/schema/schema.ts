@@ -46,6 +46,8 @@ export const loginInsertSchema = z.object({
   userpass: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
   userrepass: z.string().min(6, "La confirmación es requerida"),
   nivel: z.number().min(1).default(1),
+  phone: z.string().optional(),
+  identityCard: z.string().optional(),
   userstatus: z.boolean().default(true),
   representativeData: representativeDataSchema.optional(),
   studentsData: z.array(studentDataSchema).default([]),
@@ -61,6 +63,9 @@ export const loginInsertSchema = z.object({
 }, {
   message: "Los datos del representante son requeridos para nivel 1",
   path: ["representativeData"],
+}).refine((data) => data.nivel !== 2 || (!!data.phone && !!data.identityCard), {
+  message: "Teléfono y cédula son obligatorios para administradores",
+  path: ["phone"],
 });
 
 // Tipo inferido del esquema

@@ -75,11 +75,11 @@ const SimuladorCobros: React.FC = () => {
     }
   };
 
-  const handleApplyMonthlyFees = async () => {
+  const handleApplyDate = async () => {
     try {
       setDateLoading(true);
       await applyMonthlyFeesAPI();
-      toast.success('Mensualidades aplicadas a todos los estudiantes activos');
+       toast.success('Fecha aplicada. Se procesaron solo los conceptos pendientes');
     } catch (error) {
       toast.error('Error al aplicar mensualidades');
     } finally {
@@ -142,9 +142,9 @@ const SimuladorCobros: React.FC = () => {
             <FaSync className="text-lg" /> Fecha real
           </button>
 
-          <button onClick={handleApplyMonthlyFees} disabled={dateLoading}
+           <button onClick={handleApplyDate} disabled={dateLoading}
             className="flex items-center gap-2 bg-yellow-500/80 rounded-lg px-4 py-3 hover:bg-yellow-500 transition text-base font-semibold disabled:opacity-50">
-            <FaCog className="text-lg" /> Aplicar mensualidades ahora
+             <FaCog className="text-lg" /> Aplicar fecha
           </button>
 
           {/* 🔥 NUEVO BOTÓN DE REINICIO TOTAL */}

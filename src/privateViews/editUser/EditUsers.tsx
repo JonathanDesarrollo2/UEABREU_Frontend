@@ -10,7 +10,7 @@ import SpinnerGeneral from '../../layouts/components/spinnerGeneral';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ActionButtons } from '../../components/ActionButtons';
 import { updateUser, getUserById } from '../../apis/user';
-import { getBCVRateAPI, type BCVRateResponse } from '../../apis/bank';
+import { getStoredRateAPI, type BCVRateResponse } from '../../apis/bank';
 import type { TypeApiResponseGeneric } from '../../types/login';
 
 const studentStatusOptions = [
@@ -55,6 +55,8 @@ interface EditUserForm {
   username: string;
   nivel: number;
   userstatus: boolean;
+  phone?: string;
+  identityCard?: string;
   userpass?: string;
   userrepass?: string;
   representativeData: {
@@ -88,6 +90,8 @@ export default function EditUser() {
       username: userData?.username || '',
       nivel: userData?.nivel || 1,
       userstatus: userData?.userstatus ?? true,
+      phone: userData?.phone || '',
+      identityCard: userData?.identityCard || '',
       userpass: '',
       userrepass: '',
       representativeData: {
@@ -123,6 +127,7 @@ export default function EditUser() {
       })) || [],
     },
   });
+  const currentNivel = watch('nivel');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -146,7 +151,7 @@ export default function EditUser() {
     fetchUser();
     const fetchRate = async () => {
       try {
-        const res = await getBCVRateAPI();
+        const res = await getStoredRateAPI();
         if (res.result && res.content) setBcvRate(res.content);
       } catch (error) {
         console.error('Error al obtener tasa BCV', error);
@@ -164,6 +169,8 @@ export default function EditUser() {
         username: userData.username || '',
         nivel: userData.nivel || 1,
         userstatus: userData.userstatus ?? true,
+        phone: userData.phone || '',
+        identityCard: userData.identityCard || '',
         userpass: '',
         userrepass: '',
         representativeData: {
@@ -219,6 +226,7 @@ export default function EditUser() {
         username: formData.username,
         nivel: formData.nivel,
         userstatus: formData.userstatus,
+        ...(formData.nivel === 2 ? { phone: formData.phone, identityCard: formData.identityCard } : {}),
         representativeData: {
           fullName: formData.representativeData.fullName,
           identityCard: formData.representativeData.identityCard,
@@ -352,6 +360,12 @@ export default function EditUser() {
               <FormField type="password" id="userpass" label="Nueva Contraseña (opcional)" register={register} error={errors.userpass} />
               <FormField type="password" id="userrepass" label="Confirmar Contraseña" register={register} error={errors.userrepass} />
               <FormField type="checkbox" id="userstatus" label="Usuario Activo" register={register} />
+              {currentNivel === 2 && (
+                <>
+                  <FormField id="phone" label="Teléfono del administrador *" required register={register} error={errors.phone} />
+                  <FormField id="identityCard" label="Cédula del administrador *" required register={register} error={errors.identityCard} />
+                </>
+              )}
             </div>
           </div>
 

@@ -35,6 +35,7 @@ interface Application {
   userActive: boolean;
   createdAt: string;
   userId?: string;
+  isExistingRepresentative?: boolean;
 }
 
 const buildPageNumbers = (current: number, total: number): (number | "...")[] => {
@@ -653,7 +654,8 @@ const AdminRegistrationsList: React.FC = () => {
                         {app.planillaNumber}
                       </td>
                       <td className="py-4 px-5 font-medium text-gray-800">
-                        {app.representativeName}
+                         {app.representativeName}
+                         {app.isExistingRepresentative && <span className="ml-2 text-xs text-blue-700" title="Solicitud de representante existente">[REPRESENTANTE]</span>}
                       </td>
                       <td className="py-4 px-5 text-gray-600">
                         {app.email}

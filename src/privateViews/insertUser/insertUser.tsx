@@ -11,7 +11,7 @@ import AnimatedPage from "../../components/AnimatedPage";
 import { ActionButtons } from "../../components/ActionButtons";
 import { useInsertUserForm } from "./hook/useUserForm";
 import { useAddUser } from "./hook/useAddUser";
-import { getBCVRateAPI, type BCVRateResponse } from "../../apis/bank";
+import { getStoredRateAPI, type BCVRateResponse } from "../../apis/bank";
 
 // Opciones para el estado del estudiante
 const studentStatusOptions = [
@@ -446,12 +446,13 @@ export default function InsertUser() {
 
   const nivel = watch('nivel');
   const isRepresentative = nivel === 1;
+  const isAdministrator = nivel === 2;
   const students = watch('studentsData') || [];
 
   useEffect(() => {
     const fetchRate = async () => {
       try {
-        const res = await getBCVRateAPI();
+        const res = await getStoredRateAPI();
         if (res.result && res.content) setBcvRate(res.content);
       } catch (error) {
         console.error('Error al obtener tasa BCV', error);
@@ -610,7 +611,7 @@ export default function InsertUser() {
                   </div>
                 </div>
 
-                <div className="md:col-span-2 flex justify-center">
+                 <div className="md:col-span-2 flex justify-center">
                   <div className="w-full max-w-sm">
                     <FormField 
                       type="checkbox"
@@ -618,7 +619,13 @@ export default function InsertUser() {
                       label="Usuario Activo" 
                       register={register} 
                     />
-                  </div>
+                 </div>
+                 {isAdministrator && (
+                   <>
+                     <FormField id="phone" label="Teléfono del administrador *" required register={register} error={errors.phone} />
+                     <FormField id="identityCard" label="Cédula del administrador *" required register={register} error={errors.identityCard} />
+                   </>
+                 )}
                 </div>
               </div>
             </div>

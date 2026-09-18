@@ -35,6 +35,8 @@ import SimuladorCobros from './privateViews/Simulador/CobrosSimulador'
 import EditUser from './privateViews/editUser/EditUsers'
 import EditApplication from './privateViews/editApplication/EditApplication'
 import StudentsRanking from './privateViews/studentRanking/StudentRanking'
+import InfoAccount from './privateViews/InfoAccount/InfoAccount'
+import RepresentativeRegistration from './privateViews/RepresentativeRegistration/RepresentativeRegistration'
 
 function ListRoutes() {
   return (
@@ -59,6 +61,8 @@ function ListRoutes() {
           <Route index element={<RepresDashboard />} />
           <Route path="validar-pago/:representativeId" element={<PaymentValidationPage />} />
           <Route path="ChildrenSchedule" element={<ChildrenScheduleView />} />
+          <Route path="InfoAccount" element={<InfoAccount />} />
+          <Route path="Inscripciones" element={<RepresentativeRegistration />} />
         </Route>
           
         <Route path="/admin" element={<AdminLayout />}>

@@ -8,7 +8,7 @@ import { toast } from 'react-toastify';
 import { getAllTransactions, getAccountStatement } from '../../apis/balance';
 import { getPaginatedStudentsAPI } from '../../apis/student';
 import api from '../../library/axios';
-import { getBCVRateAPI, type BCVRateResponse } from '../../apis/bank';
+import { getStoredRateAPI, type BCVRateResponse } from '../../apis/bank';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import ExcelJS from 'exceljs';
@@ -140,7 +140,7 @@ const PaymentHistory: React.FC = () => {
   useEffect(() => {
     const fetchRate = async () => {
       try {
-        const res = await getBCVRateAPI();
+        const res = await getStoredRateAPI();
         if (res.result && res.content) setBcvRate(res.content);
       } catch (error) {
         console.error('Error al obtener tasa BCV', error);
