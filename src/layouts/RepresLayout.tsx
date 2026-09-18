@@ -32,7 +32,7 @@ export default function RepresLayout() {
   const [redirectingToPayment, setRedirectingToPayment] = useState(false);
   const [registrationsOpen, setRegistrationsOpen] = useState(false);
 
-  useEffect(() => { api.get('/public/registration-status').then(({ data }) => setRegistrationsOpen(Boolean(data.content?.isOpen ?? data.content?.open))).catch(() => setRegistrationsOpen(false)); }, []);
+  useEffect(() => { api.get('/public/registration-status').then(({ data }) => setRegistrationsOpen(Boolean(data.content?.registrationsEnabled ?? data.content?.isOpen ?? data.content?.open))).catch(() => setRegistrationsOpen(false)); }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('tokcattleraising_inCattleRanchCloud');

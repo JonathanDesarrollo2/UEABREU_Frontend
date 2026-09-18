@@ -59,7 +59,7 @@ export async function manualDeposit(
     createdBy?: string;
     studentId?: string;
     paymentDate: string;
-    paymentTime: string;
+    paymentTime?: string;
   }
 ) {
   const response = await api.post(`/private/balance/representative/${representativeId}/deposit`, data);
@@ -77,7 +77,7 @@ export async function manualWithdrawal(
     createdBy?: string;
     studentId?: string;
     paymentDate: string;
-    paymentTime: string;
+    paymentTime?: string;
   }
 ) {
   const response = await api.post(`/private/balance/representative/${representativeId}/withdraw`, data);

@@ -515,7 +515,6 @@ export default function ManualBalance() {
                 <div className="mb-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div><label className="block text-sm font-semibold text-gray-700 mb-2">Fecha del pago *</label><input type="date" value={formData.paymentDate} onChange={(e) => setFormData({...formData, paymentDate: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg" required /></div>
-                    <div><label className="block text-sm font-semibold text-gray-700 mb-2">Hora del pago *</label><input type="time" value={formData.paymentTime} onChange={(e) => setFormData({...formData, paymentTime: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg" required /></div>
                   </div>
                 </div>
 

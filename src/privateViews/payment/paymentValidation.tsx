@@ -47,7 +47,6 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
     AccountNumber: DEFAULT_BANK_ACCOUNT,
     PhoneNumber: DEFAULT_PHONE,
     RequestDate: DEFAULT_REQUEST_DATE,
-    PaymentTime: '12:00',
   });
 
   const [loading, setLoading] = useState(false);
@@ -160,7 +159,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
         PhoneNumber: formData.PhoneNumber,
         ClientID: formData.ClientID,
         Reference: formData.Reference,
-            RequestDate: `${formData.RequestDate}T${formData.PaymentTime}:00`,
+            RequestDate: `${formData.RequestDate}T00:00:00`,
         Amount: formData.Amount,
       };
 
@@ -194,7 +193,6 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
             reference: formData.Reference,
             studentId: selectedStudentId || undefined,
             paymentDate: formData.RequestDate,
-            paymentTime: formData.PaymentTime,
           };
           const depositRes = await manualDeposit(representativeId, depositPayload);
           setDepositResult(depositRes);
@@ -530,10 +528,6 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                          className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                          required
                        />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-gray-600 mb-1">Hora del pago *</label>
-                       <input type="time" name="PaymentTime" value={formData.PaymentTime} onChange={handleChange} required className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                      </div>
                   </div>
                 </div>

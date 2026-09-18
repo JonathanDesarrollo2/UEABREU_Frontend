@@ -11,7 +11,6 @@ export interface TransactionForm {
   createdBy?: string;
   studentId?: string;
   paymentDate: string;
-  paymentTime: string;
 }
 
 export const useBalanceTransaction = (
@@ -28,7 +27,6 @@ export const useBalanceTransaction = (
     createdBy: undefined,
     studentId: undefined,
     paymentDate: new Date().toISOString().slice(0, 10),
-    paymentTime: '12:00',
   });
 
   const updateTransactionType = (newType: 'deposit' | 'withdrawal') => {
@@ -69,7 +67,6 @@ export const useBalanceTransaction = (
         createdBy: validCreatedBy,
         studentId: formData.studentId || undefined,
         paymentDate: formData.paymentDate,
-        paymentTime: formData.paymentTime,
       };
 
       const response = await api.post(endpoint, transactionData);
