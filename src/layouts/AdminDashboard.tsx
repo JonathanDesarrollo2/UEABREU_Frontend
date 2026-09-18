@@ -356,6 +356,7 @@ export default function AdminDashboard() {
                 </div>
                 <h3 className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</h3>
                 <p className="text-gray-900 font-semibold">{stat.title}</p>
+                {index === 3 && <p className="text-sm text-gray-600 mt-1">≈ {formatCurrency(stats.financial.monthlyCollected, 'USD')}</p>}
                 <p className="text-gray-600 text-sm mt-1">{stat.description}</p>
                 <div className="mt-4">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
