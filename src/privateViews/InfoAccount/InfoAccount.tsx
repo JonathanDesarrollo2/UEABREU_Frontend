@@ -6,7 +6,7 @@ export default function InfoAccount() {
   const [account, setAccount] = useState<any>(null);
   const [codeSent, setCodeSent] = useState(false);
   const [form, setForm] = useState({ code: '', newPassword: '', confirmPassword: '' });
-  useEffect(() => { getAccountInfo().then((res) => res.result && setAccount(res.content)); }, []);
+  useEffect(() => { getAccountInfo().then((res) => res.result ? setAccount(res.content) : toast.error(res.error?.[0])).catch((error) => toast.error(error.response?.data?.error?.[0] || 'No se pudo cargar la información de la cuenta')); }, []);
   const sendCode = async () => { const res = await requestPasswordCode(); if (res.result) { setCodeSent(true); toast.success(res.content.message); } else toast.error(res.error?.[0]); };
   const savePassword = async () => { const res = await resetPassword(form); if (res.result) { toast.success(res.content.message); setForm({ code: '', newPassword: '', confirmPassword: '' }); setCodeSent(false); } else toast.error(res.error?.[0]); };
   return <div className="max-w-3xl mx-auto space-y-6"><div className="bg-white rounded-2xl shadow p-6"><h1 className="text-2xl font-bold text-gray-800">Información de la cuenta</h1>{account && <div className="grid md:grid-cols-2 gap-3 mt-5 text-gray-700"><p><b>Nombre:</b> {account.representative?.fullName || account.username}</p><p><b>Usuario:</b> {account.userlogin}</p><p><b>Correo:</b> {account.usermail}</p><p><b>Teléfono:</b> {account.representative?.phone || account.phone || 'No registrado'}</p><p><b>Cédula:</b> {account.representative?.identityCard || account.identityCard || 'No registrada'}</p></div>}</div>
