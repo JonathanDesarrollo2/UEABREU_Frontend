@@ -1,6 +1,6 @@
 // layouts/RepresLayout.tsx
 import { Outlet, useOutletContext, useNavigate } from 'react-router-dom';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback} from 'react';
 import {
   FaHome,
   FaMoneyCheck,
@@ -9,10 +9,9 @@ import {
   FaBars,
   FaTimes,
   FaSpinner
-  , FaUserCircle, FaClipboardList
+  , FaUserCircle
 } from 'react-icons/fa';
-import { getRepresentativeByEmail } from '../apis/balance'; // Ajusta la ruta si es necesario
-import api from '../library/axios';
+import { getRepresentativeByEmail } from '../apis/balance';
 
 interface SessionContext {
   sesionUser?: string;
@@ -30,9 +29,6 @@ export default function RepresLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [redirectingToPayment, setRedirectingToPayment] = useState(false);
-  const [registrationsOpen, setRegistrationsOpen] = useState(false);
-
-  useEffect(() => { api.get('/public/registration-status').then(({ data }) => setRegistrationsOpen(Boolean(data.content?.registrationsEnabled ?? data.content?.isOpen ?? data.content?.open))).catch(() => setRegistrationsOpen(false)); }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('tokcattleraising_inCattleRanchCloud');
@@ -70,7 +66,6 @@ export default function RepresLayout() {
     },
     { name: 'Horario', icon: FaClock, path: '/representante/ChildrenSchedule', isAction: false },
     { name: 'Información de la cuenta', icon: FaUserCircle, path: '/representante/InfoAccount', isAction: false },
-    ...(registrationsOpen ? [{ name: 'Inscripciones', icon: FaClipboardList, path: '/representante/Inscripciones', isAction: false }] : []),
   ];
 
   const renderMenuItem = (item: any) => {
