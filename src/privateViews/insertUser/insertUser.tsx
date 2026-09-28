@@ -611,7 +611,7 @@ export default function InsertUser() {
                   </div>
                 </div>
 
-                 <div className="md:col-span-2 flex justify-center">
+                <div className="md:col-span-2 flex justify-center">
                   <div className="w-full max-w-sm">
                     <FormField 
                       type="checkbox"
@@ -619,14 +619,35 @@ export default function InsertUser() {
                       label="Usuario Activo" 
                       register={register} 
                     />
-                 </div>
-                 {isAdministrator && (
-                   <>
-                     <FormField id="phone" label="Teléfono del administrador *" required register={register} error={errors.phone} />
-                     <FormField id="identityCard" label="Cédula del administrador *" required register={register} error={errors.identityCard} />
-                   </>
-                 )}
+                  </div>
                 </div>
+
+                {isAdministrator && (
+                  <>
+                    <div className="flex justify-center">
+                      <div className="w-full max-w-sm">
+                        <FormField 
+                          id="phone" 
+                          label="Teléfono del administrador *" 
+                          required 
+                          register={register} 
+                          error={errors.phone} 
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-center">
+                      <div className="w-full max-w-sm">
+                        <FormField 
+                          id="identityCard" 
+                          label="Cédula del administrador *" 
+                          required 
+                          register={register} 
+                          error={errors.identityCard} 
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
