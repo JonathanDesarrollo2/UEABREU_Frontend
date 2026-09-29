@@ -19,10 +19,17 @@ export default function TasaLista() {
     loading,
     error,
     updateRate,
+    createRate,
     reload,
   } = useTasaLista();
 
   const [editingRecord, setEditingRecord] = useState<ExchangeRateRecord | null>(null);
+  const [creatingDate, setCreatingDate] = useState<string | null>(null);
+
+  const closeModal = () => {
+    setEditingRecord(null);
+    setCreatingDate(null);
+  };
 
   return (
     <>
@@ -44,7 +51,7 @@ export default function TasaLista() {
               Gestión de Tasas BCV
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Consulta y edita las tasas diarias registradas. La edición no recalcula movimientos históricos.
+              Consulta, agrega y edita las tasas diarias registradas. Los cambios no recalculan movimientos históricos.
             </p>
           </div>
 
@@ -80,6 +87,7 @@ export default function TasaLista() {
               month={month}
               ratesByDate={ratesByDate}
               onEdit={(r) => setEditingRecord(r)}
+              onAdd={(iso) => setCreatingDate(iso)}
             />
           )}
 
@@ -99,8 +107,10 @@ export default function TasaLista() {
 
       <EditRateModal
         record={editingRecord}
-        onClose={() => setEditingRecord(null)}
-        onSave={updateRate}
+        creatingDate={creatingDate}
+        onClose={closeModal}
+        onUpdate={updateRate}
+        onCreate={createRate}
       />
     </>
   );

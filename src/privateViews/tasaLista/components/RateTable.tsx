@@ -1,5 +1,5 @@
 // src/privateViews/tasaLista/components/RateTable.tsx
-import { FaEdit } from "react-icons/fa";
+import { FaEdit, FaPlus } from "react-icons/fa";
 import type { ExchangeRateRecord } from "../../../apis/exchangeRate";
 
 interface Props {
@@ -7,6 +7,7 @@ interface Props {
   month: number; // 1-12
   ratesByDate: Record<string, ExchangeRateRecord>;
   onEdit: (record: ExchangeRateRecord) => void;
+  onAdd: (isoDate: string) => void;
 }
 
 const formatRate = (value: number) =>
@@ -28,7 +29,7 @@ const getDaysInMonth = (year: number, month: number) =>
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-export const RateTable = ({ year, month, ratesByDate, onEdit }: Props) => {
+export const RateTable = ({ year, month, ratesByDate, onEdit, onAdd }: Props) => {
   const totalDays = getDaysInMonth(year, month);
   const days = Array.from({ length: totalDays }, (_, i) => i + 1);
 
@@ -80,7 +81,7 @@ export const RateTable = ({ year, month, ratesByDate, onEdit }: Props) => {
                     {hasRate ? (record.source || "—") : ""}
                   </td>
                   <td className="px-4 py-3 text-sm text-right">
-                    {hasRate && (
+                    {hasRate ? (
                       <button
                         type="button"
                         onClick={() => onEdit(record)}
@@ -88,6 +89,15 @@ export const RateTable = ({ year, month, ratesByDate, onEdit }: Props) => {
                       >
                         <FaEdit className="text-[10px]" />
                         Editar
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onAdd(iso)}
+                        className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors text-xs font-semibold"
+                      >
+                        <FaPlus className="text-[10px]" />
+                        Agregar
                       </button>
                     )}
                   </td>

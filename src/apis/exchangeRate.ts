@@ -2,8 +2,7 @@
 import { isAxiosError } from "axios";
 import api from "../library/axios";
 
-// Prefijo del router de tasas en el backend.
-// Si en server.ts el mount es distinto, ajustar SOLO esta constante.
+// Prefijo del router de tasas en el backend (server.ts: /api/private/rates)
 const EXCHANGE_RATE_BASE = "/private/rates";
 
 // Respuesta estándar del proyecto
@@ -60,6 +59,27 @@ export async function getRatesByMonthAPI(
     return data;
   } catch (error) {
     let mensaje = 'Error al obtener las tasas del mes';
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) mensaje = errores.join(', ');
+    }
+    throw new Error(mensaje);
+  }
+}
+
+// Crea una tasa manual para una fecha valor (YYYY-MM-DD)
+export async function createRateAPI(
+  effectiveDate: string,
+  rate: number
+): Promise<ExchangeRateApiResponse<ExchangeRateRecord>> {
+  try {
+    const { data } = await api.post<ExchangeRateApiResponse<ExchangeRateRecord>>(
+      `${EXCHANGE_RATE_BASE}/`,
+      { effectiveDate, rate }
+    );
+    return data;
+  } catch (error) {
+    let mensaje = 'Error al crear la tasa';
     if (isAxiosError(error) && error.response) {
       const errores = error.response.data.error;
       if (errores && errores.length > 0) mensaje = errores.join(', ');

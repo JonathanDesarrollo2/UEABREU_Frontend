@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import {
+  createRateAPI,
   getRatesByMonthAPI,
   updateRateAPI,
   type ExchangeRateRecord,
@@ -42,7 +43,6 @@ export const useTasaLista = () => {
     loadRates();
   }, [loadRates]);
 
-  // Mapa effectiveDate -> record para acceso O(1) al pintar la tabla
   const ratesByDate = useMemo(() => {
     const map: Record<string, ExchangeRateRecord> = {};
     rates.forEach((r) => {
@@ -79,6 +79,27 @@ export const useTasaLista = () => {
     }
   };
 
+  const createRate = async (effectiveDate: string, rate: number): Promise<boolean> => {
+    try {
+      const res = await createRateAPI(effectiveDate, rate);
+      if (res.result && res.content) {
+        // Añadimos el nuevo registro al estado local sin recargar todo el mes
+        setRates((prev) => {
+          const next = [...prev, res.content];
+          next.sort((a, b) => (a.effectiveDate < b.effectiveDate ? -1 : 1));
+          return next;
+        });
+        toast.success("Tasa agregada correctamente");
+        return true;
+      }
+      toast.error(res.error?.[0] || "Error al agregar la tasa");
+      return false;
+    } catch (err: any) {
+      toast.error(err?.message || "Error al agregar la tasa");
+      return false;
+    }
+  };
+
   return {
     year, month,
     setYear, setMonth,
@@ -87,6 +108,7 @@ export const useTasaLista = () => {
     loading,
     error,
     updateRate,
+    createRate,
     reload: loadRates,
   };
 };

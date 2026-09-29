@@ -1,12 +1,16 @@
 // src/privateViews/tasaLista/components/EditRateModal.tsx
 import { useEffect, useState } from "react";
-import { FaExchangeAlt, FaTimes } from "react-icons/fa";
+import { FaExchangeAlt, FaPlus, FaTimes } from "react-icons/fa";
 import type { ExchangeRateRecord } from "../../../apis/exchangeRate";
 
 interface Props {
+  // Modo edición: registro existente
   record: ExchangeRateRecord | null;
+  // Modo creación: fecha valor YYYY-MM-DD
+  creatingDate: string | null;
   onClose: () => void;
-  onSave: (id: string, rate: number) => Promise<boolean>;
+  onUpdate: (id: string, rate: number) => Promise<boolean>;
+  onCreate: (date: string, rate: number) => Promise<boolean>;
 }
 
 const formatDateLong = (iso: string) => {
@@ -19,7 +23,12 @@ const formatDateLong = (iso: string) => {
   });
 };
 
-export const EditRateModal = ({ record, onClose, onSave }: Props) => {
+export const EditRateModal = ({
+  record, creatingDate, onClose, onUpdate, onCreate,
+}: Props) => {
+  const isCreating = !!creatingDate && !record;
+  const isOpen = !!record || !!creatingDate;
+
   const [value, setValue] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -27,11 +36,13 @@ export const EditRateModal = ({ record, onClose, onSave }: Props) => {
   useEffect(() => {
     if (record) {
       setValue(String(record.rate));
-      setLocalError(null);
+    } else if (creatingDate) {
+      setValue("");
     }
-  }, [record]);
+    setLocalError(null);
+  }, [record, creatingDate]);
 
-  if (!record) return null;
+  if (!isOpen) return null;
 
   const parsed = Number(value);
   const isValid = Number.isFinite(parsed) && parsed > 0;
@@ -42,18 +53,34 @@ export const EditRateModal = ({ record, onClose, onSave }: Props) => {
       return;
     }
     setSaving(true);
-    const ok = await onSave(record.id, parsed);
+    let ok = false;
+    if (isCreating && creatingDate) {
+      ok = await onCreate(creatingDate, parsed);
+    } else if (record) {
+      ok = await onUpdate(record.id, parsed);
+    }
     setSaving(false);
     if (ok) onClose();
   };
+
+  const displayDate = record?.effectiveDate || creatingDate || "";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <FaExchangeAlt className="text-blue-600" />
-            Editar Tasa
+            {isCreating ? (
+              <>
+                <FaPlus className="text-green-600" />
+                Agregar Tasa
+              </>
+            ) : (
+              <>
+                <FaExchangeAlt className="text-blue-600" />
+                Editar Tasa
+              </>
+            )}
           </h3>
           <button
             type="button"
@@ -68,13 +95,13 @@ export const EditRateModal = ({ record, onClose, onSave }: Props) => {
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 text-sm">
           <p className="text-gray-600 text-xs uppercase font-semibold">Fecha (no editable)</p>
           <p className="text-gray-800 font-semibold capitalize mt-1">
-            {formatDateLong(record.effectiveDate)}
+            {formatDateLong(displayDate)}
           </p>
         </div>
 
         <div className="mb-4">
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Nueva tasa (Bs/USD) *
+            {isCreating ? "Tasa (Bs/USD) *" : "Nueva tasa (Bs/USD) *"}
           </label>
           <input
             type="number"
@@ -94,7 +121,9 @@ export const EditRateModal = ({ record, onClose, onSave }: Props) => {
             <p className="text-xs text-red-600 mt-1">{localError}</p>
           )}
           <p className="text-xs text-gray-500 mt-2">
-            Esta edición no recalcula movimientos históricos.
+            {isCreating
+              ? "La tasa se registrará con fuente 'manual' y no recalcula movimientos históricos."
+              : "Esta edición no recalcula movimientos históricos."}
           </p>
         </div>
 
@@ -110,7 +139,11 @@ export const EditRateModal = ({ record, onClose, onSave }: Props) => {
             type="button"
             onClick={handleSave}
             disabled={!isValid || saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+            className={`px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2 ${
+              isCreating
+                ? "bg-green-600 hover:bg-green-700"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
           >
             {saving ? (
               <>
@@ -118,7 +151,7 @@ export const EditRateModal = ({ record, onClose, onSave }: Props) => {
                 Guardando...
               </>
             ) : (
-              "Guardar"
+              isCreating ? "Agregar" : "Guardar"
             )}
           </button>
         </div>
