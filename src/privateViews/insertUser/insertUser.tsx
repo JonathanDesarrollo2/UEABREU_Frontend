@@ -441,13 +441,23 @@ export default function InsertUser() {
   const navigate = useNavigate();
   const [formKey, setFormKey] = useState(0);
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
-  const { register, handleSubmit, reset, control, watch, formState: { errors } } = useInsertUserForm();
+  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useInsertUserForm();
   const { mutate, reset: resetMutation, isPending } = useAddUser();
 
   const nivel = watch('nivel');
   const isRepresentative = nivel === 1;
   const isAdministrator = nivel === 2;
   const students = watch('studentsData') || [];
+
+  // Al seleccionar "Administrador" se descartan los datos de representante y
+  // estudiantes que quedaron registrados al montarse el formulario con nivel 1,
+  // para que el schema no valide campos que no están visibles (bug: submit mudo).
+  useEffect(() => {
+    if (nivel === 2) {
+      setValue('representativeData', undefined);
+      setValue('studentsData', []);
+    }
+  }, [nivel, setValue]);
 
   useEffect(() => {
     const fetchRate = async () => {
@@ -471,11 +481,19 @@ export default function InsertUser() {
             setFormKey((prev) => prev + 1);
           }
         },
-        onError: () => {}
+        onError: () => {
+          toast.error("No se pudo registrar el usuario. Verifica los datos.");
+        }
       });
     },
     [mutate, reset, resetMutation]
   );
+
+  // Errores de validación del schema: se muestran en los campos y se notifica
+  const onInvalid = useCallback((err: unknown) => {
+    console.warn(err);
+    toast.error("No se pudo registrar el usuario. Verifica los datos.");
+  }, []);
 
   const handleCancel = useCallback(() => navigate('/admin/users/list'), [navigate]);
 
@@ -522,7 +540,7 @@ export default function InsertUser() {
 
           <form 
             key={formKey}
-            onSubmit={handleSubmit(onSubmit)}
+            onSubmit={handleSubmit(onSubmit, onInvalid)}
             className="space-y-8"
           >
             {/* Sección: Datos Principales */}

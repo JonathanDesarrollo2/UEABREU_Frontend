@@ -15,6 +15,7 @@ import {
   getBalanceColor, getBalanceBgColor, mapPaymentMethodToDisplay
 } from './utils/balanceUtils';
 import { getStoredRateAPI, type BCVRateResponse } from '../../apis/bank';
+import { getRateByDateAPI } from '../../apis/exchangeRate';
 import { movePaymentBetweenStudents } from '../../apis/balance';
 
 export interface Representative {
@@ -41,6 +42,10 @@ export default function ManualBalance() {
   const navigate = useNavigate();
   const [transactionType, setTransactionType] = useState<'deposit' | 'withdrawal'>('deposit');
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
+  // Tasa registrada para la fecha del pago seleccionada (null si no existe)
+  const [selectedDateRate, setSelectedDateRate] = useState<number | null>(null);
+  const [rateNotFound, setRateNotFound] = useState(false);
+  const [loadingDateRate, setLoadingDateRate] = useState(false);
 
   const {
     searchTerm,
@@ -98,6 +103,38 @@ export default function ManualBalance() {
     };
     fetchRate();
   }, []);
+
+  // Al cambiar la fecha del pago, consulta la tasa registrada para esa fecha valor
+  useEffect(() => {
+    const paymentDate = formData.paymentDate;
+    if (!paymentDate) {
+      setSelectedDateRate(null);
+      setRateNotFound(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingDateRate(true);
+    getRateByDateAPI(paymentDate)
+      .then((res) => {
+        if (cancelled) return;
+        if (res.result && res.content) {
+          setSelectedDateRate(Number(res.content.rate));
+          setRateNotFound(false);
+        } else {
+          setSelectedDateRate(null);
+          setRateNotFound(true);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSelectedDateRate(null);
+        setRateNotFound(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDateRate(false);
+      });
+    return () => { cancelled = true; };
+  }, [formData.paymentDate]);
 
   const formatBs = (amount: number) =>
     new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(amount);
@@ -516,6 +553,35 @@ export default function ManualBalance() {
                   <div className="grid grid-cols-2 gap-4">
                     <div><label className="block text-sm font-semibold text-gray-700 mb-2">Fecha del pago *</label><input type="date" value={formData.paymentDate} onChange={(e) => setFormData({...formData, paymentDate: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg" required /></div>
                   </div>
+
+                  {/* Tasa registrada para la fecha del pago (la del encabezado es la actual, informativa) */}
+                  {formData.paymentDate && loadingDateRate && (
+                    <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800 flex items-center gap-2">
+                      <FaExchangeAlt />
+                      <span>Consultando tasa de la fecha seleccionada...</span>
+                    </div>
+                  )}
+                  {formData.paymentDate && !loadingDateRate && selectedDateRate !== null && (
+                    <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800">
+                      <div className="flex items-center gap-2">
+                        <FaExchangeAlt />
+                        <span>
+                          Tasa del {new Date(`${formData.paymentDate}T00:00:00`).toLocaleDateString('es-VE')}: <strong>{selectedDateRate.toFixed(2)} Bs/USD</strong>
+                        </span>
+                      </div>
+                      {formData.amount > 0 && (
+                        <div className="mt-1 text-xs text-blue-700">
+                          El monto se convertirá con esta tasa: ≈ <strong>{formatUsd(formData.amount / selectedDateRate)}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {formData.paymentDate && !loadingDateRate && rateNotFound && (
+                    <div className="mt-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700 flex items-center gap-2">
+                      <FaInfoCircle />
+                      <span>No hay tasa registrada para la fecha seleccionada. Selecciona otra fecha o pide al administrador que la registre.</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-6">
@@ -579,7 +645,7 @@ export default function ManualBalance() {
                   </div>
                 )}
 
-                <button type="submit" disabled={loading || !selectedRep || formData.amount <= 0 || (transactionType === 'withdrawal' && formData.amount > usdToBs(selectedRep?.balance || 0)) || (hasMultipleStudents && !formData.studentId)} className={`w-full py-3 rounded-xl font-semibold transition-all ${transactionType === 'deposit' ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'} disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-md`}>
+                <button type="submit" disabled={loading || !selectedRep || formData.amount <= 0 || (transactionType === 'withdrawal' && formData.amount > usdToBs(selectedRep?.balance || 0)) || (hasMultipleStudents && !formData.studentId) || loadingDateRate || !selectedDateRate} className={`w-full py-3 rounded-xl font-semibold transition-all ${transactionType === 'deposit' ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'} disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-md`}>
                   {loading ? <div className="flex items-center justify-center space-x-2"><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div><span>Procesando...</span></div> : (transactionType === 'deposit' ? 'Registrar Depósito' : 'Registrar Retiro')}
                 </button>
               </form>

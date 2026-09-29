@@ -37,6 +37,7 @@ import EditApplication from './privateViews/editApplication/EditApplication'
 import StudentsRanking from './privateViews/studentRanking/StudentRanking'
 import InfoAccount from './privateViews/InfoAccount/InfoAccount'
 import RepresentativeRegistration from './privateViews/RepresentativeRegistration/RepresentativeRegistration'
+import TasaLista from './privateViews/tasaLista/TasaListaVista'
 
 function ListRoutes() {
   return (
@@ -83,6 +84,7 @@ function ListRoutes() {
           <Route path="ranking" element={<StudentsRanking />} />
           <Route path="registrations" element={<AdminRegistrationsList />} />
           <Route path="school-fees" element={<SchoolFeeSettings />} />
+          <Route path="tasa-lista" element={<TasaLista />} />
           <Route path="simulador-cobros" element={<SimuladorCobros/>} />
           <Route path="registrations/:id/edit" element={<EditApplication />} />
           
