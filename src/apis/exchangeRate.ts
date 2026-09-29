@@ -4,7 +4,7 @@ import api from "../library/axios";
 
 // Prefijo del router de tasas en el backend.
 // Si en server.ts el mount es distinto, ajustar SOLO esta constante.
-const EXCHANGE_RATE_BASE = "/private/exchange-rate";
+const EXCHANGE_RATE_BASE = "/private/rates";
 
 // Respuesta estándar del proyecto
 export interface ExchangeRateApiResponse<T> {
