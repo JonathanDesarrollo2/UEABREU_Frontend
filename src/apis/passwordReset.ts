@@ -10,7 +10,7 @@ export interface PasswordResetApiResponse {
 // Paso 1: solicitar código al correo
 export async function requestPasswordResetAPI(email: string): Promise<PasswordResetApiResponse> {
   try {
-    const { data } = await api.post<PasswordResetApiResponse>("/public/login/forgot-password", { email });
+    const { data } = await api.post<PasswordResetApiResponse>("/public/forgot-password", { email });
     return data;
   } catch (error) {
     let mensaje = "Error al solicitar la recuperación";
@@ -25,7 +25,7 @@ export async function requestPasswordResetAPI(email: string): Promise<PasswordRe
 // Paso 2: verificar el código
 export async function verifyResetCodeAPI(email: string, code: string): Promise<PasswordResetApiResponse> {
   try {
-    const { data } = await api.post<PasswordResetApiResponse>("/public/login/verify-reset-code", { email, code });
+    const { data } = await api.post<PasswordResetApiResponse>("/public/verify-reset-code", { email, code });
     return data;
   } catch (error) {
     let mensaje = "Código inválido o expirado";
@@ -45,7 +45,7 @@ export async function resetPasswordAPI(
   confirmPassword: string
 ): Promise<PasswordResetApiResponse> {
   try {
-    const { data } = await api.post<PasswordResetApiResponse>("/public/login/reset-password", {
+    const { data } = await api.post<PasswordResetApiResponse>("/public/reset-password", {
       email,
       code,
       newPassword,

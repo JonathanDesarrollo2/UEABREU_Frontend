@@ -1,62 +1,70 @@
 import { isAxiosError } from "axios";
 import api from "../library/axios";
+import type { PublicRegisterPayload } from "../types/publicRegistration";
 
-export interface PasswordResetApiResponse {
-  result: boolean;
-  content: { message?: string; remainingAttempts?: number } | [];
-  error: string[];
+export interface RegisterResponse {
+  planillaNumber: number;
+  message: string;
 }
 
-// Paso 1: solicitar código al correo
-export async function requestPasswordResetAPI(email: string): Promise<PasswordResetApiResponse> {
+export interface VerifyResponse {
+  pdfBase64?: string | null;
+  message: string;
+}
+
+// POST /api/public/register — registro público (representante + estudiantes)
+export async function registerPublic(
+  payload: PublicRegisterPayload
+): Promise<RegisterResponse> {
   try {
-    const { data } = await api.post<PasswordResetApiResponse>("/public/forgot-password", { email });
-    return data;
+    const { data } = await api.post<{
+      result: boolean;
+      content: { message: string; planillaNumber: number };
+      error: string[];
+    }>("/public/register", payload);
+
+    if (!data.result) {
+      throw new Error(data.error?.[0] || "Error en el registro");
+    }
+    return data.content;
   } catch (error) {
-    let mensaje = "Error al solicitar la recuperación";
+    let mensaje = "Error en el registro";
     if (isAxiosError(error) && error.response) {
-      const errores = error.response.data.error;
+      const errores = error.response.data?.error;
       if (errores && errores.length > 0) mensaje = errores.join(", ");
+    } else if (error instanceof Error) {
+      mensaje = error.message;
     }
     throw new Error(mensaje);
   }
 }
 
-// Paso 2: verificar el código
-export async function verifyResetCodeAPI(email: string, code: string): Promise<PasswordResetApiResponse> {
+// POST /api/public/verify-email — verifica el código enviado por correo
+export async function verifyEmailCode({
+  email,
+  code,
+}: {
+  email: string;
+  code: string;
+}): Promise<VerifyResponse> {
   try {
-    const { data } = await api.post<PasswordResetApiResponse>("/public/verify-reset-code", { email, code });
-    return data;
-  } catch (error) {
-    let mensaje = "Código inválido o expirado";
-    if (isAxiosError(error) && error.response) {
-      const errores = error.response.data.error;
-      if (errores && errores.length > 0) mensaje = errores.join(", ");
-    }
-    throw new Error(mensaje);
-  }
-}
+    const { data } = await api.post<{
+      result: boolean;
+      content: { message: string; pdfBase64?: string | null };
+      error: string[];
+    }>("/public/verify-email", { email, code });
 
-// Paso 3: actualizar la contraseña
-export async function resetPasswordAPI(
-  email: string,
-  code: string,
-  newPassword: string,
-  confirmPassword: string
-): Promise<PasswordResetApiResponse> {
-  try {
-    const { data } = await api.post<PasswordResetApiResponse>("/public/reset-password", {
-      email,
-      code,
-      newPassword,
-      confirmPassword,
-    });
-    return data;
+    if (!data.result) {
+      throw new Error(data.error?.[0] || "Código incorrecto o expirado");
+    }
+    return data.content;
   } catch (error) {
-    let mensaje = "Error al actualizar la contraseña";
+    let mensaje = "Código incorrecto o expirado";
     if (isAxiosError(error) && error.response) {
-      const errores = error.response.data.error;
+      const errores = error.response.data?.error;
       if (errores && errores.length > 0) mensaje = errores.join(", ");
+    } else if (error instanceof Error) {
+      mensaje = error.message;
     }
     throw new Error(mensaje);
   }
