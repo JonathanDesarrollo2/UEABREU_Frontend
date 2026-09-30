@@ -38,6 +38,7 @@ import StudentsRanking from './privateViews/studentRanking/StudentRanking'
 import InfoAccount from './privateViews/InfoAccount/InfoAccount'
 import RepresentativeRegistration from './privateViews/RepresentativeRegistration/RepresentativeRegistration'
 import TasaLista from './privateViews/tasaLista/TasaListaVista'
+import ForgotPasswordPage from './publicViews/LoginAuthPublic/forgotPasswordKey'
 
 function ListRoutes() {
   return (
@@ -46,6 +47,7 @@ function ListRoutes() {
       <Route path="/" element={<LayoutPublic />}>
         <Route index element={<HomeView />} />
         <Route path="login" element={<Login />} />
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
         <Route path="join-us" element={<JoinUsView />} />
         <Route path="SobreNosotros" element={<AboutUsView />} />
         <Route path="PrivacyPolicy" element={<PrivacyPolicy />} />
