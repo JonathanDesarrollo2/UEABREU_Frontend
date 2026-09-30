@@ -203,6 +203,12 @@ export default function LoginAuthPublic() {
               >
                 Cancelar
               </button>
+              <Link
+                to="/forgot-password"
+                className="block text-center text-blue-800 font-medium hover:text-blue-900 transition-colors text-sm pt-1"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
             </motion.div>
           </form>
 
