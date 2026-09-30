@@ -15,7 +15,7 @@ export interface VerifyResponse {
 // POST /api/public/register — registro público (representante + estudiantes)
 export async function registerPublic(
   payload: PublicRegisterPayload
-): Promise<RegisterResponse> {
+): Promise<{ planillaNumber: number }> {
   try {
     const { data } = await api.post<{
       result: boolean;
