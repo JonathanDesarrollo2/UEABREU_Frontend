@@ -34,9 +34,11 @@ export const useForgotPassword = () => {
       toast.error(errMsg);
       return false;
     } catch (err: any) {
-      toast.error(err?.message || "Error al solicitar recuperación");
-      return false;
-    } finally {
+        // Nunca mostramos el error técnico al usuario
+        toast.error("No pudimos enviar el código en este momento. Intenta nuevamente en unos minutos.");
+        console.error('[forgot-password] Error:', err);
+        return false;
+        } finally {
       setLoading(false);
     }
   };
@@ -56,9 +58,11 @@ export const useForgotPassword = () => {
       toast.error(errMsg);
       return false;
     } catch (err: any) {
-      toast.error(err?.message || "Código inválido");
-      return false;
-    } finally {
+        // Nunca mostramos el error técnico al usuario
+        toast.error("No pudimos enviar el código en este momento. Intenta nuevamente en unos minutos.");
+        console.error('[forgot-password] Error:', err);
+        return false;
+        } finally {
       setLoading(false);
     }
   };
@@ -78,10 +82,12 @@ export const useForgotPassword = () => {
       const errMsg = res.error?.[0] || "Error al actualizar la contraseña";
       toast.error(errMsg);
       return false;
-    } catch (err: any) {
-      toast.error(err?.message || "Error al actualizar la contraseña");
-      return false;
-    } finally {
+        } catch (err: any) {
+        // Nunca mostramos el error técnico al usuario
+        toast.error("No pudimos enviar el código en este momento. Intenta nuevamente en unos minutos.");
+        console.error('[forgot-password] Error:', err);
+        return false;
+        } finally {
       setLoading(false);
     }
   };
