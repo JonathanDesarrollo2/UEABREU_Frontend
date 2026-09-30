@@ -1,58 +1,63 @@
-import type { PublicRegisterPayload, VerifyEmailPayload } from "../types/publicRegistration";
+import { isAxiosError } from "axios";
+import api from "../library/axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
-
-interface RegisterApiResponse {
+export interface PasswordResetApiResponse {
   result: boolean;
-  content?: {
-    message?: string;
-    planillaNumber?: number;
-  };
-  error?: string[];
+  content: { message?: string; remainingAttempts?: number } | [];
+  error: string[];
 }
 
-interface VerifyApiResponse {
-  result: boolean;
-  content?: {
-    message?: string;
-    pdfBase64?: string | null;
-  };
-  error?: string[];
+// Paso 1: solicitar código al correo
+export async function requestPasswordResetAPI(email: string): Promise<PasswordResetApiResponse> {
+  try {
+    const { data } = await api.post<PasswordResetApiResponse>("/public/forgot-password", { email });
+    return data;
+  } catch (error) {
+    let mensaje = "Error al solicitar la recuperación";
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) mensaje = errores.join(", ");
+    }
+    throw new Error(mensaje);
+  }
 }
 
-export async function registerPublic(payload: PublicRegisterPayload): Promise<{ planillaNumber: number }> {
-  const res = await fetch(`${API_BASE}/public/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-
-  const data: RegisterApiResponse = await res.json();
-
-  if (!res.ok || !data.result) {
-    throw new Error(data.error?.[0] || 'Error en el registro');
+// Paso 2: verificar el código
+export async function verifyResetCodeAPI(email: string, code: string): Promise<PasswordResetApiResponse> {
+  try {
+    const { data } = await api.post<PasswordResetApiResponse>("/public/verify-reset-code", { email, code });
+    return data;
+  } catch (error) {
+    let mensaje = "Código inválido o expirado";
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) mensaje = errores.join(", ");
+    }
+    throw new Error(mensaje);
   }
-
-  const planillaNumber = data.content?.planillaNumber;
-  if (!planillaNumber) {
-    throw new Error('No se recibió el número de planilla');
-  }
-
-  return { planillaNumber };
 }
 
-export async function verifyEmailCode(payload: VerifyEmailPayload): Promise<{ pdfBase64: string | null }> {
-  const res = await fetch(`${API_BASE}/public/verify-email`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-
-  const data: VerifyApiResponse = await res.json();
-
-  if (!res.ok || !data.result) {
-    throw new Error(data.error?.[0] || 'Error en la verificación');
+// Paso 3: actualizar la contraseña
+export async function resetPasswordAPI(
+  email: string,
+  code: string,
+  newPassword: string,
+  confirmPassword: string
+): Promise<PasswordResetApiResponse> {
+  try {
+    const { data } = await api.post<PasswordResetApiResponse>("/public/reset-password", {
+      email,
+      code,
+      newPassword,
+      confirmPassword,
+    });
+    return data;
+  } catch (error) {
+    let mensaje = "Error al actualizar la contraseña";
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) mensaje = errores.join(", ");
+    }
+    throw new Error(mensaje);
   }
-
-  return { pdfBase64: data.content?.pdfBase64 || null };
 }
