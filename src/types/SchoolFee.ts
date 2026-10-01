@@ -12,4 +12,5 @@ export interface SchoolFee {
   monthlyFeeStartDate?: string;   // formato YYYY-MM-DD
   inscriptionStartDate?: string;
   inscriptionEndDate?: string;
+  schoolYearEndDate?: string; // ✅ NUEVO CAMPO
 }

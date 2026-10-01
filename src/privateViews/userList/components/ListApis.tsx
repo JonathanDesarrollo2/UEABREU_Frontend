@@ -1,5 +1,5 @@
 // src/views/admin/users/components/ListAPI.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { 
   FaEdit, 
@@ -7,12 +7,17 @@ import {
   FaUser,
   FaUserTie,
   FaMoneyBillWave,
-  FaUsers
+  FaUsers,
+  FaCalendarAlt,
+  FaSignInAlt
 } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import type { TypeUser_full } from '../../../types/user';
 import { useDeleteUser } from '../hooks/useDeleteUser';
 import GenericModal from '../../../components/GenricModal';
 import ConfirmDeleteModal from '../../../components/ConfirmDeleteModal';
+import api from '../../../library/axios';
+import { getStoredRateAPI, type BCVRateResponse } from '../../../apis/bank';
 
 interface ListAPIProps {
   data: TypeUser_full[];
@@ -23,8 +28,25 @@ export default function ListAPIs({ data }: ListAPIProps) {
   const [selectedUser, setSelectedUser] = useState<TypeUser_full | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; userlogin: string } | null>(null);
-  
+  const [impersonating, setImpersonating] = useState(false);
+  const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
+
   const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
+
+  // Obtener tasa BCV al montar
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        const res = await getStoredRateAPI();
+        if (res.result && res.content) {
+          setBcvRate(res.content);
+        }
+      } catch (error) {
+        console.error('Error al obtener tasa BCV', error);
+      }
+    };
+    fetchRate();
+  }, []);
 
   const handleDelete = () => {
     if (deleteCandidate) {
@@ -41,6 +63,31 @@ export default function ListAPIs({ data }: ListAPIProps) {
     navigate('/admin/users/edit', { state: { userData: user } });
   };
 
+  const handleImpersonate = async () => {
+    if (!selectedUser) return;
+    setImpersonating(true);
+    try {
+      const { data } = await api.post(`/private/user/impersonate/${selectedUser.id}`);
+      if (data.result) {
+        const { token } = data.content;
+        localStorage.setItem('tokcattleraising_inCattleRanchCloud', token);
+        toast.success(`Sesión iniciada como ${selectedUser.userlogin}`);
+        if (selectedUser.nivel === 1) {
+          window.location.href = '/representante';
+        } else {
+          navigate('/admin/dashboard');
+        }
+        setSelectedUser(null);
+      } else {
+        toast.error(data.error?.[0] || 'Error al iniciar sesión como este usuario');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.[0] || 'Error de conexión');
+    } finally {
+      setImpersonating(false);
+    }
+  };
+
   const getNivelText = (nivel?: number) => {
     switch(nivel) {
       case 1: return { text: 'Representante', icon: <FaUserTie className="inline mr-1" />, color: 'text-green-600' };
@@ -49,9 +96,33 @@ export default function ListAPIs({ data }: ListAPIProps) {
     }
   };
 
-  const formatDate = (date?: Date) => {
+  const formatDate = (date?: Date | string) => {
     if (!date) return 'No disponible';
     return new Date(date).toLocaleDateString('es-ES');
+  };
+
+  // Funciones de formato de moneda
+  const formatBs = (amount: number) => {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: 'VES',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  const formatUsd = (amount: number) => {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  const usdToBs = (usd: number) => {
+    if (!bcvRate || bcvRate.PriceRateBCV <= 0) return 0;
+    return usd * bcvRate.PriceRateBCV;
   };
 
   return (
@@ -74,6 +145,8 @@ export default function ListAPIs({ data }: ListAPIProps) {
           <tbody>
             {data.map((user) => {
               const nivelInfo = getNivelText(user.nivel);
+              const balanceUSD = user.representative?.balance ?? 0;
+              const balanceBs = usdToBs(balanceUSD);
               const balanceInfo = user.representative?.balanceStatus;
               
               return (
@@ -102,11 +175,14 @@ export default function ListAPIs({ data }: ListAPIProps) {
                   </td>
                   <td className="py-3 px-4">
                     {user.nivel === 1 && user.representative ? (
-                      <div className="flex items-center">
-                        <FaMoneyBillWave className={`mr-1 ${balanceInfo === 'debt' ? 'text-red-500' : balanceInfo === 'credit' ? 'text-green-500' : 'text-gray-500'}`} />
-                        <span className={`font-semibold ${balanceInfo === 'debt' ? 'text-red-600' : balanceInfo === 'credit' ? 'text-green-600' : 'text-gray-600'}`}>
-                          {user.representative.balanceFormatted || 'Bs 0,00'}
-                        </span>
+                      <div className="flex flex-col">
+                        <div className="flex items-center">
+                          <FaMoneyBillWave className={`mr-1 ${balanceInfo === 'debt' ? 'text-red-500' : balanceInfo === 'credit' ? 'text-green-500' : 'text-gray-500'}`} />
+                          <span className={`font-semibold ${balanceInfo === 'debt' ? 'text-red-600' : balanceInfo === 'credit' ? 'text-green-600' : 'text-gray-600'}`}>
+                            {formatBs(balanceBs)}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-400">≈ {formatUsd(balanceUSD)}</span>
                       </div>
                     ) : (
                       <span className="text-gray-400">N/A</span>
@@ -174,78 +250,106 @@ export default function ListAPIs({ data }: ListAPIProps) {
             }
           ]}
           extraContent={
-            selectedUser.nivel === 1 && selectedUser.representative ? (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-bold text-lg mb-3 flex items-center">
-                  <FaUserTie className="mr-2" /> Información del Representante
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600">Nombre Completo:</label>
-                    <p className="text-gray-800">{selectedUser.representative.fullName}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600">Cédula:</label>
-                    <p className="text-gray-800">{selectedUser.representative.identityCard}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600">Teléfono:</label>
-                    <p className="text-gray-800">{selectedUser.representative.phone}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600">Relación:</label>
-                    <p className="text-gray-800">{selectedUser.representative.relationship}</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-600">Dirección:</label>
-                    <p className="text-gray-800">{selectedUser.representative.address}</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-600">Saldo Actual:</label>
-                    <p className={`text-xl font-bold ${selectedUser.representative.balanceStatus === 'debt' ? 'text-red-600' : selectedUser.representative.balanceStatus === 'credit' ? 'text-green-600' : 'text-gray-600'}`}>
-                      {selectedUser.representative.balanceFormatted || 'Bs 0,00'}
-                    </p>
-                  </div>
-                </div>
+            <>
+              <div className="mt-4 mb-4">
+                <button
+                  onClick={handleImpersonate}
+                  disabled={impersonating}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-5 py-3 text-base font-semibold text-white shadow-md hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  <FaSignInAlt className="text-lg" />
+                  {impersonating ? 'Iniciando sesión...' : 'Entrar como este usuario'}
+                </button>
+              </div>
 
-                {/* Lista de Estudiantes */}
-                {selectedUser.representative.students && selectedUser.representative.students.length > 0 && (
-                  <div>
-                    <h5 className="font-bold mb-2 flex items-center">
-                      <FaUsers className="mr-2" /> Estudiantes ({selectedUser.representative.students.length})
-                    </h5>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {selectedUser.representative.students.map((student) => (
-                        <div 
-                          key={student.id} 
-                          className="p-3 border rounded hover:bg-blue-50 cursor-pointer"
-                          onClick={() => setSelectedStudent(student)}
-                        >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-medium">{student.fullName}</p>
-                              <p className="text-sm text-gray-600">Cédula: {student.identityCard}</p>
-                            </div>
-                            <span className={`px-2 py-1 rounded text-xs ${student.status === 'regular' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                              {student.status || 'pendiente'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+              {selectedUser.nivel === 1 && selectedUser.representative ? (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-bold text-lg mb-3 flex items-center">
+                    <FaUserTie className="mr-2" /> Información del Representante
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Nombre Completo:</label>
+                      <p className="text-gray-800">{selectedUser.representative.fullName}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Cédula:</label>
+                      <p className="text-gray-800">{selectedUser.representative.identityCard}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Teléfono:</label>
+                      <p className="text-gray-800">{selectedUser.representative.phone}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Relación:</label>
+                      <p className="text-gray-800">{selectedUser.representative.relationship}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-600">Dirección:</label>
+                      <p className="text-gray-800">{selectedUser.representative.address}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-600">Saldo Actual:</label>
+                      <p className={`text-xl font-bold ${selectedUser.representative.balanceStatus === 'debt' ? 'text-red-600' : selectedUser.representative.balanceStatus === 'credit' ? 'text-green-600' : 'text-gray-600'}`}>
+                        {formatBs(usdToBs(selectedUser.representative.balance || 0))}
+                        <span className="text-xs text-gray-500 ml-2">≈ {formatUsd(selectedUser.representative.balance || 0)}</span>
+                      </p>
                     </div>
                   </div>
-                )}
-              </div>
-            ) : selectedUser.nivel === 1 ? (
-              <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
-                <p className="text-yellow-700">Este usuario es nivel 1 (Representante) pero no tiene información de representante registrada.</p>
-              </div>
-            ) : (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-blue-700">Usuario administrativo.</p>
-              </div>
-            )
+
+                  {selectedUser.representative.students && selectedUser.representative.students.length > 0 && (
+                    <div>
+                      <h5 className="font-bold mb-2 flex items-center">
+                        <FaUsers className="mr-2" /> Estudiantes ({selectedUser.representative.students.length})
+                      </h5>
+                      <div className="space-y-3 max-h-72 overflow-y-auto">
+                        {selectedUser.representative.students.map((student) => {
+                          const studentAny = student as any;
+                          const studentBalanceUSD = studentAny.balance || 0;
+                          const studentBalanceBs = usdToBs(studentBalanceUSD);
+                          return (
+                            <div 
+                              key={student.id} 
+                              className="p-4 border rounded-lg bg-white hover:bg-blue-50 cursor-pointer transition-colors"
+                              onClick={() => setSelectedStudent(studentAny)}
+                            >
+                              <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2">
+                                <div>
+                                  <p className="font-medium text-gray-900">{student.fullName}</p>
+                                  <p className="text-sm text-gray-600">Cédula: {student.identityCard}</p>
+                                  <p className="text-sm text-gray-600 flex items-center">
+                                    <FaCalendarAlt className="mr-1 text-gray-400" />
+                                    Admisión: {formatDate(studentAny.admissionDate)}
+                                  </p>
+                                </div>
+                                <div className="md:text-right">
+                                  <span className={`inline-block px-2 py-1 rounded text-xs mb-1 ${student.status === 'regular' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                    {student.status || 'pendiente'}
+                                  </span>
+                                  <p className={`text-sm font-semibold ${studentBalanceUSD < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                    Saldo: {formatBs(studentBalanceBs)}
+                                  </p>
+                                  <p className="text-xs text-gray-400">≈ {formatUsd(studentBalanceUSD)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : selectedUser.nivel === 1 ? (
+                <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
+                  <p className="text-yellow-700">Este usuario es nivel 1 (Representante) pero no tiene información de representante registrada.</p>
+                </div>
+              ) : (
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <p className="text-blue-700">Usuario administrativo.</p>
+                </div>
+              )}
+            </>
           }
           show={!!selectedUser}
           onClose={() => setSelectedUser(null)}
@@ -261,7 +365,6 @@ export default function ListAPIs({ data }: ListAPIProps) {
         />
       )}
 
-      {/* Modal de Detalles del Estudiante */}
       {selectedStudent && (
         <GenericModal
           title={`Detalles del Estudiante: ${selectedStudent.fullName}`}
@@ -303,18 +406,35 @@ export default function ListAPIs({ data }: ListAPIProps) {
             }
           ]}
           extraContent={
-            selectedStudent.birthDate && (
-              <div className="mt-3 p-3 bg-gray-50 rounded">
-                <label className="block text-sm font-medium text-gray-600">Fecha de Nacimiento:</label>
-                <p className="text-gray-800">
-                  {new Date(selectedStudent.birthDate).toLocaleDateString('es-ES', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric'
-                  })}
-                </p>
-              </div>
-            )
+            <>
+              {selectedStudent.birthDate && (
+                <div className="mt-3 p-3 bg-gray-50 rounded">
+                  <label className="block text-sm font-medium text-gray-600">Fecha de Nacimiento:</label>
+                  <p className="text-gray-800">
+                    {new Date(selectedStudent.birthDate).toLocaleDateString('es-ES', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+              )}
+              {selectedStudent.admissionDate && (
+                <div className="mt-3 p-3 bg-gray-50 rounded">
+                  <label className="block text-sm font-medium text-gray-600">Fecha de Admisión:</label>
+                  <p className="text-gray-800">{formatDate(selectedStudent.admissionDate)}</p>
+                </div>
+              )}
+              {selectedStudent.balance !== undefined && (
+                <div className="mt-3 p-3 bg-gray-50 rounded">
+                  <label className="block text-sm font-medium text-gray-600">Saldo del Estudiante:</label>
+                  <p className={`text-lg font-semibold ${selectedStudent.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatBs(usdToBs(selectedStudent.balance))}
+                    <span className="text-xs text-gray-500 ml-2">≈ {formatUsd(selectedStudent.balance)}</span>
+                  </p>
+                </div>
+              )}
+            </>
           }
           show={!!selectedStudent}
           onClose={() => setSelectedStudent(null)}
@@ -322,7 +442,6 @@ export default function ListAPIs({ data }: ListAPIProps) {
         />
       )}
 
-      {/* Modal de Confirmación de Eliminación */}
       <ConfirmDeleteModal
         show={!!deleteCandidate}
         onClose={() => setDeleteCandidate(null)}

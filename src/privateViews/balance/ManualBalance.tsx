@@ -1,19 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   FaMoneyBillWave, FaUser, FaSearch, FaPlus, FaMinus, FaHistory,
-  FaCreditCard, FaInfoCircle, FaArrowLeft, FaCheckCircle, FaTimes
+  FaCreditCard, FaInfoCircle, FaArrowLeft, FaCheckCircle, FaTimes,
+  FaExchangeAlt, FaUserShield, FaUserTie, FaCog, FaArrowRight
 } from 'react-icons/fa';
 import 'react-toastify/dist/ReactToastify.css';
+import { toast } from 'react-toastify';
 
 import { useRepresentativeSearch } from './hooks/useRepresentativeSearch';
 import { useBalanceTransaction } from './hooks/useBalanceTransaction';
 import { useTransactionHistory } from './hooks/useTransactionHistory';
-import { 
-  formatCurrency, getBalanceColor, getBalanceBgColor, mapPaymentMethodToDisplay 
+import {
+  getBalanceColor, getBalanceBgColor, mapPaymentMethodToDisplay
 } from './utils/balanceUtils';
+import { getStoredRateAPI, type BCVRateResponse } from '../../apis/bank';
+import { getRateByDateAPI } from '../../apis/exchangeRate';
+import { movePaymentBetweenStudents } from '../../apis/balance';
 
-// Interfaz para representante (usada en hooks y componente)
 export interface Representative {
   id: string;
   fullName: string;
@@ -37,6 +41,11 @@ export interface Representative {
 export default function ManualBalance() {
   const navigate = useNavigate();
   const [transactionType, setTransactionType] = useState<'deposit' | 'withdrawal'>('deposit');
+  const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
+  // Tasa registrada para la fecha del pago seleccionada (null si no existe)
+  const [selectedDateRate, setSelectedDateRate] = useState<number | null>(null);
+  const [rateNotFound, setRateNotFound] = useState(false);
+  const [loadingDateRate, setLoadingDateRate] = useState(false);
 
   const {
     searchTerm,
@@ -54,6 +63,8 @@ export default function ManualBalance() {
     setShowHistory,
     transactions,
     loadTransactionHistory,
+    selectedTransactionId,
+    setSelectedTransactionId,
   } = useTransactionHistory();
 
   const {
@@ -61,7 +72,6 @@ export default function ManualBalance() {
     formData,
     setFormData,
     handleSubmit,
-    calculateNewBalance,
     updateTransactionType,
   } = useBalanceTransaction(
     selectedRep,
@@ -76,6 +86,64 @@ export default function ManualBalance() {
       }
     }
   );
+
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [moveTargetStudentId, setMoveTargetStudentId] = useState<string>('');
+  const [moveAmountBs, setMoveAmountBs] = useState<number>(0);
+  const [movingPayment, setMovingPayment] = useState(false);
+
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        const res = await getStoredRateAPI();
+        if (res.result && res.content) setBcvRate(res.content);
+      } catch (error) {
+        console.error('Error al obtener tasa BCV', error);
+      }
+    };
+    fetchRate();
+  }, []);
+
+  // Al cambiar la fecha del pago, consulta la tasa registrada para esa fecha valor
+  useEffect(() => {
+    const paymentDate = formData.paymentDate;
+    if (!paymentDate) {
+      setSelectedDateRate(null);
+      setRateNotFound(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingDateRate(true);
+    getRateByDateAPI(paymentDate)
+      .then((res) => {
+        if (cancelled) return;
+        if (res.result && res.content) {
+          setSelectedDateRate(Number(res.content.rate));
+          setRateNotFound(false);
+        } else {
+          setSelectedDateRate(null);
+          setRateNotFound(true);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSelectedDateRate(null);
+        setRateNotFound(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDateRate(false);
+      });
+    return () => { cancelled = true; };
+  }, [formData.paymentDate]);
+
+  const formatBs = (amount: number) =>
+    new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(amount);
+  const formatUsd = (amount: number) =>
+    new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(amount);
+  const usdToBs = (usd: number) => {
+    if (!bcvRate || bcvRate.PriceRateBCV <= 0) return 0;
+    return usd * bcvRate.PriceRateBCV;
+  };
 
   const handleTransactionTypeChange = (newType: 'deposit' | 'withdrawal') => {
     setTransactionType(newType);
@@ -94,6 +162,7 @@ export default function ManualBalance() {
       reference: '',
       studentId: undefined,
     }));
+    setSelectedTransactionId(null);
   };
 
   const studentOptions = selectedRep?.students || [];
@@ -103,58 +172,198 @@ export default function ManualBalance() {
     setFormData(prev => ({ ...prev, studentId: studentOptions[0].id }));
   }
 
+  const calculateNewBalanceBs = () => {
+    if (!selectedRep) return 0;
+    const currentBalanceBs = usdToBs(selectedRep.balance || 0);
+    const amount = formData.amount || 0;
+    return transactionType === 'deposit' ? currentBalanceBs + amount : currentBalanceBs - amount;
+  };
+
+  const selectedTransaction = transactions.find(t => t.id === selectedTransactionId);
+
+  const openMoveModal = (transaction: any) => {
+    if (!selectedRep || !transaction || transaction.type !== 'deposit' || transaction.status !== 'completed') return;
+    if (!hasMultipleStudents) {
+      toast.info('El representante debe tener al menos 2 estudiantes para mover un pago');
+      return;
+    }
+    setSelectedTransactionId(transaction.id);
+    setMoveTargetStudentId('');
+    setMoveAmountBs(transaction.amount || 0);
+    setShowMoveModal(true);
+  };
+
+  const closeMoveModal = () => {
+    setShowMoveModal(false);
+    setSelectedTransactionId(null);
+    setMoveTargetStudentId('');
+    setMoveAmountBs(0);
+  };
+
+  const handleMovePayment = async () => {
+    if (!selectedTransactionId || !moveTargetStudentId) {
+      toast.error('Selecciona el estudiante destino');
+      return;
+    }
+    if (!moveAmountBs || moveAmountBs <= 0) {
+      toast.error('Ingresa un monto válido a mover');
+      return;
+    }
+    if (selectedTransaction && moveAmountBs > (selectedTransaction.amount || 0)) {
+      toast.error('El monto a mover no puede ser mayor al monto original del pago');
+      return;
+    }
+
+    setMovingPayment(true);
+    try {
+      const res = await movePaymentBetweenStudents(selectedTransactionId, moveTargetStudentId, moveAmountBs);
+      if (res.result) {
+        toast.success(res.content?.message || 'Pago movido exitosamente');
+        closeMoveModal();
+        if (selectedRep) {
+          const updatedRep = await loadRepresentativeDetails(selectedRep.id);
+          if (updatedRep) setSelectedRep(updatedRep);
+          loadTransactionHistory(selectedRep.id);
+        }
+      } else {
+        toast.error(res.error?.[0] || 'Error al mover el pago');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Error de conexión');
+    } finally {
+      setMovingPayment(false);
+    }
+  };
+
+  // Render de la info del movimiento (de quién a quién)
+  const renderMoveInfo = (transaction: any) => {
+    const meta = transaction.metadata;
+    if (!meta) return null;
+
+    if (meta.isMoved && meta.movedFromStudentName && meta.movedToStudentName) {
+      return (
+        <div className="mt-2 bg-indigo-50 border border-indigo-200 rounded-lg p-2 text-xs text-indigo-800">
+          <div className="flex items-center gap-1 font-semibold">
+            <FaExchangeAlt className="text-[10px]" />
+            Pago movido
+          </div>
+          <div className="flex items-center gap-1 mt-1 flex-wrap">
+            <span className="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-indigo-200">
+              <FaUser className="text-[10px] text-gray-400" />
+              {meta.movedFromStudentName}
+            </span>
+            <FaArrowRight className="text-[10px] text-indigo-500" />
+            <span className="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-indigo-200">
+              <FaUser className="text-[10px] text-gray-400" />
+              {meta.movedToStudentName}
+            </span>
+          </div>
+          {meta.movedAmountBs !== undefined && (
+            <div className="text-[11px] text-indigo-600 mt-1">
+              Monto movido: {formatBs(meta.movedAmountBs)}
+              {meta.movedAmountUSD !== undefined && ` (≈ ${formatUsd(meta.movedAmountUSD)})`}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (meta.isMovedRemainder && meta.movedToStudentName) {
+      return (
+        <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800">
+          <div className="flex items-center gap-1 font-semibold">
+            <FaExchangeAlt className="text-[10px]" />
+            Remanente de un pago movido
+          </div>
+          <div className="mt-1">
+            El resto del pago se movió a:{' '}
+            <span className="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-amber-200">
+              <FaUser className="text-[10px] text-gray-400" />
+              {meta.movedToStudentName}
+            </span>
+          </div>
+          {meta.remainingAmountBs !== undefined && (
+            <div className="text-[11px] text-amber-700 mt-1">
+              Este remanente: {formatBs(meta.remainingAmountBs)}
+              {meta.remainingAmountUSD !== undefined && ` (≈ ${formatUsd(meta.remainingAmountUSD)})`}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // Render del "Hecho por"
+  const renderCreator = (transaction: any) => {
+    const c = transaction.creator;
+    if (!c) {
+      if (transaction.type === 'fee' || transaction.type === 'adjustment') {
+        return (
+          <div className="inline-flex items-center gap-1 text-xs text-gray-500">
+            <FaCog className="text-[10px]" /> Sistema
+          </div>
+        );
+      }
+      return null;
+    }
+    if (c.role === 'admin') {
+      return (
+        <div className="inline-flex items-center gap-1 text-xs text-blue-700 font-semibold">
+          <FaUserShield className="text-[10px]" /> Admin {c.username || c.userlogin}
+        </div>
+      );
+    }
+    if (c.role === 'representative') {
+      return (
+        <div className="inline-flex items-center gap-1 text-xs text-green-700 font-semibold">
+          <FaUserTie className="text-[10px]" /> Representante
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
-          >
-            <FaArrowLeft />
-            <span>Volver</span>
+          <button onClick={() => navigate(-1)} className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4">
+            <FaArrowLeft /> <span>Volver</span>
           </button>
-          
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-3 rounded-xl shadow-md">
                 <FaMoneyBillWave className="text-2xl text-white" />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-                  Gestión de Saldo Manual
-                </h1>
-                <p className="text-gray-600">
-                  Agregar o retirar saldo de cuentas de representantes
-                </p>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Gestión de Saldo Manual</h1>
+                <p className="text-gray-600">Agregar o retirar saldo de cuentas de representantes</p>
               </div>
             </div>
-            
             <div className="flex items-center space-x-2">
               <div className={`px-3 py-1 rounded-lg ${transactionType === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                <span className="font-semibold">
-                  {transactionType === 'deposit' ? 'DEPÓSITO' : 'RETIRO'}
-                </span>
+                <span className="font-semibold">{transactionType === 'deposit' ? 'DEPÓSITO' : 'RETIRO'}</span>
               </div>
+              {bcvRate && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-1 text-blue-800 flex items-center gap-1">
+                  <FaExchangeAlt />
+                  <span className="text-sm font-bold">{bcvRate.PriceRateBCV.toFixed(2)} Bs/USD</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Panel izquierdo - Búsqueda y selección */}
+          {/* Panel izquierdo */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg mb-6">
               <div className="flex items-center space-x-3 mb-6">
-                <div className="bg-blue-100 p-2 rounded-lg">
-                  <FaSearch className="text-lg text-blue-600" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-800">
-                  Buscar Representante
-                </h2>
+                <div className="bg-blue-100 p-2 rounded-lg"><FaSearch className="text-lg text-blue-600" /></div>
+                <h2 className="text-xl font-bold text-gray-800">Buscar Representante</h2>
               </div>
-
-              {/* Barra de búsqueda */}
               <div className="relative mb-6">
                 <div className="relative">
                   <input
@@ -162,129 +371,86 @@ export default function ManualBalance() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Buscar por nombre, cédula o teléfono..."
-                    className="w-full px-4 py-3 pl-12 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 pl-12 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                    {isSearching ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
-                    ) : (
-                      <FaUser className="text-gray-400" />
-                    )}
+                    {isSearching ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div> : <FaUser className="text-gray-400" />}
                   </div>
                 </div>
-
                 {searchResults.length > 0 && !selectedRep && (
                   <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                     {searchResults.map((rep) => (
-                      <div
-                        key={rep.id}
-                        onClick={() => {
-                          loadRepresentativeDetails(rep.id).then(updatedRep => {
-                            if (updatedRep) {
-                              setSelectedRep(updatedRep);
-                              loadTransactionHistory(rep.id);
-                            }
-                          });
-                          setSearchResults([]);
-                          setSearchTerm('');
-                        }}
-                        className="p-4 border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors"
-                      >
+                      <div key={rep.id} onClick={() => {
+                        loadRepresentativeDetails(rep.id).then(updatedRep => {
+                          if (updatedRep) {
+                            setSelectedRep(updatedRep);
+                            loadTransactionHistory(rep.id);
+                          }
+                        });
+                        setSearchResults([]);
+                        setSearchTerm('');
+                      }} className="p-4 border-b border-gray-100 hover:bg-blue-50 cursor-pointer">
                         <div className="flex justify-between items-center">
                           <div>
                             <h4 className="font-semibold text-gray-800">{rep.fullName}</h4>
-                            <p className="text-sm text-gray-600">
-                              Cédula: {rep.identityCard} | Tel: {rep.phone || 'N/A'}
-                            </p>
+                            <p className="text-sm text-gray-600">Cédula: {rep.identityCard} | Tel: {rep.phone || 'N/A'}</p>
                           </div>
                           <div className={`px-2 py-1 rounded text-xs font-bold ${getBalanceBgColor(rep.balance || 0)}`}>
-                            {formatCurrency(rep.balance || 0)}
+                            {formatBs(usdToBs(rep.balance || 0))}
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-
                 {searchTerm.length >= 2 && !isSearching && searchResults.length === 0 && !selectedRep && (
                   <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg p-4">
-                    <p className="text-gray-600 text-center">
-                      No se encontraron representantes con "{searchTerm}"
-                    </p>
+                    <p className="text-gray-600 text-center">No se encontraron representantes con "{searchTerm}"</p>
                   </div>
                 )}
               </div>
 
-              {/* Información del representante seleccionado */}
               {selectedRep && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5 mb-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-lg font-bold text-gray-800">
-                        {selectedRep.fullName}
-                      </h3>
+                      <h3 className="text-lg font-bold text-gray-800">{selectedRep.fullName}</h3>
                       <div className="flex items-center space-x-4 mt-2">
-                        <span className="text-sm text-gray-600">
-                          <FaUser className="inline mr-1" />
-                          {selectedRep.identityCard}
-                        </span>
-                        <span className="text-sm text-gray-600">
-                          <FaCreditCard className="inline mr-1" />
-                          {selectedRep.phone || 'N/A'}
-                        </span>
-                        {selectedRep.email && (
-                          <span className="text-sm text-gray-600">
-                            {selectedRep.email}
-                          </span>
-                        )}
+                        <span className="text-sm text-gray-600"><FaUser className="inline mr-1" />{selectedRep.identityCard}</span>
+                        <span className="text-sm text-gray-600"><FaCreditCard className="inline mr-1" />{selectedRep.phone || 'N/A'}</span>
+                        {selectedRep.email && <span className="text-sm text-gray-600">{selectedRep.email}</span>}
                       </div>
                     </div>
                     <div className="text-right">
                       <div className={`text-2xl font-bold ${getBalanceColor(selectedRep.balance || 0)}`}>
-                        {selectedRep.balanceFormatted || formatCurrency(selectedRep.balance || 0)}
+                        {formatBs(usdToBs(selectedRep.balance || 0))}
                       </div>
-                      <div className="text-sm text-gray-600">
-                        Saldo actual
-                      </div>
+                      <div className="text-sm text-gray-600">Saldo actual</div>
+                      <div className="text-base font-bold text-green-600 mt-1">≈ {formatUsd(selectedRep.balance || 0)}</div>
                       {selectedRep.balanceStatus && (
-                        <div className={`text-xs px-2 py-1 rounded ${selectedRep.balanceStatus === 'debt' ? 'bg-red-100 text-red-800' : selectedRep.balanceStatus === 'credit' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        <div className={`text-xs px-2 py-1 rounded mt-1 ${selectedRep.balanceStatus === 'debt' ? 'bg-red-100 text-red-800' : selectedRep.balanceStatus === 'credit' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                           {selectedRep.balanceStatus === 'debt' ? 'EN DEUDA' : selectedRep.balanceStatus === 'credit' ? 'CON CRÉDITO' : 'SALDO CERO'}
                         </div>
                       )}
                     </div>
                   </div>
-
-                  {/* Botón para limpiar representante */}
-                  <button
-                    onClick={handleClearRepresentative}
-                    className="mb-4 flex items-center space-x-2 text-sm text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    <FaTimes />
-                    <span>Cambiar representante</span>
+                  <button onClick={handleClearRepresentative} className="mb-4 flex items-center space-x-2 text-sm text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg">
+                    <FaTimes /> <span>Cambiar representante</span>
                   </button>
 
-                  {/* Lista de estudiantes */}
                   {studentOptions.length > 0 && (
                     <div className="mb-4">
-                      <h4 className="font-semibold text-gray-700 mb-2">
-                        Estudiantes ({studentOptions.length})
-                      </h4>
+                      <h4 className="font-semibold text-gray-700 mb-2">Estudiantes ({studentOptions.length})</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {studentOptions.map((student) => (
-                          <div
-                            key={student.id}
-                            className="bg-white p-3 rounded-lg border border-gray-200"
-                          >
+                          <div key={student.id} className="bg-white p-3 rounded-lg border border-gray-200">
                             <div className="flex justify-between items-center">
                               <span className="font-medium text-gray-800 truncate mr-2">{student.fullName}</span>
-                              <span className={`px-2 py-1 rounded text-xs ${student.status === 'regular' ? 'bg-green-100 text-green-800' : student.status === 'pendiente' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
-                                {student.status}
-                              </span>
+                              <span className={`px-2 py-1 rounded text-xs ${student.status === 'regular' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{student.status}</span>
                             </div>
                             <div className="text-sm text-gray-600 mt-1">
-                              Balance: <span className={getBalanceColor(student.balance || 0)}>
-                                {formatCurrency(student.balance || 0)}
-                              </span>
+                              Balance: <span className={getBalanceColor(student.balance || 0)}>{formatBs(usdToBs(student.balance || 0))}</span>
+                              <span className="text-base font-bold text-green-600 ml-1"> ≈ {formatUsd(student.balance || 0)}</span>
                             </div>
                           </div>
                         ))}
@@ -292,53 +458,61 @@ export default function ManualBalance() {
                     </div>
                   )}
 
-                  <button
-                    onClick={() => setShowHistory(!showHistory)}
-                    className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
-                  >
-                    <FaHistory />
-                    <span className="font-medium">
-                      {showHistory ? 'Ocultar historial' : 'Ver historial reciente'}
-                    </span>
+                  <button onClick={() => setShowHistory(!showHistory)} className="flex items-center space-x-2 text-blue-600 hover:text-blue-800">
+                    <FaHistory /> <span className="font-medium">{showHistory ? 'Ocultar historial' : 'Ver historial reciente'}</span>
                   </button>
                 </div>
               )}
 
-              {/* Historial de transacciones */}
               {showHistory && selectedRep && transactions.length > 0 && (
                 <div className="mt-6">
-                  <h4 className="font-semibold text-gray-700 mb-3">
-                    Transacciones Recientes ({transactions.length})
-                  </h4>
+                  <h4 className="font-semibold text-gray-700 mb-3">Transacciones Recientes ({transactions.length})</h4>
                   <div className="space-y-3">
                     {transactions.map((transaction) => (
-                      <div
-                        key={transaction.id}
-                        className="bg-gray-50 p-4 rounded-lg border border-gray-200"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <span className={`px-2 py-1 rounded text-xs font-bold ${transaction.type === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {transaction.type === 'deposit' ? 'DEPÓSITO' : 'RETIRO'}
+                      <div key={transaction.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 flex-wrap gap-1">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${transaction.type === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                              {transaction.type === 'deposit' ? 'DEPÓSITO' : 'RETIRO'}
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              {transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString('es-VE') : 'N/A'}
+                            </span>
+                            {transaction.status && (
+                              <span className={`text-xs px-2 py-1 rounded ${transaction.status === 'completed' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                {transaction.status === 'completed' ? 'Completado' : transaction.status}
                               </span>
-                              <span className="text-sm text-gray-600">
-                                {transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString('es-VE') : 'N/A'}
-                              </span>
-                            </div>
-                            <p className="text-gray-800 mt-1">{transaction.description || 'Sin descripción'}</p>
-                            {transaction.reference && (
-                              <p className="text-xs text-gray-500 mt-1">Ref: {transaction.reference}</p>
                             )}
+                            {renderCreator(transaction)}
                           </div>
-                          <div className="text-right">
-                            <div className={`text-lg font-bold ${transaction.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
-                              {transaction.type === 'deposit' ? '+' : '-'}{formatCurrency(transaction.amount || 0)}
-                            </div>
-                            <div className="text-sm text-gray-600 capitalize">
-                              {mapPaymentMethodToDisplay(transaction.paymentMethod || 'cash')}
-                            </div>
+                          <p className="text-gray-800 mt-1">{transaction.description || 'Sin descripción'}</p>
+                          {transaction.reference && <p className="text-xs text-gray-500 mt-1">Ref: {transaction.reference}</p>}
+
+                          {/* ⭐ Información del movimiento: de quién a quién */}
+                          {renderMoveInfo(transaction)}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className={`text-lg font-bold ${transaction.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
+                            {transaction.type === 'deposit' ? '+' : '-'}{formatBs(transaction.amount || 0)}
                           </div>
+                          <div className="text-sm text-gray-600 capitalize">{mapPaymentMethodToDisplay(transaction.paymentMethod || 'cash')}</div>
+                          {transaction.amountUSD !== undefined && (
+                            <div className="text-base font-bold text-green-600">≈ {formatUsd(transaction.amountUSD)}</div>
+                          )}
+                          {transaction.student && (
+                            <div className="text-xs text-gray-500 mt-1 inline-flex items-center gap-1">
+                              <FaUser className="text-[10px]" />
+                              {transaction.student.fullName}
+                            </div>
+                          )}
+                          {hasMultipleStudents && transaction.type === 'deposit' && transaction.status === 'completed' && (
+                            <button
+                              onClick={() => openMoveModal(transaction)}
+                              className="mt-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 text-xs"
+                            >
+                              Mover
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -348,100 +522,84 @@ export default function ManualBalance() {
             </div>
           </div>
 
-          {/* Panel derecho - Formulario de transacción */}
+          {/* Panel derecho */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg sticky top-6">
               <div className="flex items-center space-x-3 mb-6">
                 <div className={`p-2 rounded-lg ${transactionType === 'deposit' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                   {transactionType === 'deposit' ? <FaPlus /> : <FaMinus />}
                 </div>
-                <h2 className="text-xl font-bold text-gray-800">
-                  {transactionType === 'deposit' ? 'Agregar Saldo' : 'Retirar Saldo'}
-                </h2>
+                <h2 className="text-xl font-bold text-gray-800">{transactionType === 'deposit' ? 'Agregar Saldo' : 'Retirar Saldo'}</h2>
               </div>
-
               <div className="flex space-x-2 mb-6">
-                <button
-                  type="button"
-                  onClick={() => handleTransactionTypeChange('deposit')}
-                  className={`flex-1 py-3 rounded-lg font-semibold transition-all ${transactionType === 'deposit' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                  Depósito
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTransactionTypeChange('withdrawal')}
-                  className={`flex-1 py-3 rounded-lg font-semibold transition-all ${transactionType === 'withdrawal' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                  Retiro
-                </button>
+                <button type="button" onClick={() => handleTransactionTypeChange('deposit')} className={`flex-1 py-3 rounded-lg font-semibold transition-all ${transactionType === 'deposit' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Depósito</button>
+                <button type="button" onClick={() => handleTransactionTypeChange('withdrawal')} className={`flex-1 py-3 rounded-lg font-semibold transition-all ${transactionType === 'withdrawal' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Retiro</button>
               </div>
 
               <form onSubmit={handleSubmit}>
                 {selectedRep && studentOptions.length > 1 && (
                   <div className="mb-6">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Estudiante *
-                    </label>
-                    <select
-                      value={formData.studentId || ''}
-                      onChange={(e) => setFormData({...formData, studentId: e.target.value})}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Estudiante *</label>
+                    <select value={formData.studentId || ''} onChange={(e) => setFormData({...formData, studentId: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg" required>
                       <option value="">Seleccione un estudiante</option>
                       {studentOptions.map(student => (
-                        <option key={student.id} value={student.id}>
-                          {student.fullName} (Balance: {formatCurrency(student.balance || 0)})
-                        </option>
+                        <option key={student.id} value={student.id}>{student.fullName} (Balance: {formatBs(usdToBs(student.balance || 0))})</option>
                       ))}
                     </select>
                   </div>
                 )}
 
                 <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Monto (USD) *
-                  </label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                      <FaMoneyBillWave className="text-gray-400" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-semibold text-gray-700 mb-2">Fecha del pago *</label><input type="date" value={formData.paymentDate} onChange={(e) => setFormData({...formData, paymentDate: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg" required /></div>
+                  </div>
+
+                  {/* Tasa registrada para la fecha del pago (la del encabezado es la actual, informativa) */}
+                  {formData.paymentDate && loadingDateRate && (
+                    <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800 flex items-center gap-2">
+                      <FaExchangeAlt />
+                      <span>Consultando tasa de la fecha seleccionada...</span>
                     </div>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={formData.amount || ''}
-                      onChange={(e) => setFormData({...formData, amount: parseFloat(e.target.value) || 0})}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="0.00"
-                      required
-                    />
+                  )}
+                  {formData.paymentDate && !loadingDateRate && selectedDateRate !== null && (
+                    <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800">
+                      <div className="flex items-center gap-2">
+                        <FaExchangeAlt />
+                        <span>
+                          Tasa del {new Date(`${formData.paymentDate}T00:00:00`).toLocaleDateString('es-VE')}: <strong>{selectedDateRate.toFixed(2)} Bs/USD</strong>
+                        </span>
+                      </div>
+                      {formData.amount > 0 && (
+                        <div className="mt-1 text-xs text-blue-700">
+                          El monto se convertirá con esta tasa: ≈ <strong>{formatUsd(formData.amount / selectedDateRate)}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {formData.paymentDate && !loadingDateRate && rateNotFound && (
+                    <div className="mt-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700 flex items-center gap-2">
+                      <FaInfoCircle />
+                      <span>No hay tasa registrada para la fecha seleccionada. Selecciona otra fecha o pide al administrador que la registre.</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Monto (Bs) *</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2"><FaMoneyBillWave className="text-gray-400" /></div>
+                    <input type="number" step="0.01" min="0.01" value={formData.amount || ''} onChange={(e) => setFormData({...formData, amount: parseFloat(e.target.value) || 0})} className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg" placeholder="0.00" required />
                   </div>
                 </div>
 
                 <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Descripción *
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800"
-                    rows={3}
-                    required
-                  />
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Descripción *</label>
+                  <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg" rows={3} required />
                 </div>
 
                 <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Método de Pago *
-                  </label>
-                  <select
-                    value={formData.paymentMethod}
-                    onChange={(e) => setFormData({...formData, paymentMethod: e.target.value as any})}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg"
-                  >
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Método de Pago *</label>
+                  <select value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value as any})} className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg">
                     <option value="cash">Efectivo</option>
                     <option value="bank_transfer">Transferencia Bancaria</option>
                     <option value="pago_movil">Pago Móvil</option>
@@ -452,97 +610,158 @@ export default function ManualBalance() {
                 </div>
 
                 <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Referencia (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.reference || ''}
-                    onChange={(e) => setFormData({...formData, reference: e.target.value})}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg"
-                    placeholder="Número de referencia o comprobante"
-                  />
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Referencia (opcional)</label>
+                  <input type="text" value={formData.reference || ''} onChange={(e) => setFormData({...formData, reference: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg" placeholder="Número de referencia o comprobante" />
                 </div>
 
                 {selectedRep && formData.amount > 0 && (
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-700 font-medium">Saldo actual:</span>
-                      <span className="font-bold text-gray-800">{formatCurrency(selectedRep.balance || 0)}</span>
+                      <span className="font-bold text-gray-800">{formatBs(usdToBs(selectedRep.balance || 0))}</span>
                     </div>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-gray-700 font-medium">
-                        {transactionType === 'deposit' ? 'Depósito:' : 'Retiro:'}
-                      </span>
-                      <span className={`font-bold ${transactionType === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
-                        {transactionType === 'deposit' ? '+' : '-'}{formatCurrency(formData.amount)}
-                      </span>
+                      <span className="text-gray-700 font-medium">{transactionType === 'deposit' ? 'Depósito:' : 'Retiro:'}</span>
+                      <span className={`font-bold ${transactionType === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>{transactionType === 'deposit' ? '+' : '-'}{formatBs(formData.amount)}</span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-blue-200">
                       <span className="text-gray-800 font-semibold">Nuevo saldo:</span>
-                      <span className={`text-xl font-bold ${getBalanceColor(calculateNewBalance())}`}>
-                        {formatCurrency(calculateNewBalance())}
-                      </span>
+                      <span className={`text-xl font-bold ${getBalanceColor(usdToBs(selectedRep.balance || 0) + (transactionType === 'deposit' ? formData.amount : -formData.amount))}`}>{formatBs(calculateNewBalanceBs())}</span>
                     </div>
                   </div>
                 )}
 
                 {transactionType === 'withdrawal' && selectedRep && formData.amount > 0 && (
                   <div className="mb-6">
-                    {formData.amount > (selectedRep.balance || 0) ? (
+                    {formData.amount > usdToBs(selectedRep.balance || 0) ? (
                       <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                        <div className="flex items-center space-x-2 text-red-700">
-                          <FaInfoCircle />
-                          <span className="font-semibold">Saldo insuficiente</span>
-                        </div>
+                        <div className="flex items-center space-x-2 text-red-700"><FaInfoCircle /><span className="font-semibold">Saldo insuficiente</span></div>
                       </div>
                     ) : (
                       <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                        <div className="flex items-center space-x-2 text-green-700">
-                          <FaCheckCircle />
-                          <span className="font-semibold">Saldo suficiente</span>
-                        </div>
+                        <div className="flex items-center space-x-2 text-green-700"><FaCheckCircle /><span className="font-semibold">Saldo suficiente</span></div>
                       </div>
                     )}
                   </div>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={
-                    loading || !selectedRep || formData.amount <= 0 || 
-                    (transactionType === 'withdrawal' && formData.amount > (selectedRep?.balance || 0)) ||
-                    (hasMultipleStudents && !formData.studentId)
-                  }
-                  className={`w-full py-3 rounded-xl font-semibold transition-all ${
-                    transactionType === 'deposit' 
-                      ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' 
-                      : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
-                  } disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-md`}
-                >
-                  {loading ? (
-                    <div className="flex items-center justify-center space-x-2">
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                      <span>Procesando...</span>
-                    </div>
-                  ) : (
-                    transactionType === 'deposit' ? 'Registrar Depósito' : 'Registrar Retiro'
-                  )}
+                <button type="submit" disabled={loading || !selectedRep || formData.amount <= 0 || (transactionType === 'withdrawal' && formData.amount > usdToBs(selectedRep?.balance || 0)) || (hasMultipleStudents && !formData.studentId) || loadingDateRate || !selectedDateRate} className={`w-full py-3 rounded-xl font-semibold transition-all ${transactionType === 'deposit' ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'} disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-md`}>
+                  {loading ? <div className="flex items-center justify-center space-x-2"><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div><span>Procesando...</span></div> : (transactionType === 'deposit' ? 'Registrar Depósito' : 'Registrar Retiro')}
                 </button>
               </form>
-
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <div className="flex items-start space-x-2 text-gray-600 text-sm">
-                  <FaInfoCircle className="mt-0.5 flex-shrink-0" />
-                  <p>
-                    Todas las transacciones quedan registradas en el historial del representante y son auditables.
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal para mover pago */}
+      {showMoveModal && selectedRep && selectedTransaction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <FaExchangeAlt className="text-indigo-600" />
+                Mover Pago
+              </h3>
+              <button
+                onClick={closeMoveModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Cerrar"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Puedes mover todo o parte del pago. El monto se manejará con la tasa histórica del pago original.
+            </p>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Monto original:</span>
+                <span className="font-bold text-gray-800">{formatBs(selectedTransaction.amount || 0)}</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-gray-600">Tasa original:</span>
+                <span className="text-gray-700">{selectedTransaction.bcvRate ? selectedTransaction.bcvRate.toFixed(4) : '—'} Bs/USD</span>
+              </div>
+              {selectedTransaction.student && (
+                <div className="flex justify-between mt-1">
+                  <span className="text-gray-600">Desde estudiante:</span>
+                  <span className="font-semibold text-gray-800">{selectedTransaction.student.fullName}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Estudiante destino</label>
+              <select
+                value={moveTargetStudentId}
+                onChange={(e) => setMoveTargetStudentId(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Seleccionar...</option>
+                {studentOptions
+                  .filter(s => s.id !== selectedTransaction.studentId)
+                  .map(student => (
+                    <option key={student.id} value={student.id}>{student.fullName}</option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Monto a mover (Bs)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={selectedTransaction.amount || 0}
+                value={moveAmountBs || ''}
+                onChange={(e) => setMoveAmountBs(parseFloat(e.target.value) || 0)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="0.00"
+              />
+              {moveAmountBs > 0 && moveAmountBs < (selectedTransaction.amount || 0) && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Quedarán {formatBs((selectedTransaction.amount || 0) - moveAmountBs)} en el estudiante origen.
+                </p>
+              )}
+              {moveAmountBs === (selectedTransaction.amount || 0) && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Se moverá el pago completo. La transacción original quedará como revertida.
+                </p>
+              )}
+              {moveAmountBs > (selectedTransaction.amount || 0) && (
+                <p className="text-xs text-red-600 mt-1">
+                  El monto no puede superar el original ({formatBs(selectedTransaction.amount || 0)}).
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeMoveModal}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleMovePayment}
+                disabled={movingPayment || !moveTargetStudentId || moveAmountBs <= 0 || moveAmountBs > (selectedTransaction.amount || 0)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors inline-flex items-center gap-2"
+              >
+                {movingPayment ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Moviendo...
+                  </>
+                ) : (
+                  'Mover Pago'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

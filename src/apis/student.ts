@@ -97,3 +97,25 @@ export async function updateStudentExonerationAPI(
     throw new Error(mensaje);
   }
 }
+export async function updateStudentSectionAPI(
+  studentId: string,
+  section: string
+): Promise<TypeStudentGenericResponse> {
+  try {
+    const { data } = await api.put<TypeStudentGenericResponse>(
+      `/private/user/students/${studentId}/section`,
+      { section }
+    );
+    return data;
+  } catch (error) {
+    let mensaje = 'Error Desconocido';
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) {
+        mensaje = errores.join(', ');
+      }
+      throw new Error(mensaje);
+    }
+    throw new Error(mensaje);
+  }
+}

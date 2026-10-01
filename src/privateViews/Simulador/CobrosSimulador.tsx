@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
-import { FaForward, FaCalendarAlt, FaSync, FaCog } from 'react-icons/fa';
+import { FaForward, FaCalendarAlt, FaSync, FaCog, FaTrash } from 'react-icons/fa';
+import api from '../../library/axios';
 import {
   getSimulatedDate,
   setSimulatedDate,
@@ -74,13 +75,26 @@ const SimuladorCobros: React.FC = () => {
     }
   };
 
-  const handleApplyMonthlyFees = async () => {
+  const handleApplyDate = async () => {
     try {
       setDateLoading(true);
       await applyMonthlyFeesAPI();
-      toast.success('Mensualidades aplicadas a todos los estudiantes activos');
+       toast.success('Fecha aplicada. Se procesaron solo los conceptos pendientes');
     } catch (error) {
       toast.error('Error al aplicar mensualidades');
+    } finally {
+      setDateLoading(false);
+    }
+  };
+
+  const handleResetAll = async () => {
+    if (!window.confirm('⚠️ ¿Estás seguro? Se borrarán todos los datos de prueba (transacciones, solicitudes, representantes y usuarios de nivel 1). Esta acción no se puede deshacer.')) return;
+    try {
+      setDateLoading(true);
+      await api.post('/test/reset-all');
+      toast.success('Datos de prueba reiniciados completamente');
+    } catch (error) {
+      toast.error('Error al reiniciar datos');
     } finally {
       setDateLoading(false);
     }
@@ -96,7 +110,6 @@ const SimuladorCobros: React.FC = () => {
           Modifica la fecha del sistema de pruebas. Afecta a todos los cálculos de cobros, mensualidades y pronto pago.
         </p>
 
-        {/* ✅ Indicador de fecha simulada activa */}
         <p className="mt-3 text-white text-lg font-semibold">
           {simulatedDate
             ? `📅 Fecha simulada activa: ${new Date(simulatedDate + 'T00:00:00').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' })}`
@@ -129,9 +142,15 @@ const SimuladorCobros: React.FC = () => {
             <FaSync className="text-lg" /> Fecha real
           </button>
 
-          <button onClick={handleApplyMonthlyFees} disabled={dateLoading}
+           <button onClick={handleApplyDate} disabled={dateLoading}
             className="flex items-center gap-2 bg-yellow-500/80 rounded-lg px-4 py-3 hover:bg-yellow-500 transition text-base font-semibold disabled:opacity-50">
-            <FaCog className="text-lg" /> Aplicar mensualidades ahora
+             <FaCog className="text-lg" /> Aplicar fecha
+          </button>
+
+          {/* 🔥 NUEVO BOTÓN DE REINICIO TOTAL */}
+          <button onClick={handleResetAll} disabled={dateLoading}
+            className="flex items-center gap-2 bg-red-500/80 rounded-lg px-4 py-3 hover:bg-red-500 transition text-base font-semibold disabled:opacity-50">
+            <FaTrash className="text-lg" /> Reiniciar todos los datos
           </button>
         </div>
 

@@ -1,3 +1,4 @@
+// src/views/admin/registrations/AdminRegistrationsList.tsx
 import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
@@ -14,7 +15,9 @@ import {
   FaFileExcel,
   FaSortAmountDown,
   FaSortAmountUp,
+  FaEdit,
 } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import ConfirmModal from "../../components/ConfirmModal";
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -22,7 +25,6 @@ import ExcelJS from 'exceljs';
 
 (pdfMake as any).vfs = pdfFonts.vfs;
 
-// ✅ La variable ya incluye /api al final (ej: https://test.appservices.ueabreu.com/api)
 const API_BASE = import.meta.env.VITE_API_BASE_LOCAL || "https://appservices.ueabreu.com/api";
 
 interface Application {
@@ -32,9 +34,11 @@ interface Application {
   representativeName: string;
   userActive: boolean;
   createdAt: string;
+  userId?: string;
+  isExistingRepresentative?: boolean;
+  isRegularRepresentative?: boolean;
 }
 
-// Helper para construir la lista de páginas con ellipsis
 const buildPageNumbers = (current: number, total: number): (number | "...")[] => {
   if (total <= 7) {
     return Array.from({ length: total }, (_, i) => i + 1);
@@ -62,7 +66,6 @@ const buildPageNumbers = (current: number, total: number): (number | "...")[] =>
   return pages;
 };
 
-// Función que construye el contenido de una planilla individual (para PDF)
 const buildSinglePlanillaContent = (appData: any) => {
   const calcEdad = (fecha: string) => {
     if (!fecha) return '';
@@ -155,6 +158,8 @@ const buildSinglePlanillaContent = (appData: any) => {
 };
 
 const AdminRegistrationsList: React.FC = () => {
+  const navigate = useNavigate();
+
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -179,13 +184,16 @@ const AdminRegistrationsList: React.FC = () => {
         search: search.trim(),
         sortOrder: sortOrder,
       });
-      // ✅ Se eliminó "/api" extra de la ruta
       const res = await fetch(`${API_BASE}/private/registrations/list?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (data.result) {
-        setApplications(data.content);
+        const apps = (data.content || []).map((app: any) => ({
+          ...app,
+          userId: app.userId || app.user?.id || undefined,
+        }));
+        setApplications(apps);
         setTotalPages(data.pagination.totalPages);
         setTotalRecords(data.pagination.totalRecords);
       } else {
@@ -205,7 +213,6 @@ const AdminRegistrationsList: React.FC = () => {
   const handleDownload = async (id: string) => {
     console.log(`⬇️ [handleDownload] Generando PDF para solicitud ${id}`);
     try {
-      // ✅ Se eliminó "/api" extra de la ruta
       const res = await fetch(`${API_BASE}/private/registrations/${id}/data`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -252,7 +259,6 @@ const AdminRegistrationsList: React.FC = () => {
         search: search.trim(),
         sortOrder: sortOrder,
       });
-      // ✅ Se eliminó "/api" extra de la ruta
       const listRes = await fetch(`${API_BASE}/private/registrations/list?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -274,7 +280,6 @@ const AdminRegistrationsList: React.FC = () => {
 
       for (let i = 0; i < allApps.length; i++) {
         const app = allApps[i];
-        // ✅ Se eliminó "/api" extra de la ruta
         const dataRes = await fetch(`${API_BASE}/private/registrations/${app.id}/data`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -319,7 +324,6 @@ const AdminRegistrationsList: React.FC = () => {
     }
   };
 
-  // 🔽 FUNCIÓN DE EXPORTACIÓN A EXCEL – INFORMACIÓN COMPLETA + CONTADOR
   const handleExportExcel = async () => {
     setExporting(true);
     try {
@@ -329,7 +333,6 @@ const AdminRegistrationsList: React.FC = () => {
         search: search.trim(),
         sortOrder: sortOrder,
       });
-      // ✅ Se eliminó "/api" extra de la ruta
       const listRes = await fetch(`${API_BASE}/private/registrations/list?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -347,11 +350,9 @@ const AdminRegistrationsList: React.FC = () => {
         return;
       }
 
-      // Crear libro Excel
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Datos Completos');
 
-      // Definir columnas – se añade el contador "N°" al inicio
       sheet.columns = [
         { header: 'N°', key: 'counter', width: 5 },
         { header: 'N° Planilla', key: 'planillaNumber', width: 12 },
@@ -381,7 +382,6 @@ const AdminRegistrationsList: React.FC = () => {
         { header: 'Enfermedades', key: 'diseases', width: 20 },
       ];
 
-      // Estilo de encabezado
       sheet.getRow(1).eachCell((cell) => {
         cell.font = { bold: true };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
@@ -389,10 +389,8 @@ const AdminRegistrationsList: React.FC = () => {
 
       let counter = 0;
 
-      // Llenar filas
       for (let i = 0; i < allApps.length; i++) {
         const app = allApps[i];
-        // ✅ Se eliminó "/api" extra de la ruta
         const dataRes = await fetch(`${API_BASE}/private/registrations/${app.id}/data`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -400,7 +398,6 @@ const AdminRegistrationsList: React.FC = () => {
         if (!dataJson.result) continue;
         const appData = dataJson.content;
 
-        // Si no hay estudiantes, agregar una fila solo con los datos del representante
         if (!appData.students || appData.students.length === 0) {
           counter++;
           sheet.addRow({
@@ -434,7 +431,6 @@ const AdminRegistrationsList: React.FC = () => {
           continue;
         }
 
-        // Una fila por cada estudiante, repitiendo los datos del representante
         for (const est of appData.students) {
           counter++;
           const edad = est.birthDate ? (() => {
@@ -477,7 +473,6 @@ const AdminRegistrationsList: React.FC = () => {
         }
       }
 
-      // Generar archivo y descargar
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob);
@@ -510,12 +505,19 @@ const AdminRegistrationsList: React.FC = () => {
     setShowConfirm(true);
   };
 
+  const handleEdit = (app: Application) => {
+    if (app.userId) {
+      navigate('/admin/users/edit', { state: { userData: { id: app.userId } } });
+    } else {
+      toast.error("No se pudo obtener el ID del usuario para editar");
+    }
+  };
+
   const confirmAction = async () => {
     if (!selectedId || !action) return;
     try {
       const url =
         action === "activate"
-          // ✅ Se eliminó "/api" extra de la ruta
           ? `${API_BASE}/private/registrations/${selectedId}/activate`
           : `${API_BASE}/private/registrations/${selectedId}`;
       const method = action === "activate" ? "POST" : "DELETE";
@@ -653,7 +655,10 @@ const AdminRegistrationsList: React.FC = () => {
                         {app.planillaNumber}
                       </td>
                       <td className="py-4 px-5 font-medium text-gray-800">
-                        {app.representativeName}
+                         {app.representativeName}
+                         {app.isExistingRepresentative && <span className="ml-2 text-xs text-blue-700" title="Pidió cupo desde su panel de representante">[REPRESENTANTE]</span>}
+                         {app.isRegularRepresentative && <span className="ml-2 text-xs text-green-700" title="Representante regular: ya tiene estudiantes inscritos en el colegio">[REP. REGULAR]</span>}
+                         {app.userActive && <span className="ml-2 text-xs text-emerald-700" title="Ya está inscrito: la cuenta del usuario está activa">[INSCRITO]</span>}
                       </td>
                       <td className="py-4 px-5 text-gray-600">
                         {app.email}
@@ -686,6 +691,13 @@ const AdminRegistrationsList: React.FC = () => {
                             title="Descargar PDF"
                           >
                             <FaDownload className="text-lg" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(app)}
+                            className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
+                            title="Editar solicitud"
+                          >
+                            <FaEdit className="text-lg" />
                           </button>
                           {!app.userActive && (
                             <button

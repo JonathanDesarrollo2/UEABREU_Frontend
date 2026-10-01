@@ -1,58 +1,71 @@
-import type { PublicRegisterPayload, VerifyEmailPayload } from "../types/publicRegistration";
+import { isAxiosError } from "axios";
+import api from "../library/axios";
+import type { PublicRegisterPayload } from "../types/publicRegistration";
 
-const API_BASE = import.meta.env.VITE_API_BASE_LOCAL;
-
-interface RegisterApiResponse {
-  result: boolean;
-  content?: {
-    message?: string;
-    planillaNumber?: number;
-  };
-  error?: string[];
+export interface RegisterResponse {
+  planillaNumber: number;
+  message: string;
 }
 
-interface VerifyApiResponse {
-  result: boolean;
-  content?: {
-    message?: string;
-    pdfBase64?: string | null;
-  };
-  error?: string[];
+export interface VerifyResponse {
+  pdfBase64?: string | null;
+  message: string;
 }
 
-export async function registerPublic(payload: PublicRegisterPayload): Promise<{ planillaNumber: number }> {
-  const res = await fetch(`${API_BASE}/public/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+// POST /api/public/register — registro público (representante + estudiantes)
+export async function registerPublic(
+  payload: PublicRegisterPayload
+): Promise<{ planillaNumber: number }> {
+  try {
+    const { data } = await api.post<{
+      result: boolean;
+      content: { message: string; planillaNumber: number };
+      error: string[];
+    }>("/public/register", payload);
 
-  const data: RegisterApiResponse = await res.json();
-
-  if (!res.ok || !data.result) {
-    throw new Error(data.error?.[0] || 'Error en el registro');
+    if (!data.result) {
+      throw new Error(data.error?.[0] || "Error en el registro");
+    }
+    return data.content;
+  } catch (error) {
+    let mensaje = "Error en el registro";
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data?.error;
+      if (errores && errores.length > 0) mensaje = errores.join(", ");
+    } else if (error instanceof Error) {
+      mensaje = error.message;
+    }
+    throw new Error(mensaje);
   }
-
-  const planillaNumber = data.content?.planillaNumber;
-  if (!planillaNumber) {
-    throw new Error('No se recibió el número de planilla');
-  }
-
-  return { planillaNumber };
 }
 
-export async function verifyEmailCode(payload: VerifyEmailPayload): Promise<{ pdfBase64: string | null }> {
-  const res = await fetch(`${API_BASE}/public/verify-email`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+// POST /api/public/verify-email — verifica el código enviado por correo
+export async function verifyEmailCode({
+  email,
+  code,
+}: {
+  email: string;
+  code: string;
+}): Promise<VerifyResponse> {
+  try {
+    const { data } = await api.post<{
+      result: boolean;
+      content: { message: string; pdfBase64?: string | null };
+      error: string[];
+    }>("/public/verify-email", { email, code });
 
-  const data: VerifyApiResponse = await res.json();
-
-  if (!res.ok || !data.result) {
-    throw new Error(data.error?.[0] || 'Error en la verificación');
+    if (!data.result) {
+      throw new Error(data.error?.[0] || "Código incorrecto o expirado");
+    }
+    return data.content;
+  } catch (error) {
+    let mensaje = "Código incorrecto o expirado";
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data?.error;
+      if (errores && errores.length > 0) mensaje = errores.join(", ");
+    } else if (error instanceof Error) {
+      mensaje = error.message;
+    }
+    throw new Error(mensaje);
   }
-
-  return { pdfBase64: data.content?.pdfBase64 || null };
 }

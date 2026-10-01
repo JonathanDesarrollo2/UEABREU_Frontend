@@ -26,7 +26,7 @@ export default tseslint.config([
       // Optionally, add this for stylistic rules
       ...tseslint.configs.stylisticTypeChecked,s
 
-      // Other configs...
+      // Other configs....
     ],
     languageOptions: {
       parserOptions: {

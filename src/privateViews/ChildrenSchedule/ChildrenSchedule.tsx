@@ -99,9 +99,12 @@ export default function ChildrenScheduleView() {
 
   // Obtener todos los números de bloque únicos que aparecen en algún día
   const allBlockNumbers = Array.from(
-    new Set(
-      DAYS.flatMap(day => (blockTimesByDay[day] || []).map(b => b.blockNumber))
-    )
+      new Set(
+      DAYS.flatMap(day => [
+        ...(blockTimesByDay[day] || []).map(b => b.blockNumber),
+        ...(schedulesByDay[day] || []).flatMap(b => Array.from({ length: b.spans || 1 }, (_, index) => b.blockId + index))
+      ])
+      )
   ).sort((a, b) => a - b);
 
   // Verificar si una celda debe ser oculta por span de una materia anterior

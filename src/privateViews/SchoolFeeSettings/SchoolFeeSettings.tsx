@@ -1,18 +1,19 @@
-// src/privateViews/SchoolFeeSettings/SchoolFeeSettings.tsx
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import {
   FaSave, FaSpinner, FaMoneyBillWave, FaCalendarAlt, FaHandHoldingUsd,
-  FaPercentage, FaCalendarCheck, FaCalendarPlus, FaCalendarTimes, FaCoins
+  FaPercentage, FaCalendarCheck, FaCalendarPlus, FaCalendarTimes, FaCoins, FaLock,
+  FaHistory, FaUser, FaClock
 } from 'react-icons/fa';
 import type { SchoolFee } from '../../types/SchoolFee';
-import { getSchoolFees, updateSchoolFees } from '../../apis/SchoolFee';
+import { getSchoolFees, updateSchoolFees, getAuditLogs } from '../../apis/SchoolFee';
 
 const SchoolFeeSettings: React.FC = () => {
   const [fees, setFees] = useState<SchoolFee | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
   // Estados locales para cada campo
   const [inscriptionFeeUSD, setInscriptionFeeUSD] = useState<number>(80);
@@ -24,6 +25,8 @@ const SchoolFeeSettings: React.FC = () => {
   const [monthlyFeeStartDate, setMonthlyFeeStartDate] = useState<string>('2026-09-01');
   const [inscriptionStartDate, setInscriptionStartDate] = useState<string>('2026-07-15');
   const [inscriptionEndDate, setInscriptionEndDate] = useState<string>('2026-10-01');
+  const [schoolYearEndDate, setSchoolYearEndDate] = useState<string>('2026-12-15');
+  const [adminPassword, setAdminPassword] = useState<string>('');
 
   useEffect(() => {
     const fetchFees = async () => {
@@ -39,6 +42,7 @@ const SchoolFeeSettings: React.FC = () => {
         setMonthlyFeeStartDate(data.monthlyFeeStartDate || '2026-09-01');
         setInscriptionStartDate(data.inscriptionStartDate || '2026-07-15');
         setInscriptionEndDate(data.inscriptionEndDate || '2026-10-01');
+        setSchoolYearEndDate(data.schoolYearEndDate || '2026-12-15');
       } catch (error: any) {
         toast.error(error.message || 'No se pudieron cargar las tarifas');
       } finally {
@@ -48,7 +52,24 @@ const SchoolFeeSettings: React.FC = () => {
     fetchFees();
   }, []);
 
+  const fetchAuditLogs = async () => {
+    try {
+      const logs = await getAuditLogs();
+      setAuditLogs(logs);
+    } catch (error) {
+      console.error('Error al cargar historial de cambios', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, []);
+
   const handleSave = async () => {
+    if (!adminPassword) {
+      toast.error('Debes ingresar la contraseña administrativa');
+      return;
+    }
     setSaving(true);
     try {
       const updated = await updateSchoolFees('2026-2027', {
@@ -61,9 +82,13 @@ const SchoolFeeSettings: React.FC = () => {
         monthlyFeeStartDate,
         inscriptionStartDate,
         inscriptionEndDate,
+        schoolYearEndDate,
+        password: adminPassword,
       });
       setFees(updated);
+      setAdminPassword('');
       toast.success('Tarifas actualizadas correctamente');
+      fetchAuditLogs(); // refrescar historial
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar las tarifas');
     } finally {
@@ -88,7 +113,7 @@ const SchoolFeeSettings: React.FC = () => {
       animate={{ opacity: 1, y: 0 }}
       className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
     >
-      {/* Encabezado decorativo */}
+      {/* Encabezado */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl shadow-xl p-6 mb-8 text-white">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-white/20 rounded-full">
@@ -112,7 +137,6 @@ const SchoolFeeSettings: React.FC = () => {
             Cuotas Generales
           </h3>
           <div className="space-y-6">
-            {/* Inscripción */}
             <div>
               <label className={labelClasses}>
                 <FaHandHoldingUsd /> Inscripción (USD)
@@ -124,7 +148,6 @@ const SchoolFeeSettings: React.FC = () => {
               <p className="text-xs text-gray-500 mt-1 ml-1">Válido durante el periodo de inscripción</p>
             </div>
 
-            {/* Mensualidad */}
             <div>
               <label className={labelClasses}>
                 <FaCoins /> Mensualidad (USD)
@@ -136,7 +159,6 @@ const SchoolFeeSettings: React.FC = () => {
               <p className="text-xs text-gray-500 mt-1 ml-1">Monto completo antes del descuento por pronto pago</p>
             </div>
 
-            {/* Gasto Administrativo */}
             <div>
               <label className={labelClasses}>
                 <FaHandHoldingUsd /> Gasto Administrativo (USD)
@@ -148,7 +170,6 @@ const SchoolFeeSettings: React.FC = () => {
               <p className="text-xs text-gray-500 mt-1 ml-1">Solo para estudiantes de nuevo ingreso</p>
             </div>
 
-            {/* 50% Agosto 2027 */}
             <div>
               <label className={labelClasses}>
                 <FaPercentage /> Anticipo Agosto 2027 (USD)
@@ -169,7 +190,6 @@ const SchoolFeeSettings: React.FC = () => {
             Pronto Pago y Fechas
           </h3>
           <div className="space-y-6">
-            {/* Descuento Pronto Pago */}
             <div>
               <label className={labelClasses}>
                 <FaMoneyBillWave /> Descuento Pronto Pago (USD)
@@ -181,7 +201,6 @@ const SchoolFeeSettings: React.FC = () => {
               <p className="text-xs text-gray-500 mt-1 ml-1">Descuento aplicado si paga dentro de los primeros días del mes</p>
             </div>
 
-            {/* Día límite */}
             <div>
               <label className={labelClasses}>
                 <FaCalendarCheck /> Día límite para Pronto Pago
@@ -190,7 +209,6 @@ const SchoolFeeSettings: React.FC = () => {
               <p className="text-xs text-gray-500 mt-1 ml-1">Si paga antes de este día, recibe el descuento</p>
             </div>
 
-            {/* Fecha inicio mensualidades */}
             <div>
               <label className={labelClasses}>
                 <FaCalendarPlus /> Inicio de Mensualidades
@@ -199,7 +217,14 @@ const SchoolFeeSettings: React.FC = () => {
               <p className="text-xs text-gray-500 mt-1 ml-1">A partir de esta fecha se generan las mensualidades</p>
             </div>
 
-            {/* Fecha inicio inscripciones */}
+            <div>
+              <label className={labelClasses}>
+                <FaCalendarTimes /> Fin de Año Escolar
+              </label>
+              <input type="date" value={schoolYearEndDate} onChange={(e) => setSchoolYearEndDate(e.target.value)} className={inputClasses} />
+              <p className="text-xs text-gray-500 mt-1 ml-1">Usada para calcular mensualidades de regulares</p>
+            </div>
+
             <div>
               <label className={labelClasses}>
                 <FaCalendarPlus /> Inicio de Inscripciones
@@ -207,12 +232,28 @@ const SchoolFeeSettings: React.FC = () => {
               <input type="date" value={inscriptionStartDate} onChange={(e) => setInscriptionStartDate(e.target.value)} className={inputClasses} />
             </div>
 
-            {/* Fecha fin inscripciones */}
             <div>
               <label className={labelClasses}>
                 <FaCalendarTimes /> Fin de Inscripciones
               </label>
               <input type="date" value={inscriptionEndDate} onChange={(e) => setInscriptionEndDate(e.target.value)} className={inputClasses} />
+            </div>
+
+            {/* Campo de contraseña administrativa */}
+            <div>
+              <label className={labelClasses}>
+                <FaLock /> Contraseña administrativa
+              </label>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className={inputClasses}
+                placeholder="Contraseña requerida para guardar cambios"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                La primera vez que guardes, esta contraseña quedará registrada y no podrá cambiarse.
+              </p>
             </div>
           </div>
         </div>
@@ -239,7 +280,45 @@ const SchoolFeeSettings: React.FC = () => {
         </button>
       </div>
 
-      {/* Espacio inferior */}
+      {/* Historial de cambios con detalle */}
+      <div className="mt-10 bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <FaHistory className="text-blue-600" /> Historial de Cambios
+        </h3>
+        {auditLogs.length === 0 ? (
+          <p className="text-gray-500">No hay cambios registrados.</p>
+        ) : (
+          <ul className="space-y-4">
+            {auditLogs.map((log: any) => (
+              <li key={log.id} className="border-b pb-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <FaUser className="text-gray-400" />
+                  <span className="font-semibold">{log.user?.username || log.user?.userlogin || 'Admin'}</span>
+                  <FaClock className="ml-4 text-gray-400" />
+                  <span>{new Date(log.createdAt).toLocaleString('es-VE')}</span>
+                </div>
+                <div className="mt-2 text-xs text-gray-700">
+                  {log.details?.changes && log.details.changes.length > 0 ? (
+                    <ul className="ml-4 list-disc space-y-1">
+                      {log.details.changes.map((c: any, idx: number) => (
+                        <li key={idx}>
+                          <strong>{c.campo}:</strong>{' '}
+                          <span className="text-red-600">{String(c.antes)}</span>{' '}
+                          →{' '}
+                          <span className="text-green-600">{String(c.despues)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-500">Sin cambios detectados.</p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <div className="h-8" />
     </motion.div>
   );

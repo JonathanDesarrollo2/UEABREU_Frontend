@@ -32,6 +32,13 @@ import PaymentHistory from './privateViews/PaymentHistory/PaymentHistoryAdmin'
 import AdminRegistrationsList from './privateViews/AdminRegistrationList/AdminRegistrationList'
 import SchoolFeeSettings from './privateViews/SchoolFeeSettings/SchoolFeeSettings'
 import SimuladorCobros from './privateViews/Simulador/CobrosSimulador'
+import EditUser from './privateViews/editUser/EditUsers'
+import EditApplication from './privateViews/editApplication/EditApplication'
+import StudentsRanking from './privateViews/studentRanking/StudentRanking'
+import InfoAccount from './privateViews/InfoAccount/InfoAccount'
+import RepresentativeRegistration from './privateViews/RepresentativeRegistration/RepresentativeRegistration'
+import TasaLista from './privateViews/tasaLista/TasaListaVista'
+import ForgotPasswordPage from './publicViews/LoginAuthPublic/forgotPasswordKey'
 
 function ListRoutes() {
   return (
@@ -40,6 +47,7 @@ function ListRoutes() {
       <Route path="/" element={<LayoutPublic />}>
         <Route index element={<HomeView />} />
         <Route path="login" element={<Login />} />
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
         <Route path="join-us" element={<JoinUsView />} />
         <Route path="SobreNosotros" element={<AboutUsView />} />
         <Route path="PrivacyPolicy" element={<PrivacyPolicy />} />
@@ -56,6 +64,8 @@ function ListRoutes() {
           <Route index element={<RepresDashboard />} />
           <Route path="validar-pago/:representativeId" element={<PaymentValidationPage />} />
           <Route path="ChildrenSchedule" element={<ChildrenScheduleView />} />
+          <Route path="InfoAccount" element={<InfoAccount />} />
+          <Route path="Inscripciones" element={<RepresentativeRegistration />} />
         </Route>
           
         <Route path="/admin" element={<AdminLayout />}>
@@ -64,6 +74,7 @@ function ListRoutes() {
             <Route index element={<UserDashboard />} />
             <Route path="insert" element={<InsertUser />} />
             <Route path="list" element={<AdminListUsersBackend />} />
+            <Route path="edit" element={<EditUser />} />
           </Route>
           <Route path="Schedule" element={<ScheduleView />} />
           <Route path="Balance" element={<ManualBalance />} />
@@ -71,10 +82,13 @@ function ListRoutes() {
           <Route path="listStudents" element={<AdminListStudentsBackend />} />
           <Route path="ListTeacher" element={<AdminListTeachersBackend />} />
           <Route path="Settings" element={<InscriptionSettings />} />
-          <Route path="transactions" element={<PaymentHistory />} />   // NUEVA RUTA
+          <Route path="transactions" element={<PaymentHistory />} />
+          <Route path="ranking" element={<StudentsRanking />} />
           <Route path="registrations" element={<AdminRegistrationsList />} />
           <Route path="school-fees" element={<SchoolFeeSettings />} />
+          <Route path="tasa-lista" element={<TasaLista />} />
           <Route path="simulador-cobros" element={<SimuladorCobros/>} />
+          <Route path="registrations/:id/edit" element={<EditApplication />} />
           
           {/* ✅ NUEVAS RUTAS PARA PROFESORES (estructura modular) */}
           <Route path="teachers">

@@ -264,3 +264,8 @@ export function formatCurrency(amount: number, currency: 'VES' | 'USD' = 'VES'):
   
   return formatter.format(amount);
 }
+
+export async function getStoredRateAPI(date?: string): Promise<BankApiResponse<BCVRateResponse>> {
+  const { data } = await api.get<BankApiResponse<BCVRateResponse>>('/private/rates', { params: date ? { date } : undefined });
+  return data;
+}

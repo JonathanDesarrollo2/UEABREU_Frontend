@@ -1,6 +1,6 @@
 // layouts/RepresLayout.tsx
 import { Outlet, useOutletContext, useNavigate } from 'react-router-dom';
-import { useState, useCallback } from 'react';
+import { useState, useCallback} from 'react';
 import {
   FaHome,
   FaMoneyCheck,
@@ -9,8 +9,9 @@ import {
   FaBars,
   FaTimes,
   FaSpinner
+  , FaUserCircle
 } from 'react-icons/fa';
-import { getRepresentativeByEmail } from '../apis/balance'; // Ajusta la ruta si es necesario
+import { getRepresentativeByEmail } from '../apis/balance';
 
 interface SessionContext {
   sesionUser?: string;
@@ -64,6 +65,7 @@ export default function RepresLayout() {
       action: goToPaymentValidation 
     },
     { name: 'Horario', icon: FaClock, path: '/representante/ChildrenSchedule', isAction: false },
+    { name: 'Información de la cuenta', icon: FaUserCircle, path: '/representante/InfoAccount', isAction: false },
   ];
 
   const renderMenuItem = (item: any) => {

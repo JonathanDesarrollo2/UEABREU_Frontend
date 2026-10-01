@@ -14,7 +14,10 @@ export const useInsertUserForm = () => {
       userrepass: '',
       nivel: 1,
       userstatus: true,
-      representativeData: {},
+      // Sin objeto vacío: un {} nunca supera la validación del schema y bloquea
+      // silenciosamente el registro de administradores. Solo se completa cuando
+      // nivel = 1 (representante) y los campos del representante se registran.
+      representativeData: undefined,
       studentsData: [], // Los estudiantes se agregarán dinámicamente con balance por defecto 0
     },
   });
