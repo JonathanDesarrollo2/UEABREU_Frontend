@@ -223,17 +223,11 @@ export async function getBankFullStatusAPI(): Promise<BankApiResponse<{
   }
 }
 
-// src/apis/bank.ts - Agregar estos tipos y funciones
-
-// ... código existente ...
-
 // Tipo para tasa BCV
 export interface BCVRateResponse {
   PriceRateBCV: number;
   dtRate: string; // Formato: "dd/MM/yyyy"
 }
-
-// ... después de las funciones existentes, agregar:
 
 // API para obtener tasa BCV del día
 export async function getBCVRateAPI(): Promise<BankApiResponse<BCVRateResponse>> {
@@ -268,4 +262,28 @@ export function formatCurrency(amount: number, currency: 'VES' | 'USD' = 'VES'):
 export async function getStoredRateAPI(date?: string): Promise<BankApiResponse<BCVRateResponse>> {
   const { data } = await api.get<BankApiResponse<BCVRateResponse>>('/private/rates', { params: date ? { date } : undefined });
   return data;
+}
+
+// Tipos para lista de bancos
+export interface BankInfo {
+  Name: string;
+  Code: string;
+  Services: string;
+}
+
+// API para obtener lista de bancos disponibles
+export async function getBanksListAPI(): Promise<BankApiResponse<BankInfo[]>> {
+  try {
+    const { data } = await api.get<BankApiResponse<BankInfo[]>>('/bank/banks');
+    return data;
+  } catch (error) {
+    let mensaje = 'Error obteniendo lista de bancos';
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) {
+        mensaje = errores.join(', ');
+      }
+    }
+    throw new Error(mensaje);
+  }
 }

@@ -69,6 +69,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
   const [error, setError] = useState<string>('');
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const [usdAmount, setUsdAmount] = useState<number>(0);
+  const [banks, setBanks] = useState<BankInfo[]>([]);
 
   const [students, setStudents] = useState<any[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
@@ -102,6 +103,20 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
     };
     fetchBCVRate();
   }, [formData.RequestDate]);
+
+  useEffect(() => {
+    const fetchBanks = async () => {
+      try {
+        const res = await getBanksListAPI();
+        if (res.result && res.content) {
+          setBanks(res.content);
+        }
+      } catch (err) {
+        console.error('Error al cargar lista de bancos:', err);
+      }
+    };
+    fetchBanks();
+  }, []);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -198,6 +213,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
         setDepositLoading(true);
         try {
           const depositPayload = {
+            amount: formData.Amount,
             amount: formData.Amount,
             description: `Pago validado - Ref: ${formData.Reference}`,
             paymentMethod: 'pago_movil' as const,
@@ -315,7 +331,14 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
             <div className="flex items-center space-x-4 bg-blue-50 border border-blue-200 rounded-xl p-3">
               <div className="bg-blue-100 p-2 rounded-lg">
                 <FaMoneyBillWave className="text-xl text-blue-700" />
+            <div className="flex items-center space-x-4 bg-blue-50 border border-blue-200 rounded-xl p-3">
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <FaMoneyBillWave className="text-xl text-blue-700" />
               </div>
+              <div>
+                <p className="font-semibold text-sm text-blue-800">Pago Móvil</p>
+                <p className="text-xs text-blue-700">0412-208.84.51 | BNC 0191</p>
+                <p className="text-xs text-blue-700 font-mono font-semibold">RIF: J-505275356</p>
               <div>
                 <p className="font-semibold text-sm text-blue-800">Pago Móvil</p>
                 <p className="text-xs text-blue-700">0412-208.84.51 | BNC 0191</p>
@@ -659,6 +682,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                       <tbody className="bg-white divide-y divide-gray-100">
                         {history.map((tx: any) => {
                           const isDeposit = tx.type === 'deposit';
+                          const amountBs = tx.amount || 0;
                           const amountBs = tx.amount || 0;
                           const amountUSD = tx.amountUSD || (bcvRate ? amountBs / bcvRate.PriceRateBCV : 0);
                           return (
