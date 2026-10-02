@@ -553,7 +553,6 @@ const PaymentHistory: React.FC = () => {
               <label className="block text-sm font-semibold text-gray-600 mb-1">Buscar</label>
               <input type="text" value={filters.search} onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))} placeholder="Referencia, descripción..." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" />
             </div>
-
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-600 mb-1">Representante</label>
               <input ref={repInputRef} type="text" value={repSearchTerm} onChange={(e) => { setRepSearchTerm(e.target.value); if (!e.target.value) setFilters(prev => ({ ...prev, representativeId: '' })); searchReps(e.target.value); }} placeholder="Buscar representante..." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" />
@@ -565,7 +564,6 @@ const PaymentHistory: React.FC = () => {
                 </div>
               )}
             </div>
-
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-600 mb-1">Estudiante</label>
               <input ref={studentInputRef} type="text" value={studentSearchTerm} onChange={(e) => { setStudentSearchTerm(e.target.value); if (!e.target.value) setFilters(prev => ({ ...prev, studentId: '' })); searchStudents(e.target.value); }} placeholder="Buscar estudiante..." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" />
@@ -638,7 +636,6 @@ const PaymentHistory: React.FC = () => {
               <div className="flex-1"><label className="block text-sm font-semibold text-gray-600 mb-1">Hasta</label><input type="date" value={filters.endDate} onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))} className="w-full px-2 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl" /></div>
             </div>
           </div>
-
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button onClick={handleApplyFilters} className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition"><FaSearch className="inline mr-2" /> Buscar</button>
             <button onClick={clearFilters} className="px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100"><FaTimes className="inline mr-2" /> Limpiar filtros</button>
