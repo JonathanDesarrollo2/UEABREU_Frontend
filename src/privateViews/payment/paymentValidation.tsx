@@ -3,7 +3,9 @@ import {
   cascadedValidationAPI,
   type BankValidationRequest,
   getStoredRateAPI,
-  type BCVRateResponse
+  type BCVRateResponse,
+  getBanksListAPI,
+  type BankInfo,
 } from '../../apis/bank';
 import {
   getRepresentativeBalance,
@@ -55,6 +57,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
   const [error, setError] = useState<string>('');
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const [usdAmount, setUsdAmount] = useState<number>(0);
+  const [banks, setBanks] = useState<BankInfo[]>([]);
 
   const [students, setStudents] = useState<any[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
@@ -88,6 +91,20 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
     };
     fetchBCVRate();
   }, [formData.RequestDate]);
+
+  useEffect(() => {
+    const fetchBanks = async () => {
+      try {
+        const res = await getBanksListAPI();
+        if (res.result && res.content) {
+          setBanks(res.content);
+        }
+      } catch (err) {
+        console.error('Error al cargar lista de bancos:', err);
+      }
+    };
+    fetchBanks();
+  }, []);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -169,9 +186,6 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
         return;
       }
 
-      // El banco puede intentar sus tres métodos internamente, pero al
-      // representante solo se le comunica el resultado final, nunca la
-      // estrategia o el método que encontró el movimiento.
       setResult({
         ...response.content,
         details: undefined,
@@ -187,7 +201,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
         setDepositLoading(true);
         try {
           const depositPayload = {
-            amount: formData.Amount, // se envía en Bs, el backend convierte a USD
+            amount: formData.Amount,
             description: `Pago validado - Ref: ${formData.Reference}`,
             paymentMethod: 'pago_movil' as const,
             reference: formData.Reference,
@@ -301,13 +315,14 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
               </div>
             </div>
 
-            <div className="flex items-center space-x-4 bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-3 shadow-md">
-              <div className="bg-white/20 p-2 rounded-lg">
-                <FaMoneyBillWave className="text-xl text-white" />
+            <div className="flex items-center space-x-4 bg-blue-50 border border-blue-200 rounded-xl p-3">
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <FaMoneyBillWave className="text-xl text-blue-700" />
               </div>
-              <div className="text-white">
-                <p className="font-semibold text-sm">Pago Móvil</p>
-                <p className="text-xs">0412-208.84.51 | BNC 0191</p>
+              <div>
+                <p className="font-semibold text-sm text-blue-800">Pago Móvil</p>
+                <p className="text-xs text-blue-700">0412-208.84.51 | BNC 0191</p>
+                <p className="text-xs text-blue-700 font-mono font-semibold">RIF: J-505275356</p>
               </div>
             </div>
           </div>
@@ -402,10 +417,18 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                       required
                       className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
                     >
-                      <option value={191}>BNC (0191)</option>
-                      <option value={101}>Bancaribe (0101)</option>
-                      <option value={104}>BdV (0104)</option>
-                      <option value={105}>Mercantil (0105)</option>
+                      {banks.length === 0 ? (
+                        <option value={formData.BankCode}>Cargando bancos...</option>
+                      ) : (
+                        banks.map((bank) => {
+                          const codeNumber = parseInt(bank.Code, 10);
+                          return (
+                            <option key={bank.Code} value={codeNumber}>
+                              {bank.Name} ({bank.Code})
+                            </option>
+                          );
+                        })
+                      )}
                     </select>
                   </div>
 
@@ -643,7 +666,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                       <tbody className="bg-white divide-y divide-gray-100">
                         {history.map((tx: any) => {
                           const isDeposit = tx.type === 'deposit';
-                          const amountBs = tx.amount || 0; // monto original en Bs
+                          const amountBs = tx.amount || 0;
                           const amountUSD = tx.amountUSD || (bcvRate ? amountBs / bcvRate.PriceRateBCV : 0);
                           return (
                             <tr key={tx.id} className="hover:bg-gray-50">
