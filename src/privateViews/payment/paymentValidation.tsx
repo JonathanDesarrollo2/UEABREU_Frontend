@@ -4,8 +4,6 @@ import {
   type BankValidationRequest,
   getStoredRateAPI,
   type BCVRateResponse,
-  getBanksListAPI,
-  type BankInfo,
 } from '../../apis/bank';
 import {
   getRepresentativeBalance,
@@ -40,6 +38,20 @@ const DEFAULT_BANK_ACCOUNT = '01910001482101010049';
 const DEFAULT_PHONE = '580000000000';
 const DEFAULT_REQUEST_DATE = new Date().toISOString().split('T')[0];
 
+// Lista de bancos venezolanos con sus códigos reales (BCV)
+const BANKS_LIST: { Name: string; Code: string }[] = [
+  { Name: 'Banco de Venezuela, S.A.',                Code: '0102' },
+  { Name: 'Banco Venezolano de Crédito, S.A.',        Code: '0104' },
+  { Name: 'Banco Mercantil, C.A.',                    Code: '0105' },
+  { Name: 'Banco Provincial, C.A.',                   Code: '0108' },
+  { Name: 'Bancaribe, C.A.',                          Code: '0114' },
+  { Name: 'Banco Exterior, C.A.',                     Code: '0115' },
+  { Name: 'Banesco, S.A.C.A.',                        Code: '0134' },
+  { Name: 'Bancamiga, C.A.',                          Code: '0172' },
+  { Name: 'Banco Nacional de Crédito, C.A.',          Code: '0191' },
+  { Name: 'Banco Bicentenario, C.A.',                 Code: '0175' },
+];
+
 export default function PaymentValidation({ representativeId }: PaymentValidationProps) {
   const [formData, setFormData] = useState({
     BankCode: 191,
@@ -57,7 +69,6 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
   const [error, setError] = useState<string>('');
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const [usdAmount, setUsdAmount] = useState<number>(0);
-  const [banks, setBanks] = useState<BankInfo[]>([]);
 
   const [students, setStudents] = useState<any[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
@@ -91,20 +102,6 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
     };
     fetchBCVRate();
   }, [formData.RequestDate]);
-
-  useEffect(() => {
-    const fetchBanks = async () => {
-      try {
-        const res = await getBanksListAPI();
-        if (res.result && res.content) {
-          setBanks(res.content);
-        }
-      } catch (err) {
-        console.error('Error al cargar lista de bancos:', err);
-      }
-    };
-    fetchBanks();
-  }, []);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -417,18 +414,14 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                       required
                       className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
                     >
-                      {banks.length === 0 ? (
-                        <option value={formData.BankCode}>Cargando bancos...</option>
-                      ) : (
-                        banks.map((bank) => {
-                          const codeNumber = parseInt(bank.Code, 10);
-                          return (
-                            <option key={bank.Code} value={codeNumber}>
-                              {bank.Name} ({bank.Code})
-                            </option>
-                          );
-                        })
-                      )}
+                      {BANKS_LIST.map((bank) => {
+                        const codeNumber = parseInt(bank.Code, 10);
+                        return (
+                          <option key={bank.Code} value={codeNumber}>
+                            {bank.Name} ({bank.Code})
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 
