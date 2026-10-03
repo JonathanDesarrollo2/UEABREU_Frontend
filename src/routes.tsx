@@ -39,6 +39,8 @@ import InfoAccount from './privateViews/InfoAccount/InfoAccount'
 import RepresentativeRegistration from './privateViews/RepresentativeRegistration/RepresentativeRegistration'
 import TasaLista from './privateViews/tasaLista/TasaListaVista'
 import ForgotPasswordPage from './publicViews/LoginAuthPublic/forgotPasswordKey'
+import FuncionalLayout from './layouts/funcionalLayout'
+import FuncionalDashboard from './layouts/funcionalDashboard'
 
 function ListRoutes() {
   return (
@@ -58,6 +60,15 @@ function ListRoutes() {
       {/* Rutas Privadas */}
       <Route element={<PrivateRoutes />}>
         <Route path="/app" element={<AuthRedirector />} />
+
+              {/* ⭐ NUEVO: Rutas Funcional */}
+        <Route path="/funcional" element={<FuncionalLayout   />}>
+          <Route index element={<FuncionalDashboard />} />
+          <Route path="users">
+            <Route path="insert" element={<InsertUser forceNivel={1} />} />
+            <Route path="list" element={<AdminListUsersBackend />} />
+          </Route>
+        </Route>
           
         {/* Rutas específicas por rol */}
         <Route path="/representante" element={<RepresLayout />}>

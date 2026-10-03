@@ -437,7 +437,17 @@ const StudentsForm = ({ control, register, errors, bcvRate }: any) => {
   );
 };
 
-export default function InsertUser() {
+// ─── Props del componente ─────────────────────────────────────────────
+interface InsertUserProps {
+  /**
+   * Cuando se define, el nivel de acceso del nuevo usuario queda bloqueado
+   * a ese valor y el selector de "Nivel de Acceso" se oculta.
+   * Se usa desde /funcional para forzar nivel 1 (Representante).
+   */
+  forceNivel?: number;
+}
+
+export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
   const navigate = useNavigate();
   const [formKey, setFormKey] = useState(0);
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
@@ -448,6 +458,15 @@ export default function InsertUser() {
   const isRepresentative = nivel === 1;
   const isAdministrator = nivel === 2;
   const students = watch('studentsData') || [];
+
+  const hideNivelSelector = forceNivel !== undefined;
+
+  // ─── Fuerza el nivel cuando viene por prop (ej. /funcional → nivel 1) ───
+  useEffect(() => {
+    if (forceNivel !== undefined) {
+      setValue('nivel', forceNivel);
+    }
+  }, [forceNivel, setValue]);
 
   // Al seleccionar "Administrador" se descartan los datos de representante y
   // estudiantes que quedaron registrados al montarse el formulario con nivel 1,
@@ -495,7 +514,14 @@ export default function InsertUser() {
     toast.error("No se pudo registrar el usuario. Verifica los datos.");
   }, []);
 
-  const handleCancel = useCallback(() => navigate('/admin/users/list'), [navigate]);
+  // El botón Cancelar redirige a la lista del panel correspondiente
+  const handleCancel = useCallback(() => {
+    if (forceNivel !== undefined) {
+      navigate('/funcional/users/list');
+    } else {
+      navigate('/admin/users/list');
+    }
+  }, [navigate, forceNivel]);
 
   const handleClear = useCallback(() => {
     reset();
@@ -585,23 +611,26 @@ export default function InsertUser() {
                   </div>
                 </div>
 
-                <div className="flex justify-center">
-                  <div className="w-full max-w-sm">
-                    <FormField 
-                      type="select"
-                      id="nivel" 
-                      label="Nivel de Acceso *" 
-                      required={true} 
-                      register={register} 
-                      error={errors.nivel}
-                      defaultValue={1}
-                      options={[
-                        { value: 1, text: "Representante" },
-                        { value: 2, text: "Administrador" }
-                      ]}
-                    />
+                {/* Selector de Nivel: se oculta cuando forceNivel está definido */}
+                {!hideNivelSelector && (
+                  <div className="flex justify-center">
+                    <div className="w-full max-w-sm">
+                      <FormField 
+                        type="select"
+                        id="nivel" 
+                        label="Nivel de Acceso *" 
+                        required={true} 
+                        register={register} 
+                        error={errors.nivel}
+                        defaultValue={1}
+                        options={[
+                          { value: 1, text: "Representante" },
+                          { value: 2, text: "Administrador" }
+                        ]}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex justify-center">
                   <div className="w-full max-w-sm">
