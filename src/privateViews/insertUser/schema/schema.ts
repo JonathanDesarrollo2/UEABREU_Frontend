@@ -14,7 +14,7 @@ const representativeDataSchema = z.object({
   initialBalance: z.number().default(0).optional(),
 });
 
-// Esquema para datos del estudiante (con grado, sección, balance individual y fecha de ingreso)
+// Esquema para datos del estudiante
 const studentDataSchema = z.object({
   fullName: z.string().min(3, "Nombre completo es requerido"),
   identityCard: z.string().min(6, "Cédula es requerida"),
@@ -35,7 +35,7 @@ const studentDataSchema = z.object({
   currentGrade: z.string().min(1, "Grado es requerido"),
   section: z.string().min(1, "Sección es requerida"),
   balance: z.number().default(0).optional(),
-  admissionDate: z.string().optional(), // NUEVO: fecha de ingreso opcional
+  admissionDate: z.string().optional(),
 });
 
 // Esquema principal para inserción de usuario
@@ -55,7 +55,6 @@ export const loginInsertSchema = z.object({
   message: "Las contraseñas no coinciden",
   path: ["userrepass"],
 }).refine((data) => {
-  // Si el nivel es 1 (representante), representativeData es obligatorio
   if (data.nivel === 1) {
     return data.representativeData !== undefined;
   }
@@ -63,10 +62,15 @@ export const loginInsertSchema = z.object({
 }, {
   message: "Los datos del representante son requeridos para nivel 1",
   path: ["representativeData"],
-}).refine((data) => data.nivel !== 2 || (!!data.phone && !!data.identityCard), {
-  message: "Teléfono y cédula son obligatorios para administradores",
+}).refine((data) => {
+  // Niveles 2 (Administrador), 3 (Funcional) y 4 (Secretario) requieren teléfono y cédula
+  if (data.nivel === 2 || data.nivel === 3 || data.nivel === 4) {
+    return !!data.phone && !!data.identityCard;
+  }
+  return true;
+}, {
+  message: "Teléfono y cédula son obligatorios para este rol",
   path: ["phone"],
 });
 
-// Tipo inferido del esquema
 export type TypeLogin_insert = z.infer<typeof loginInsertSchema>;
