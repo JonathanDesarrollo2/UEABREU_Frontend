@@ -1,9 +1,8 @@
-// src/pages/teacher/EditTeacherPage.tsx
 import { useNavigate, useLocation } from "react-router-dom";
 import { ActionButtons } from "../../components/ActionButtons";
 import { FormField } from "../../components/FormField";
 import { useUpdateTeacher } from "./hooks/useUpdateTeacher";
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { toast } from "react-toastify";
 import { FaChalkboardTeacher } from 'react-icons/fa';
 import AnimatedPage from "../../components/AnimatedPage";
@@ -12,8 +11,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import SpinnerGeneral from "../../layouts/components/spinnerGeneral";
 import { teacherUpdateSchema, type TypeTeacherUpdate } from "../../types/teacher";
 
-const useEditTeacherForm = (teacherData: TypeTeacherUpdate | null) => {
-  return useForm<TypeTeacherUpdate>({
+export default function EditTeacherPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const teacherData = location.state?.teacherData as TypeTeacherUpdate;
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<TypeTeacherUpdate>({
     resolver: zodResolver(teacherUpdateSchema),
     mode: 'onChange',
     defaultValues: teacherData || {
@@ -30,21 +33,12 @@ const useEditTeacherForm = (teacherData: TypeTeacherUpdate | null) => {
       class: '',
     },
   });
-};
 
-export default function EditTeacherPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const teacherData = location.state?.teacherData as TypeTeacherUpdate;
-  
-  const [formKey, setFormKey] = useState(0);
-  const { register, handleSubmit, reset, formState: { errors } } = useEditTeacherForm(teacherData);
   const { mutate, reset: resetMutation, isPending } = useUpdateTeacher();
 
   useEffect(() => {
     if (teacherData) {
       reset(teacherData);
-      setFormKey(prev => prev + 1);
     } else {
       toast.error("No se encontraron datos del profesor");
       navigate('/admin/teachers/list');
@@ -53,33 +47,16 @@ export default function EditTeacherPage() {
 
   const onSubmit = useCallback(
     (formdata: TypeTeacherUpdate) => {
-      if (!formdata.fullName?.trim()) {
-        toast.error("El nombre completo es requerido");
-        return;
-      }
-      if (!formdata.identityCard?.trim()) {
-        toast.error("La cédula es requerida");
-        return;
-      }
-      if (!formdata.email?.trim()) {
-        toast.error("El email es requerido");
-        return;
-      }
-      if (!formdata.address?.trim()) {
-        toast.error("La dirección es requerida");
-        return;
-      }
-      if (!formdata.phone?.trim()) {
-        toast.error("El teléfono es requerido");
-        return;
-      }
+      if (!formdata.fullName?.trim()) return toast.error("El nombre completo es requerido");
+      if (!formdata.identityCard?.trim()) return toast.error("La cédula es requerida");
+      if (!formdata.email?.trim()) return toast.error("El email es requerido");
+      if (!formdata.address?.trim()) return toast.error("La dirección es requerida");
+      if (!formdata.phone?.trim()) return toast.error("El teléfono es requerido");
 
       mutate(formdata, {
         onSuccess: (dataAPI) => {
           if (dataAPI.result) {
-            reset();
             resetMutation();
-            setFormKey((prev) => prev + 1);
             toast.success("Profesor actualizado exitosamente");
             navigate('/admin/teachers/list');
           }
@@ -89,25 +66,21 @@ export default function EditTeacherPage() {
         }
       });
     },
-    [mutate, reset, resetMutation, navigate]
+    [mutate, resetMutation, navigate]
   );
 
   const handleCancel = useCallback(() => navigate('/admin/teachers/list'), [navigate]);
 
   const handleClear = useCallback(() => {
     reset(teacherData);
-    setFormKey(prev => prev + 1); 
     toast.info("Formulario restablecido");
   }, [reset, teacherData]);
 
-  if (!teacherData) {
-    return null;
-  }
+  if (!teacherData) return null;
 
   return (
     <>
       {isPending && <SpinnerGeneral />}
-      
       <AnimatedPage className="flex justify-center">
         <div className="w-full max-w-6xl mx-auto px-4">
           <div className="text-center mb-8">
@@ -120,17 +93,10 @@ export default function EditTeacherPage() {
             </p>
           </div>
 
-          <ActionButtons 
-            onCancel={handleCancel} 
-            onClear={handleClear} 
-          />
+          <ActionButtons onCancel={handleCancel} onClear={handleClear} />
 
-          <form 
-            key={formKey}
-            onSubmit={handleSubmit(onSubmit)}
-            className="space-y-8"
-          >
-            {/* Sección: Información Personal */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            {/* Información Personal */}
             <div className="bg-white rounded-xl shadow-md p-6 max-w-4xl mx-auto">
               <h3 className="text-xl font-bold text-gray-800 mb-6 text-center border-b pb-3">
                 Información Personal
@@ -138,68 +104,69 @@ export default function EditTeacherPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex justify-center">
                   <div className="w-full max-w-sm">
-                    <FormField 
-                      id="fullName" 
-                      label="Nombre Completo *" 
-                      required={true} 
-                      register={register} 
-                      error={errors.fullName} 
+                    <FormField
+                      id="fullName"
+                      label="Nombre Completo *"
+                      required={true}
+                      register={register}
+                      error={errors.fullName}
+                      defaultValue={teacherData.fullName}
                     />
                   </div>
                 </div>
-                
                 <div className="flex justify-center">
                   <div className="w-full max-w-sm">
-                    <FormField 
-                      id="identityCard" 
-                      label="Cédula de Identidad *" 
-                      required={true} 
-                      register={register} 
-                      error={errors.identityCard} 
+                    <FormField
+                      id="identityCard"
+                      label="Cédula de Identidad *"
+                      required={true}
+                      register={register}
+                      error={errors.identityCard}
+                      defaultValue={teacherData.identityCard}
                     />
                   </div>
                 </div>
-
                 <div className="flex justify-center">
                   <div className="w-full max-w-sm">
-                    <FormField 
-                      id="email" 
-                      label="Email *" 
-                      required={true} 
-                      register={register} 
-                      error={errors.email} 
+                    <FormField
+                      id="email"
+                      label="Email *"
+                      required={true}
+                      register={register}
+                      error={errors.email}
                       type="email"
+                      defaultValue={teacherData.email}
                     />
                   </div>
                 </div>
-
                 <div className="flex justify-center">
                   <div className="w-full max-w-sm">
-                    <FormField 
-                      id="phone" 
-                      label="Teléfono *" 
-                      required={true} 
-                      register={register} 
-                      error={errors.phone} 
+                    <FormField
+                      id="phone"
+                      label="Teléfono *"
+                      required={true}
+                      register={register}
+                      error={errors.phone}
+                      defaultValue={teacherData.phone}
                     />
                   </div>
                 </div>
-
                 <div className="md:col-span-2 flex justify-center">
                   <div className="w-full max-w-2xl">
-                    <FormField 
-                      id="address" 
-                      label="Dirección *" 
-                      required={true} 
-                      register={register} 
-                      error={errors.address} 
+                    <FormField
+                      id="address"
+                      label="Dirección *"
+                      required={true}
+                      register={register}
+                      error={errors.address}
+                      defaultValue={teacherData.address}
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Sección: Información Profesional */}
+            {/* Información Profesional */}
             <div className="bg-white rounded-xl shadow-md p-6 max-w-4xl mx-auto">
               <h3 className="text-xl font-bold text-gray-800 mb-6 text-center border-b pb-3">
                 Información Profesional
@@ -207,53 +174,54 @@ export default function EditTeacherPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex justify-center">
                   <div className="w-full max-w-sm">
-                    <FormField 
-                      id="specialization" 
-                      label="Especialización" 
-                      register={register} 
-                      error={errors.specialization} 
+                    <FormField
+                      id="specialization"
+                      label="Especialización"
+                      register={register}
+                      error={errors.specialization}
+                      defaultValue={teacherData.specialization}
                     />
                   </div>
                 </div>
-                
                 <div className="flex justify-center">
                   <div className="w-full max-w-sm">
-                    <FormField 
-                      id="degree" 
-                      label="Título Académico" 
-                      register={register} 
-                      error={errors.degree} 
+                    <FormField
+                      id="degree"
+                      label="Título Académico"
+                      register={register}
+                      error={errors.degree}
+                      defaultValue={teacherData.degree}
                     />
                   </div>
                 </div>
-
                 <div className="flex justify-center">
                   <div className="w-full max-w-sm">
-                    <FormField 
+                    <FormField
                       type="boolean"
-                      id="status" 
-                      label="Estado *" 
-                      required={true} 
-                      register={register} 
+                      id="status"
+                      label="Estado *"
+                      required={true}
+                      register={register}
                       error={errors.status}
+                      defaultValue={teacherData.status}
                     />
                   </div>
                 </div>
-
                 <div className="flex justify-center">
                   <div className="w-full max-w-sm">
-                    <FormField 
-                      id="class" 
-                      label="Clase/Grupo" 
-                      register={register} 
-                      error={errors.class} 
+                    <FormField
+                      id="class"
+                      label="Clase/Grupo"
+                      register={register}
+                      error={errors.class}
+                      defaultValue={teacherData.class}
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Sección: Información Adicional */}
+            {/* Información Adicional */}
             <div className="bg-white rounded-xl shadow-md p-6 max-w-4xl mx-auto">
               <h3 className="text-xl font-bold text-gray-800 mb-6 text-center border-b pb-3">
                 Información Adicional
@@ -262,11 +230,10 @@ export default function EditTeacherPage() {
                 <div className="flex justify-center">
                   <div className="w-full max-w-2xl">
                     <div className="flex flex-col">
-                      <label className="text-gray-700 font-bold mb-1">
-                        Comentarios
-                      </label>
+                      <label className="text-gray-700 font-bold mb-1">Comentarios</label>
                       <textarea
                         {...register('comments')}
+                        defaultValue={teacherData.comments}
                         className={`w-full px-3 py-2 border-2 border-solid ${
                           errors.comments ? "border-red-500" : "border-gray-300"
                         } rounded-md focus:outline-none focus:ring focus:border-blue-300`}
@@ -274,9 +241,7 @@ export default function EditTeacherPage() {
                         placeholder="Notas adicionales sobre el profesor..."
                       />
                       {errors.comments && (
-                        <span className="text-red-500 text-sm mt-1">
-                          {errors.comments.message}
-                        </span>
+                        <span className="text-red-500 text-sm mt-1">{errors.comments.message}</span>
                       )}
                     </div>
                   </div>
@@ -284,7 +249,6 @@ export default function EditTeacherPage() {
               </div>
             </div>
 
-            {/* Botón de envío */}
             <div className="flex justify-center pt-4">
               <button
                 type="submit"
