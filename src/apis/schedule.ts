@@ -216,3 +216,8 @@ export async function assignStudentToScheduleAPI(formdata: {
     throw new Error(mensaje);
   }
 }
+
+export const updateSubjectAPI = async (data: any) => {
+  const response = await api.post('/private/academic/subject/update', data);
+  return response.data;
+};

@@ -12,6 +12,10 @@ import RepresLayout from './layouts/RepresLayout'
 import AdminLayout from './layouts/AdminLayout'
 import RepresDashboard from './layouts/RepresDashboard'
 import AdminDashboard from './layouts/AdminDashboard'
+import FuncionalLayout from './layouts/funcionalLayout'
+import FuncionalDashboard from './layouts/funcionalDashboard'
+import SecretarioLayout from './layouts/SecretarioLayout'
+import SecretarioDashboard from './layouts/SecretarioDashboard'
 import AuthRedirector from './publicViews/Components/Redirector'
 import LayoutUsers from './layouts/UserLayout'
 import InsertUser from './privateViews/insertUser/insertUser'
@@ -38,7 +42,7 @@ import StudentsRanking from './privateViews/studentRanking/StudentRanking'
 import InfoAccount from './privateViews/InfoAccount/InfoAccount'
 import RepresentativeRegistration from './privateViews/RepresentativeRegistration/RepresentativeRegistration'
 import TasaLista from './privateViews/tasaLista/TasaListaVista'
-import ForgotPasswordPage from './publicViews/LoginAuthPublic/forgotPasswordKey'
+import EditSubjectPage from './privateViews/EditSubject/EditSubjectPage'
 
 function ListRoutes() {
   return (
@@ -47,7 +51,6 @@ function ListRoutes() {
       <Route path="/" element={<LayoutPublic />}>
         <Route index element={<HomeView />} />
         <Route path="login" element={<Login />} />
-        <Route path="forgot-password" element={<ForgotPasswordPage />} />
         <Route path="join-us" element={<JoinUsView />} />
         <Route path="SobreNosotros" element={<AboutUsView />} />
         <Route path="PrivacyPolicy" element={<PrivacyPolicy />} />
@@ -58,8 +61,8 @@ function ListRoutes() {
       {/* Rutas Privadas */}
       <Route element={<PrivateRoutes />}>
         <Route path="/app" element={<AuthRedirector />} />
-          
-        {/* Rutas específicas por rol */}
+
+        {/* Rutas Representante */}
         <Route path="/representante" element={<RepresLayout />}>
           <Route index element={<RepresDashboard />} />
           <Route path="validar-pago/:representativeId" element={<PaymentValidationPage />} />
@@ -67,7 +70,23 @@ function ListRoutes() {
           <Route path="InfoAccount" element={<InfoAccount />} />
           <Route path="Inscripciones" element={<RepresentativeRegistration />} />
         </Route>
-          
+
+        {/* Rutas Funcional */}
+        <Route path="/funcional" element={<FuncionalLayout />}>
+          <Route index element={<FuncionalDashboard />} />
+          <Route path="users">
+            <Route path="insert" element={<InsertUser forceNivel={1} />} />
+            <Route path="list" element={<AdminListUsersBackend />} />
+          </Route>
+        </Route>
+
+        {/* ⭐ NUEVO: Rutas Secretario */}
+        <Route path="/secretario" element={<SecretarioLayout />}>
+          <Route index element={<SecretarioDashboard />} />
+          <Route path="pagos" element={<PaymentHistory />} />
+        </Route>
+
+        {/* Rutas Admin */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<LayoutUsers />}>
@@ -87,10 +106,10 @@ function ListRoutes() {
           <Route path="registrations" element={<AdminRegistrationsList />} />
           <Route path="school-fees" element={<SchoolFeeSettings />} />
           <Route path="tasa-lista" element={<TasaLista />} />
-          <Route path="simulador-cobros" element={<SimuladorCobros/>} />
+          <Route path="simulador-cobros" element={<SimuladorCobros />} />
           <Route path="registrations/:id/edit" element={<EditApplication />} />
-          
-          {/* ✅ NUEVAS RUTAS PARA PROFESORES (estructura modular) */}
+          <Route path="subjects/edit" element={<EditSubjectPage />} />
+
           <Route path="teachers">
             <Route path="list" element={<TeacherListPage />} />
             <Route path="edit" element={<EditTeacherPage />} />

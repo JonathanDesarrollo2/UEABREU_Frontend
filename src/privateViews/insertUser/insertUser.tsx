@@ -137,7 +137,7 @@ const RepresentativeForm = ({ register, errors, bcvRate }: any) => {
   );
 };
 
-// Componente para el listado de estudiantes (con balance individual y fecha de ingreso)
+// Componente para el listado de estudiantes
 const StudentsForm = ({ control, register, errors, bcvRate }: any) => {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -210,7 +210,6 @@ const StudentsForm = ({ control, register, errors, bcvRate }: any) => {
 
             <div className="grid grid-cols-1 gap-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Columna 1 */}
                 <div className="space-y-4">
                   <h5 className="text-md font-semibold text-gray-600 border-b pb-2">Datos Personales</h5>
                   <FormField 
@@ -294,7 +293,6 @@ const StudentsForm = ({ control, register, errors, bcvRate }: any) => {
                   )}
                 </div>
 
-                {/* Columna 2 */}
                 <div className="space-y-4">
                   <h5 className="text-md font-semibold text-gray-600 border-b pb-2">Nacionalidad</h5>
                   <FormField 
@@ -320,7 +318,6 @@ const StudentsForm = ({ control, register, errors, bcvRate }: any) => {
                 </div>
               </div>
 
-              {/* Dirección */}
               <div className="border-t pt-4">
                 <h5 className="text-md font-semibold text-gray-600 mb-4">Dirección</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -363,7 +360,6 @@ const StudentsForm = ({ control, register, errors, bcvRate }: any) => {
                 </div>
               </div>
 
-              {/* Información de Salud */}
               <div className="border-t pt-4">
                 <h5 className="text-md font-semibold text-gray-600 mb-4">Información de Salud</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -409,7 +405,6 @@ const StudentsForm = ({ control, register, errors, bcvRate }: any) => {
                 </div>
               </div>
 
-              {/* Contacto de Emergencia */}
               <div className="border-t pt-4">
                 <h5 className="text-md font-semibold text-gray-600 mb-4">Contacto de Emergencia</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -437,7 +432,16 @@ const StudentsForm = ({ control, register, errors, bcvRate }: any) => {
   );
 };
 
-export default function InsertUser() {
+// ─── Props del componente ─────────────────────────────────────────────
+interface InsertUserProps {
+  /**
+   * Cuando se define, el nivel de acceso del nuevo usuario queda bloqueado
+   * a ese valor y el selector de "Nivel de Acceso" se oculta.
+   */
+  forceNivel?: number;
+}
+
+export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
   const navigate = useNavigate();
   const [formKey, setFormKey] = useState(0);
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
@@ -447,13 +451,24 @@ export default function InsertUser() {
   const nivel = watch('nivel');
   const isRepresentative = nivel === 1;
   const isAdministrator = nivel === 2;
+  const isFuncional = nivel === 3;
+  const isSecretario = nivel === 4;
+  // Niveles que comparten los mismos campos (phone + identityCard): 2, 3 y 4
+  const requiresContactData = isAdministrator || isFuncional || isSecretario;
   const students = watch('studentsData') || [];
 
-  // Al seleccionar "Administrador" se descartan los datos de representante y
-  // estudiantes que quedaron registrados al montarse el formulario con nivel 1,
-  // para que el schema no valide campos que no están visibles (bug: submit mudo).
+  const hideNivelSelector = forceNivel !== undefined;
+
   useEffect(() => {
-    if (nivel === 2) {
+    if (forceNivel !== undefined) {
+      setValue('nivel', forceNivel);
+    }
+  }, [forceNivel, setValue]);
+
+  // Al seleccionar un rol distinto a representante se descartan los datos de
+  // representante y estudiantes
+  useEffect(() => {
+    if (nivel === 2 || nivel === 3 || nivel === 4) {
       setValue('representativeData', undefined);
       setValue('studentsData', []);
     }
@@ -489,13 +504,18 @@ export default function InsertUser() {
     [mutate, reset, resetMutation]
   );
 
-  // Errores de validación del schema: se muestran en los campos y se notifica
   const onInvalid = useCallback((err: unknown) => {
     console.warn(err);
     toast.error("No se pudo registrar el usuario. Verifica los datos.");
   }, []);
 
-  const handleCancel = useCallback(() => navigate('/admin/users/list'), [navigate]);
+  const handleCancel = useCallback(() => {
+    if (forceNivel !== undefined) {
+      navigate('/funcional/users/list');
+    } else {
+      navigate('/admin/users/list');
+    }
+  }, [navigate, forceNivel]);
 
   const handleClear = useCallback(() => {
     reset();
@@ -510,6 +530,9 @@ export default function InsertUser() {
     new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(val);
   const formatUsd = (val: number) =>
     new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(val);
+
+  // Etiqueta dinámica para los campos de contacto
+  const contactLabel = isSecretario ? 'secretario' : isFuncional ? 'funcional' : 'administrador';
 
   return (
     <>
@@ -543,7 +566,6 @@ export default function InsertUser() {
             onSubmit={handleSubmit(onSubmit, onInvalid)}
             className="space-y-8"
           >
-            {/* Sección: Datos Principales */}
             <div className="bg-white rounded-xl shadow-md p-6 max-w-4xl mx-auto">
               <h3 className="text-xl font-bold text-gray-800 mb-6 text-center border-b pb-3">
                 Datos Principales del Usuario
@@ -585,23 +607,27 @@ export default function InsertUser() {
                   </div>
                 </div>
 
-                <div className="flex justify-center">
-                  <div className="w-full max-w-sm">
-                    <FormField 
-                      type="select"
-                      id="nivel" 
-                      label="Nivel de Acceso *" 
-                      required={true} 
-                      register={register} 
-                      error={errors.nivel}
-                      defaultValue={1}
-                      options={[
-                        { value: 1, text: "Representante" },
-                        { value: 2, text: "Administrador" }
-                      ]}
-                    />
+                {!hideNivelSelector && (
+                  <div className="flex justify-center">
+                    <div className="w-full max-w-sm">
+                      <FormField 
+                        type="select"
+                        id="nivel" 
+                        label="Nivel de Acceso *" 
+                        required={true} 
+                        register={register} 
+                        error={errors.nivel}
+                        defaultValue={1}
+                        options={[
+                          { value: 1, text: "Representante" },
+                          { value: 2, text: "Administrador" },
+                          { value: 3, text: "Funcional" },
+                          { value: 4, text: "Secretario" }
+                        ]}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex justify-center">
                   <div className="w-full max-w-sm">
@@ -640,13 +666,13 @@ export default function InsertUser() {
                   </div>
                 </div>
 
-                {isAdministrator && (
+                {requiresContactData && (
                   <>
                     <div className="flex justify-center">
                       <div className="w-full max-w-sm">
                         <FormField 
                           id="phone" 
-                          label="Teléfono del administrador *" 
+                          label={`Teléfono del ${contactLabel} *`}
                           required 
                           register={register} 
                           error={errors.phone} 
@@ -657,7 +683,7 @@ export default function InsertUser() {
                       <div className="w-full max-w-sm">
                         <FormField 
                           id="identityCard" 
-                          label="Cédula del administrador *" 
+                          label={`Cédula del ${contactLabel} *`}
                           required 
                           register={register} 
                           error={errors.identityCard} 
@@ -669,13 +695,11 @@ export default function InsertUser() {
               </div>
             </div>
 
-            {/* Sección condicional para Representante */}
             {isRepresentative && (
               <>
                 <RepresentativeForm register={register} errors={errors} bcvRate={bcvRate} />
                 <StudentsForm control={control} register={register} errors={errors} bcvRate={bcvRate} />
                 
-                {/* Resumen con saldos individuales */}
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 max-w-4xl mx-auto">
                   <div className="flex items-center justify-center mb-4">
                     <FaMoneyBillWave className="text-blue-500 text-xl mr-2" />
@@ -722,19 +746,39 @@ export default function InsertUser() {
               </>
             )}
 
-            {/* Mensaje para Administrativo */}
-            {!isRepresentative && (
+            {isAdministrator && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-6 max-w-4xl mx-auto text-center">
-                <h4 className="text-lg font-semibold text-green-800 mb-3">Usuario Administrativo</h4>
+                <h4 className="text-lg font-semibold text-green-800 mb-3">Usuario Administrador</h4>
                 <p className="text-gray-700">
-                  Se registrará un usuario con permisos administrativos.
+                  Se registrará un usuario con permisos administrativos completos.
                   <br />
-                  Este usuario no tendrá datos de representante ni estudiantes asociados.
+                  Este usuario tendrá acceso y visualización de todo el sistema sin excepción.
                 </p>
               </div>
             )}
 
-            {/* Botón de envío */}
+            {isFuncional && (
+              <div className="bg-teal-50 border border-teal-200 rounded-xl p-6 max-w-4xl mx-auto text-center">
+                <h4 className="text-lg font-semibold text-teal-800 mb-3">Usuario Funcional</h4>
+                <p className="text-gray-700">
+                  Se registrará un usuario con permisos funcionales.
+                  <br />
+                  Este usuario podrá crear y consultar representantes, pero no tendrá acceso al resto del sistema.
+                </p>
+              </div>
+            )}
+
+            {isSecretario && (
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 max-w-4xl mx-auto text-center">
+                <h4 className="text-lg font-semibold text-purple-800 mb-3">Usuario Secretario</h4>
+                <p className="text-gray-700">
+                  Se registrará un usuario con permisos de secretaría.
+                  <br />
+                  Este usuario podrá visualizar y registrar pagos, pero no tendrá acceso a la administración del sistema.
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-center pt-4">
               <button
                 type="submit"

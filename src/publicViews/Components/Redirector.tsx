@@ -29,6 +29,12 @@ export default function AuthRedirector() {
       } else if (sessionContext.nivel === 2) {
         console.log('🎯 Redirigiendo a /admin');
         navigate('/admin', { replace: true });
+      } else if (sessionContext.nivel === 3) {
+        console.log('🎯 Redirigiendo a /funcional');
+        navigate('/funcional', { replace: true });
+      } else if (sessionContext.nivel === 4) {
+        console.log('🎯 Redirigiendo a /secretario');
+        navigate('/secretario', { replace: true });
       } else {
         console.warn('⚠️ Nivel no reconocido:', sessionContext.nivel);
       }
