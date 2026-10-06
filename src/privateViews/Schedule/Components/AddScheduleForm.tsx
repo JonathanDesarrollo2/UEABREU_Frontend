@@ -13,7 +13,9 @@ import {
 import type { TypeScheduleCreate } from '../../../types/schedule';
 import type { TypeApiResponseGeneric } from '../../../types/schedule';
 
-// Opciones para los select
+// ✅ Código FIJO para todos los recesos (7 caracteres alfanuméricos)
+const RECESS_CODE = 'RECESO1';
+
 const GRADE_OPTIONS = [
   { value: '1ro', text: 'Primer Año' },
   { value: '2do', text: 'Segundo Año' },
@@ -55,15 +57,6 @@ interface AddScheduleFormProps {
   onPreviewChange?: (grade: string, section: string) => void;
 }
 
-// Función para generar un código único de 7 caracteres que comienza con 'R'
-const generateRecessCode = (): string => {
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  const combined = (timestamp + random).replace(/[^A-Z0-9]/g, '').slice(0, 6);
-  const padded = combined.padEnd(6, '0');
-  return `R${padded}`;
-};
-
 export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProps) {
   const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useScheduleForm();
   const { mutate, isPending } = useAddSchedule();
@@ -75,8 +68,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
   const [isRecess, setIsRecess] = useState(false);
-  const [recessCode, setRecessCode] = useState('');
-  const [retryCount, setRetryCount] = useState(0);
   const [showExistingLoader, setShowExistingLoader] = useState(false);
   const [selectedExistingCode, setSelectedExistingCode] = useState('');
   const [loadingExistingCodes, setLoadingExistingCodes] = useState(false);
@@ -87,54 +78,41 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const startBlock = watch('startBlock');
   const subjectId = watch('subjectId');
 
-  // Cargar materias
   useEffect(() => {
     setLoadingSubjects(true);
     getSubjectsAPI()
       .then(response => {
-        if (response.result && response.content) {
-          setSubjects(response.content);
-        } else {
-          setSubjects([]);
-        }
+        if (response.result && response.content) setSubjects(response.content);
+        else setSubjects([]);
       })
       .catch(() => toast.error('Error al cargar materias'))
       .finally(() => setLoadingSubjects(false));
   }, []);
 
-  // Cargar docentes activos
   useEffect(() => {
     setLoadingTeachers(true);
     getActiveTeachersAPI()
       .then(response => {
-        if (response.result && response.content) {
-          setTeachers(response.content);
-        } else {
-          setTeachers([]);
-        }
+        if (response.result && response.content) setTeachers(response.content);
+        else setTeachers([]);
       })
       .catch(() => toast.error('Error al cargar docentes'))
       .finally(() => setLoadingTeachers(false));
   }, []);
 
-  // ✅ Cargar códigos únicos de horarios existentes (con el nuevo endpoint)
   useEffect(() => {
     if (showExistingLoader) {
       setLoadingExistingCodes(true);
       getUniqueScheduleCodesAPI()
         .then(response => {
-          if (response.result && response.content) {
-            setExistingCodes(response.content);
-          } else {
-            setExistingCodes([]);
-          }
+          if (response.result && response.content) setExistingCodes(response.content);
+          else setExistingCodes([]);
         })
         .catch(() => toast.error('Error al cargar códigos de horarios'))
         .finally(() => setLoadingExistingCodes(false));
     }
   }, [showExistingLoader]);
 
-  // Cargar bloques ocupados para vista previa
   useEffect(() => {
     if (grade && section && day) {
       getSchedulesByGradeSectionAPI(grade, section)
@@ -156,14 +134,12 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     }
   }, [grade, section, day]);
 
-  // Notificar cambios para vista previa
   useEffect(() => {
     if (onPreviewChange && grade && section) {
       onPreviewChange(grade, section);
     }
   }, [grade, section, onPreviewChange]);
 
-  // Si se selecciona una materia, autocompletar docente (si tiene asignado)
   useEffect(() => {
     if (subjectId) {
       const selectedSubject = subjects.find(s => s.id === subjectId);
@@ -177,11 +153,9 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const handleRecessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
     setIsRecess(checked);
-    setRetryCount(0);
     if (checked) {
-      const newCode = generateRecessCode();
-      setRecessCode(newCode);
-      setValue('code', newCode);
+      // ✅ Código fijo para todos los recesos
+      setValue('code', RECESS_CODE);
       setValue('subjectId', '');
       setValue('teacherId', '');
       setValue('classroom', '');
@@ -189,7 +163,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       setShowExistingLoader(false);
       setSelectedExistingCode('');
     } else {
-      setRecessCode('');
       setValue('code', '');
     }
   };
@@ -211,10 +184,8 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     }
   };
 
-  // ✅ Cuando se selecciona un código existente, rellenar sus datos.
-  // NO se cambian grade/section — el usuario los eligió arriba.
-  // El código se reutiliza para crear una NUEVA fila en otro día/bloque
-  // sin que aparezca duplicado en el dropdown.
+  // Cuando se selecciona un código existente, rellenar sus datos.
+  // NO se cambia grade/section — el usuario los eligió arriba.
   const handleSelectExistingCode = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const code = e.target.value;
     setSelectedExistingCode(code);
@@ -228,20 +199,12 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     setValue('teacherId', selected.teacherId || '');
     setValue('classroom', selected.classroom || '');
     setValue('building', selected.building || '');
-
-    if (selected.isRecess) {
-      setIsRecess(true);
-      setRecessCode(selected.code);
-    } else {
-      setIsRecess(false);
-    }
   };
 
   const onSubmit = (formData: ScheduleFormValues) => {
     const startBlockNum = parseInt(formData.startBlock);
     const endBlockNum = isRecess ? startBlockNum : startBlockNum + 1;
 
-    // Validación de bloques ocupados
     if (isRecess) {
       if (occupiedBlocks.has(startBlockNum.toString())) {
         toast.error('Este bloque ya está ocupado para este día');
@@ -262,7 +225,9 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       return;
     }
 
-    let finalCode = isRecess ? recessCode : formData.code;
+    // ✅ Si es receso, forzar el código fijo
+    const finalCode = isRecess ? RECESS_CODE : formData.code;
+
     if (!finalCode) {
       toast.error('El código del horario es requerido');
       return;
@@ -292,8 +257,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           toast.success('Horario creado exitosamente');
           reset();
           setIsRecess(false);
-          setRecessCode('');
-          setRetryCount(0);
           setShowExistingLoader(false);
           setSelectedExistingCode('');
           const newOccupied = new Set(occupiedBlocks);
@@ -306,14 +269,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           setOccupiedBlocks(newOccupied);
         } else {
           toast.error(response.error?.[0] || 'Error al crear horario');
-          const errorMsg = response.error?.[0] || '';
-          if (isRecess && errorMsg.includes('código') && retryCount < 3) {
-            setRetryCount(prev => prev + 1);
-            const newCode = generateRecessCode();
-            setRecessCode(newCode);
-            setValue('code', newCode);
-            toast.info(`Reintentando con nuevo código: ${newCode}`);
-          }
         }
       },
       onError: (error: Error) => {
@@ -338,7 +293,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Opción: Cargar horario existente */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <label className="inline-flex items-center cursor-pointer">
             <input
@@ -361,7 +315,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
                 <option value="">-- Seleccione un código --</option>
                 {existingCodes.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {c.code} - {c.isRecess ? 'RECESO' : (c.subjectName || 'Sin materia')}
+                    {c.code} - {c.subjectName || 'Sin materia'}
                     {c.teacherName ? ` (${c.teacherName})` : ''}
                   </option>
                 ))}
@@ -374,7 +328,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           )}
         </div>
 
-        {/* Receso toggle */}
         {!showExistingLoader && (
           <div className="flex items-center gap-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <label className="inline-flex items-center cursor-pointer">
@@ -388,15 +341,13 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             </label>
             {isRecess && (
               <div className="text-sm text-gray-600">
-                Código generado: <span className="font-mono bg-white px-2 py-0.5 border rounded">{recessCode}</span>
-                {retryCount > 0 && <span className="ml-2 text-yellow-600"> (reintento {retryCount}/3)</span>}
+                Código de receso: <span className="font-mono bg-white px-2 py-0.5 border rounded">{RECESS_CODE}</span>
               </div>
             )}
           </div>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Código del horario */}
           <div className="flex flex-col">
             <label htmlFor="code" className="text-gray-700 font-bold mb-1">
               Código del Horario (7 caracteres) *
@@ -417,13 +368,12 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
               } rounded-md focus:outline-none focus:ring focus:border-blue-300 ${
                 (showExistingLoader || isRecess) ? 'bg-gray-100 text-gray-600' : ''
               }`}
-              placeholder={isRecess ? 'Automático' : 'Ej: 1V2526'}
+              placeholder={isRecess ? 'RECESO1' : 'Ej: 1V2526'}
             />
             {errors.code && <span className="text-red-500 text-sm mt-1">{errors.code.message}</span>}
             <p className="text-xs text-gray-500 mt-1">Formato: 7 caracteres alfanuméricos mayúsculas</p>
           </div>
 
-          {/* Grado */}
           <div className="flex flex-col">
             <label htmlFor="grade" className="text-gray-700 font-bold mb-1">
               Grado *
@@ -443,7 +393,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             {errors.grade && <span className="text-red-500 text-sm mt-1">{errors.grade.message}</span>}
           </div>
 
-          {/* Sección */}
           <div className="flex flex-col">
             <label htmlFor="section" className="text-gray-700 font-bold mb-1">
               Sección *
@@ -463,7 +412,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             {errors.section && <span className="text-red-500 text-sm mt-1">{errors.section.message}</span>}
           </div>
 
-          {/* Día */}
           <div className="flex flex-col">
             <label htmlFor="day" className="text-gray-700 font-bold mb-1">
               Día *
@@ -483,7 +431,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             {errors.day && <span className="text-red-500 text-sm mt-1">{errors.day.message}</span>}
           </div>
 
-          {/* Bloque */}
           <div className="flex flex-col">
             <label htmlFor="startBlock" className="text-gray-700 font-bold mb-1">
               Bloque Inicial *
@@ -513,7 +460,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             )}
           </div>
 
-          {/* Materia */}
           {!isRecess && (
             <div className="flex flex-col">
               <label htmlFor="subjectId" className="text-gray-700 font-bold mb-1">
@@ -539,7 +485,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             </div>
           )}
 
-          {/* Docente */}
           {!isRecess && (
             <div className="flex flex-col">
               <label htmlFor="teacherId" className="text-gray-700 font-bold mb-1">
@@ -560,7 +505,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             </div>
           )}
 
-          {/* Aula */}
           <div className="flex flex-col">
             <label htmlFor="classroom" className="text-gray-700 font-bold mb-1">
               Aula
@@ -574,7 +518,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             />
           </div>
 
-          {/* Edificio */}
           <div className="flex flex-col">
             <label htmlFor="building" className="text-gray-700 font-bold mb-1">
               Edificio
@@ -589,7 +532,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           </div>
         </div>
 
-        {/* Resumen de horario seleccionado */}
         {grade && section && day && startBlock && (
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
             <h4 className="font-semibold text-gray-800 mb-2">Resumen del bloque a asignar</h4>
@@ -602,7 +544,6 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           </div>
         )}
 
-        {/* Botón de envío */}
         <div className="flex justify-center pt-4">
           <button
             type="submit"
