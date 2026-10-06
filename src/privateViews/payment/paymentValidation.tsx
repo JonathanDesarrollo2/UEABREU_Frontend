@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   cascadedValidationAPI,
   type BankValidationRequest,
@@ -27,15 +28,17 @@ import {
   FaHistory,
   FaFilter,
   FaChevronLeft,
-  FaChevronRight
+  FaChevronRight,
+  FaPhone
 } from 'react-icons/fa';
 
 interface PaymentValidationProps {
-  representativeId: string;
+  representativeId?: string;
 }
 
-const DEFAULT_BANK_ACCOUNT = '01910001482101010049';
-const DEFAULT_PHONE = '580000000000';
+// ✅ Cuenta fija del colegio (el banco la reconoce por este número)
+const DEFAULT_BANK_ACCOUNT = '01910107012100104749';
+const DEFAULT_PHONE = '';
 const DEFAULT_REQUEST_DATE = new Date().toISOString().split('T')[0];
 
 // Lista de bancos venezolanos con sus códigos reales (BCV)
@@ -52,9 +55,13 @@ const BANKS_LIST: { Name: string; Code: string }[] = [
   { Name: 'Banco Bicentenario, C.A.',                 Code: '0175' },
 ];
 
-export default function PaymentValidation({ representativeId }: PaymentValidationProps) {
+export default function PaymentValidation({ representativeId: propRepId }: PaymentValidationProps = {}) {
+  // ✅ Fallback: si no llega por prop, lo toma de la URL
+  const { representativeId: urlRepId } = useParams<{ representativeId: string }>();
+  const representativeId = propRepId || urlRepId || '';
+
   const [formData, setFormData] = useState({
-    BankCode: 191,
+    BankCode: 102,
     ClientID: '',
     Reference: '',
     Amount: 0,
@@ -173,7 +180,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
         PhoneNumber: formData.PhoneNumber,
         ClientID: formData.ClientID,
         Reference: formData.Reference,
-            RequestDate: `${formData.RequestDate}T00:00:00`,
+        RequestDate: `${formData.RequestDate}T00:00:00`,
         Amount: formData.Amount,
       };
 
@@ -453,8 +460,27 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                       onChange={handleChange}
                       required
                       className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
-                      placeholder="40067"
+                      placeholder="001127234831"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <FaPhone className="inline mr-1 text-blue-600" />
+                      Teléfono del pagador *
+                    </label>
+                    <input
+                      type="text"
+                      name="PhoneNumber"
+                      value={formData.PhoneNumber}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
+                      placeholder="584141234567"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Número del que se hizo el pago (ej: 584141234567)
+                    </p>
                   </div>
 
                   <div>
@@ -478,7 +504,7 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                         <span className="text-gray-600 font-bold text-sm">Bs</span>
                       </div>
                     </div>
-                    
+
                     {formData.Amount > 0 && bcvRate && (
                       <div className="mt-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3">
                         <div className="flex items-center justify-between">
@@ -515,47 +541,12 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                   </div>
                 </div>
 
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                    <FaInfoCircle className="mr-2 text-gray-400" />
-                    Campos adicionales
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">
-                        Número de Cuenta
-                      </label>
-                      <input
-                        type="text"
-                        name="AccountNumber"
-                        value={formData.AccountNumber}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="01910001482101010049"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">
-                        Teléfono
-                      </label>
-                      <input
-                        type="text"
-                        name="PhoneNumber"
-                        value={formData.PhoneNumber}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="584128021120"
-                      />
-                    </div>
-                  </div>
-                </div>
-
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-start space-x-2">
                     <FaInfoCircle className="text-blue-600 text-sm mt-0.5" />
                     <div>
                       <p className="text-blue-700 text-xs">
-                        <strong>Nota:</strong> Los campos resaltados en azul son obligatorios. Los campos adicionales son editables.
+                        <strong>Nota:</strong> Los campos resaltados en azul son obligatorios. El sistema validará el pago contra la cuenta del colegio registrada en el banco.
                       </p>
                     </div>
                   </div>
