@@ -20,6 +20,20 @@ export interface PaginatedResponse {
   error: string[];
 }
 
+// ✅ NUEVO: forma de cada código único de horario
+export interface UniqueScheduleCode {
+  id: string;
+  code: string;
+  subjectId: string | null;
+  subjectName: string | null;
+  subjectCode: string | null;
+  teacherId: string | null;
+  teacherName: string | null;
+  classroom: string | null;
+  building: string | null;
+  isRecess: boolean;
+}
+
 // ========== API PARA HORARIOS ==========
 export async function addScheduleAPI(formdata: TypeScheduleCreate): Promise<TypeApiResponseGeneric> {
   try {
@@ -48,6 +62,23 @@ export async function getSchedulesAPI(params?: {
     return data;
   } catch (error) {
     throw new Error('Error al obtener horarios');
+  }
+}
+
+// ✅ NUEVO: obtiene códigos únicos de horarios existentes (sin duplicados)
+export async function getUniqueScheduleCodesAPI(): Promise<ScheduleResponse> {
+  try {
+    const { data } = await api.get<ScheduleResponse>('/private/academic/schedule/codes/list');
+    return data;
+  } catch (error) {
+    let mensaje = 'Error al obtener códigos de horarios';
+    if (isAxiosError(error) && error.response) {
+      const errores = error.response.data.error;
+      if (errores && errores.length > 0) {
+        mensaje = errores.join(', ');
+      }
+    }
+    throw new Error(mensaje);
   }
 }
 
