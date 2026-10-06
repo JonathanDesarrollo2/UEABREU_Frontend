@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   cascadedValidationAPI,
   type BankValidationRequest,
@@ -32,7 +33,7 @@ import {
 } from 'react-icons/fa';
 
 interface PaymentValidationProps {
-  representativeId: string;
+  representativeId?: string;
 }
 
 // ✅ Cuenta fija del colegio (el banco la reconoce por este número)
@@ -54,7 +55,11 @@ const BANKS_LIST: { Name: string; Code: string }[] = [
   { Name: 'Banco Bicentenario, C.A.',                 Code: '0175' },
 ];
 
-export default function PaymentValidation({ representativeId }: PaymentValidationProps) {
+export default function PaymentValidation({ representativeId: propRepId }: PaymentValidationProps = {}) {
+  // ✅ Fallback: si no llega por prop, lo toma de la URL
+  const { representativeId: urlRepId } = useParams<{ representativeId: string }>();
+  const representativeId = propRepId || urlRepId || '';
+
   const [formData, setFormData] = useState({
     BankCode: 102,
     ClientID: '',
@@ -459,7 +464,6 @@ export default function PaymentValidation({ representativeId }: PaymentValidatio
                     />
                   </div>
 
-                  {/* ✅ Teléfono ahora en la sección principal */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       <FaPhone className="inline mr-1 text-blue-600" />
