@@ -7,13 +7,12 @@ import { toast } from 'react-toastify';
 
 const DAYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
-// Valores por defecto en caso de fallo de la API
 const DEFAULT_BLOCKS: BlockTimeConfig[] = [
-  { blockNumber: 1, startTime: '07:00', endTime: '07:40', isActive: true },
-  { blockNumber: 2, startTime: '07:40', endTime: '08:20', isActive: true },
-  { blockNumber: 3, startTime: '08:20', endTime: '09:00', isActive: true },
-  { blockNumber: 4, startTime: '09:00', endTime: '09:40', isActive: true },
-  { blockNumber: 5, startTime: '09:40', endTime: '10:00', isActive: true },
+  { blockNumber: 1, startTime: '7:00',  endTime: '7:40',  isActive: true },
+  { blockNumber: 2, startTime: '7:40',  endTime: '8:20',  isActive: true },
+  { blockNumber: 3, startTime: '8:20',  endTime: '9:00',  isActive: true },
+  { blockNumber: 4, startTime: '9:00',  endTime: '9:40',  isActive: true },
+  { blockNumber: 5, startTime: '9:40',  endTime: '10:00', isActive: true },
   { blockNumber: 6, startTime: '10:00', endTime: '10:40', isActive: true },
   { blockNumber: 7, startTime: '10:40', endTime: '11:20', isActive: true },
   { blockNumber: 8, startTime: '11:20', endTime: '12:00', isActive: true },
@@ -73,11 +72,9 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     isBreak?: boolean;
   } | null>(null);
 
-  // Estado para los tiempos de bloques por día
   const [blockTimesByDay, setBlockTimesByDay] = useState<Record<string, BlockTimeConfig[]>>({});
   const [loadingBlockTimes, setLoadingBlockTimes] = useState(false);
 
-  // Cargar horarios
   const loadSchedule = async () => {
     setIsLoading(true);
     try {
@@ -96,7 +93,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     }
   };
 
-  // Cargar configuración de tiempos de bloques para todos los días
   const loadBlockTimes = async () => {
     setLoadingBlockTimes(true);
     try {
@@ -130,7 +126,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     }
   };
 
-  // Efecto inicial y al cambiar grado/sección
   useEffect(() => {
     loadSchedule();
     loadBlockTimes();
@@ -145,7 +140,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     window.print();
   };
 
-  // Obtener el string de tiempo para un bloque en un día específico
   const getBlockTimeString = (day: string, blockNumber: number): string => {
     const blocks = blockTimesByDay[day];
     if (!blocks) return '';
@@ -153,7 +147,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     return block ? `${block.startTime} - ${block.endTime}` : '';
   };
 
-  // Obtener rango de tiempo para materia que ocupa dos bloques
   const getTwoBlockTimeRange = (day: string, startBlockId: number): string => {
     const blocks = blockTimesByDay[day];
     if (!blocks) return '';
@@ -165,7 +158,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     return getBlockTimeString(day, startBlockId);
   };
 
-  // Obtener nombre del período (genérico)
   const getPeriodName = (blockNumber: number): string => {
     const periodNames: Record<number, string> = {
       1: 'Primer Horario',
@@ -281,7 +273,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     }
   };
 
-  // Verificar si todos los días tienen bloques cargados
   const allDaysLoaded = DAYS.every(day => blockTimesByDay[day] && blockTimesByDay[day].length > 0);
   const allBlocks = DAYS.flatMap(day => blockTimesByDay[day] || []);
   const uniqueBlockNumbers = [...new Set(allBlocks.map(b => b.blockNumber))].sort((a,b) => a-b);
@@ -297,7 +288,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
 
   return (
     <div className="space-y-6">
-      {/* Controles (igual que antes) */}
       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
@@ -330,7 +320,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         </div>
       </div>
 
-      {/* Leyenda (sin cambios) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="flex items-center"><div className="w-4 h-4 bg-green-100 border border-green-300 mr-2"></div><span className="text-sm">Materia asignada</span></div>
         <div className="flex items-center"><div className="w-4 h-4 bg-red-100 border border-red-300 mr-2"></div><span className="text-sm">Bloque ocupado</span></div>
@@ -338,7 +327,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         <div className="flex items-center"><div className="w-4 h-4 bg-white border border-gray-300 mr-2"></div><span className="text-sm">Disponible</span></div>
       </div>
 
-      {/* Tabla del horario */}
       <div className="overflow-x-auto rounded-lg border border-gray-200">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
@@ -356,7 +344,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
               <tr key={blockNumber} className="hover:bg-gray-50">
                 <td className="px-4 py-3 whitespace-nowrap text-sm border-r border-gray-200 bg-gray-50">
                   <div className="font-medium text-gray-900">Bloque {blockNumber}</div>
-                  {/* Mostrar hora de referencia de un día cualquiera (opcional) */}
                   <div className="text-gray-500 text-xs">{getBlockTimeString('lunes', blockNumber)}</div>
                   <div className="text-gray-400 text-xs">{getPeriodName(blockNumber)}</div>
                 </td>
@@ -423,7 +410,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         </table>
       </div>
 
-      {/* Detalles de celda seleccionada */}
       {selectedCell && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="font-semibold text-blue-800 mb-2">Información del Bloque</h3>
@@ -444,7 +430,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         </div>
       )}
 
-      {/* Resumen general */}
       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
         <h3 className="font-semibold text-gray-800 mb-3">Resumen del Horario</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -477,7 +462,6 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         </div>
       </div>
 
-      {/* Modal de confirmación para eliminar (sin cambios) */}
       {showDeleteModal && scheduleToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" onClick={closeDeleteModal}></div>

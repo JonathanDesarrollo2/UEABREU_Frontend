@@ -1,4 +1,4 @@
-// src/components/Academic/Components/AddScheduleForm.tsx
+// src/privateViews/Schedule/Components/AddScheduleForm.tsx
 import { useEffect, useState } from 'react';
 import { useAddSchedule } from '../hooks/useAddSchedule';
 import { useScheduleForm, type ScheduleFormValues } from '../hooks/useScheduleForm';
@@ -7,7 +7,8 @@ import {
   getActiveTeachersAPI,
   getSchedulesByGradeSectionAPI,
   getSubjectsAPI,
-  getSchedulesAPI,
+  getUniqueScheduleCodesAPI,
+  type UniqueScheduleCode,
 } from '../../../apis/schedule';
 import type { TypeScheduleCreate } from '../../../types/schedule';
 import type { TypeApiResponseGeneric } from '../../../types/schedule';
@@ -43,10 +44,11 @@ const BLOCK_OPTIONS = [
   { value: '2', text: 'Bloque 2 (7:40 - 8:20)' },
   { value: '3', text: 'Bloque 3 (8:20 - 9:00)' },
   { value: '4', text: 'Bloque 4 (9:00 - 9:40)' },
-  { value: '5', text: 'Bloque 5 (10:00 - 10:40)' },
-  { value: '6', text: 'Bloque 6 (10:40 - 11:20)' },
-  { value: '7', text: 'Bloque 7 (11:20 - 12:00)' },
-  { value: '8', text: 'Bloque 8 (12:00 - 12:40)' },
+  { value: '5', text: 'Receso (9:40 - 10:00)' },
+  { value: '6', text: 'Bloque 6 (10:00 - 10:40)' },
+  { value: '7', text: 'Bloque 7 (10:40 - 11:20)' },
+  { value: '8', text: 'Bloque 8 (11:20 - 12:00)' },
+  { value: '9', text: 'Bloque 9 (12:20 - 12:40)' },
 ];
 
 interface AddScheduleFormProps {
@@ -68,7 +70,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
 
   const [subjects, setSubjects] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
-  const [existingSchedules, setExistingSchedules] = useState<any[]>([]);
+  const [existingCodes, setExistingCodes] = useState<UniqueScheduleCode[]>([]);
   const [occupiedBlocks, setOccupiedBlocks] = useState<Set<string>>(new Set());
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
@@ -76,8 +78,8 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
   const [recessCode, setRecessCode] = useState('');
   const [retryCount, setRetryCount] = useState(0);
   const [showExistingLoader, setShowExistingLoader] = useState(false);
-  const [selectedExistingId, setSelectedExistingId] = useState('');
-  const [loadingExistingSchedules, setLoadingExistingSchedules] = useState(false);
+  const [selectedExistingCode, setSelectedExistingCode] = useState('');
+  const [loadingExistingCodes, setLoadingExistingCodes] = useState(false);
 
   const grade = watch('grade');
   const section = watch('section');
@@ -115,20 +117,20 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       .finally(() => setLoadingTeachers(false));
   }, []);
 
-  // Cargar todos los horarios existentes (para la función "Cargar horario existente")
+  // ✅ Cargar códigos únicos de horarios existentes (con el nuevo endpoint)
   useEffect(() => {
     if (showExistingLoader) {
-      setLoadingExistingSchedules(true);
-      getSchedulesAPI()
+      setLoadingExistingCodes(true);
+      getUniqueScheduleCodesAPI()
         .then(response => {
           if (response.result && response.content) {
-            setExistingSchedules(response.content);
+            setExistingCodes(response.content);
           } else {
-            setExistingSchedules([]);
+            setExistingCodes([]);
           }
         })
-        .catch(() => toast.error('Error al cargar horarios existentes'))
-        .finally(() => setLoadingExistingSchedules(false));
+        .catch(() => toast.error('Error al cargar códigos de horarios'))
+        .finally(() => setLoadingExistingCodes(false));
     }
   }, [showExistingLoader]);
 
@@ -184,9 +186,8 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
       setValue('teacherId', '');
       setValue('classroom', '');
       setValue('building', '');
-      // Al marcar receso, desactivar la carga de horario existente
       setShowExistingLoader(false);
-      setSelectedExistingId('');
+      setSelectedExistingCode('');
     } else {
       setRecessCode('');
       setValue('code', '');
@@ -198,45 +199,39 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
     const checked = e.target.checked;
     setShowExistingLoader(checked);
     if (!checked) {
-      setSelectedExistingId('');
-      // Limpiar campos si se desmarca
+      setSelectedExistingCode('');
       setValue('code', '');
       setValue('subjectId', '');
       setValue('teacherId', '');
       setValue('classroom', '');
       setValue('building', '');
     }
-    // No se puede receso y carga existente a la vez
     if (checked && isRecess) {
       setIsRecess(false);
     }
   };
 
-  // Cuando se selecciona un horario existente, cargar sus datos
-  const handleSelectExistingSchedule = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const scheduleId = e.target.value;
-    setSelectedExistingId(scheduleId);
-    if (!scheduleId) return;
+  // ✅ Cuando se selecciona un código existente, rellenar sus datos.
+  // NO se cambian grade/section — el usuario los eligió arriba.
+  // El código se reutiliza para crear una NUEVA fila en otro día/bloque
+  // sin que aparezca duplicado en el dropdown.
+  const handleSelectExistingCode = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value;
+    setSelectedExistingCode(code);
+    if (!code) return;
 
-    const selectedSchedule = existingSchedules.find(s => s.id === scheduleId);
-    if (!selectedSchedule) return;
+    const selected = existingCodes.find(c => c.code === code);
+    if (!selected) return;
 
-    // Rellenar todos los campos excepto día y bloque (que quedan vacíos para que el usuario elija)
-    setValue('code', selectedSchedule.code);
-    setValue('grade', selectedSchedule.grade);
-    setValue('section', selectedSchedule.section);
-    // Limpiar día y bloque para que el usuario los establezca
-    setValue('day', undefined as any);
-    setValue('startBlock', '');
-    setValue('subjectId', selectedSchedule.subjectId || '');
-    setValue('teacherId', selectedSchedule.teacherId || '');
-    setValue('classroom', selectedSchedule.classroom || '');
-    setValue('building', selectedSchedule.building || '');
+    setValue('code', selected.code);
+    setValue('subjectId', selected.subjectId || '');
+    setValue('teacherId', selected.teacherId || '');
+    setValue('classroom', selected.classroom || '');
+    setValue('building', selected.building || '');
 
-    // Si el horario cargado es un receso, marcar el flag y generar código automático
-    if (!selectedSchedule.subjectId) {
+    if (selected.isRecess) {
       setIsRecess(true);
-      setRecessCode(selectedSchedule.code);
+      setRecessCode(selected.code);
     } else {
       setIsRecess(false);
     }
@@ -300,8 +295,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           setRecessCode('');
           setRetryCount(0);
           setShowExistingLoader(false);
-          setSelectedExistingId('');
-          // Actualizar bloques ocupados localmente
+          setSelectedExistingCode('');
           const newOccupied = new Set(occupiedBlocks);
           if (isRecess) {
             newOccupied.add(startBlockNum.toString());
@@ -332,8 +326,8 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
 
   const currentBlock = startBlock ? parseInt(startBlock) : 1;
   const timeRange = {
-    start: ['7:00','7:40','8:20','9:00','10:00','10:40','11:20','12:00','12:40'][currentBlock-1],
-    end: ['7:40','8:20','9:00','9:40','10:40','11:20','12:00','12:40','13:20'][currentBlock]
+    start: ['7:00','7:40','8:20','9:00','10:00','10:40','11:20','12:00','12:20'][currentBlock-1],
+    end: ['7:40','8:20','9:00','9:40','10:40','11:20','12:00','12:40','12:40'][currentBlock]
   };
 
   return (
@@ -359,27 +353,28 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           {showExistingLoader && (
             <div className="flex-1">
               <select
-                value={selectedExistingId}
-                onChange={handleSelectExistingSchedule}
+                value={selectedExistingCode}
+                onChange={handleSelectExistingCode}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                disabled={loadingExistingSchedules}
+                disabled={loadingExistingCodes}
               >
-                <option value="">-- Seleccione un horario --</option>
-                {existingSchedules.map((s: any) => (
-                  <option key={s.id} value={s.id}>
-                    {s.code} - {s.subject?.name || 'RECESO'} ({s.grade} {s.section} - {s.day})
+                <option value="">-- Seleccione un código --</option>
+                {existingCodes.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} - {c.isRecess ? 'RECESO' : (c.subjectName || 'Sin materia')}
+                    {c.teacherName ? ` (${c.teacherName})` : ''}
                   </option>
                 ))}
               </select>
-              {loadingExistingSchedules && <p className="text-sm text-gray-500 mt-1">Cargando horarios...</p>}
-              {!loadingExistingSchedules && existingSchedules.length === 0 && (
+              {loadingExistingCodes && <p className="text-sm text-gray-500 mt-1">Cargando códigos...</p>}
+              {!loadingExistingCodes && existingCodes.length === 0 && (
                 <p className="text-sm text-gray-500 mt-1">No hay horarios disponibles.</p>
               )}
             </div>
           )}
         </div>
 
-        {/* Receso toggle (solo si no se cargó un horario existente) */}
+        {/* Receso toggle */}
         {!showExistingLoader && (
           <div className="flex items-center gap-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <label className="inline-flex items-center cursor-pointer">
@@ -404,7 +399,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
           {/* Código del horario */}
           <div className="flex flex-col">
             <label htmlFor="code" className="text-gray-700 font-bold mb-1">
-              Código del Horario (7 dígitos) *
+              Código del Horario (7 caracteres) *
             </label>
             <input
               id="code"
@@ -518,7 +513,7 @@ export default function AddScheduleForm({ onPreviewChange }: AddScheduleFormProp
             )}
           </div>
 
-          {/* Materia (oculto si es receso) */}
+          {/* Materia */}
           {!isRecess && (
             <div className="flex flex-col">
               <label htmlFor="subjectId" className="text-gray-700 font-bold mb-1">
