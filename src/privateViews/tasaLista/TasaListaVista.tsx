@@ -1,4 +1,4 @@
-// src/privateViews/tasaLista/TasaLista.tsx
+// src/privateViews/tasaLista/TasaListaVista.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaExchangeAlt, FaInfoCircle } from "react-icons/fa";
@@ -9,7 +9,11 @@ import { RateTable } from "./components/RateTable";
 import { EditRateModal } from "./components/EditRateModal";
 import type { ExchangeRateRecord } from "../../apis/exchangeRate";
 
-export default function TasaLista() {
+interface TasaListaProps {
+  readOnly?: boolean;
+}
+
+export default function TasaLista({ readOnly = false }: TasaListaProps = {}) {
   const navigate = useNavigate();
   const {
     year, month,
@@ -51,7 +55,9 @@ export default function TasaLista() {
               Gestión de Tasas BCV
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Consulta, agrega y edita las tasas diarias registradas. Los cambios no recalculan movimientos históricos.
+              {readOnly
+                ? "Consulta las tasas diarias registradas por mes (solo lectura)."
+                : "Consulta, agrega y edita las tasas diarias registradas. Los cambios no recalculan movimientos históricos."}
             </p>
           </div>
 
@@ -88,6 +94,7 @@ export default function TasaLista() {
               ratesByDate={ratesByDate}
               onEdit={(r) => setEditingRecord(r)}
               onAdd={(iso) => setCreatingDate(iso)}
+              readOnly={readOnly}
             />
           )}
 
@@ -105,13 +112,15 @@ export default function TasaLista() {
         </div>
       </AnimatedPage>
 
-      <EditRateModal
-        record={editingRecord}
-        creatingDate={creatingDate}
-        onClose={closeModal}
-        onUpdate={updateRate}
-        onCreate={createRate}
-      />
+      {!readOnly && (
+        <EditRateModal
+          record={editingRecord}
+          creatingDate={creatingDate}
+          onClose={closeModal}
+          onUpdate={updateRate}
+          onCreate={createRate}
+        />
+      )}
     </>
   );
 }

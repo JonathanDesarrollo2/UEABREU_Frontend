@@ -43,6 +43,8 @@ import InfoAccount from './privateViews/InfoAccount/InfoAccount'
 import RepresentativeRegistration from './privateViews/RepresentativeRegistration/RepresentativeRegistration'
 import TasaLista from './privateViews/tasaLista/TasaListaVista'
 import EditSubjectPage from './privateViews/EditSubject/EditSubjectPage'
+import Admin2Layout from './layouts/admin2layout'
+import Admin2Dashboard from './layouts/admin2Dashboard'
 
 function ListRoutes() {
   return (
@@ -80,10 +82,19 @@ function ListRoutes() {
           </Route>
         </Route>
 
-        {/* ⭐ NUEVO: Rutas Secretario */}
+        {/* Rutas Secretario */}
         <Route path="/secretario" element={<SecretarioLayout />}>
           <Route index element={<SecretarioDashboard />} />
           <Route path="pagos" element={<PaymentHistory />} />
+        </Route>
+
+        {/* ⭐ NUEVO: Rutas Administrativo 2 (nivel 5) */}
+        <Route path="/admin2" element={<Admin2Layout />}>
+          <Route index element={<Admin2Dashboard />} />
+          <Route path="tasa-lista" element={<TasaLista readOnly />} />
+          <Route path="ranking" element={<StudentsRanking />} />
+          <Route path="transactions" element={<PaymentHistory />} />
+          <Route path="Balance" element={<ManualBalance />} />
         </Route>
 
         {/* Rutas Admin */}

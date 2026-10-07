@@ -453,8 +453,9 @@ export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
   const isAdministrator = nivel === 2;
   const isFuncional = nivel === 3;
   const isSecretario = nivel === 4;
+  const isAdmin2 = nivel === 5;
   // Niveles que comparten los mismos campos (phone + identityCard): 2, 3 y 4
-  const requiresContactData = isAdministrator || isFuncional || isSecretario;
+  const requiresContactData = isAdministrator || isFuncional || isSecretario || isAdmin2;;
   const students = watch('studentsData') || [];
 
   const hideNivelSelector = forceNivel !== undefined;
@@ -622,7 +623,8 @@ export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
                           { value: 1, text: "Representante" },
                           { value: 2, text: "Administrador" },
                           { value: 3, text: "Funcional" },
-                          { value: 4, text: "Secretario" }
+                          { value: 4, text: "Secretario" },
+                          { value: 5, text: "Administrativo 2" }
                         ]}
                       />
                     </div>
@@ -775,6 +777,16 @@ export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
                   Se registrará un usuario con permisos de secretaría.
                   <br />
                   Este usuario podrá visualizar y registrar pagos, pero no tendrá acceso a la administración del sistema.
+                </p>
+              </div>
+            )}
+            {isAdmin2 && (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 max-w-4xl mx-auto text-center">
+                <h4 className="text-lg font-semibold text-orange-800 mb-3">Usuario Administrativo 2</h4>
+                <p className="text-gray-700">
+                  Se registrará un usuario con permisos administrativos de nivel 2.
+                  <br />
+                  Podrá consultar tasas, ranking, historial de pagos y gestionar pagos y balance manual.
                 </p>
               </div>
             )}

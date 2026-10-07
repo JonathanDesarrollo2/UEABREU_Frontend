@@ -21,7 +21,7 @@ export default function AuthRedirector() {
   useEffect(() => {
     console.log('🔍 AuthRedirector - Contexto recibido:', sessionContext);
     console.log('🔍 AuthRedirector - Nivel:', sessionContext.nivel);
-    
+
     if (sessionContext.nivel !== undefined) {
       if (sessionContext.nivel === 1) {
         console.log('🎯 Redirigiendo a /representante');
@@ -35,6 +35,9 @@ export default function AuthRedirector() {
       } else if (sessionContext.nivel === 4) {
         console.log('🎯 Redirigiendo a /secretario');
         navigate('/secretario', { replace: true });
+      } else if (sessionContext.nivel === 5) {
+        console.log('🎯 Redirigiendo a /admin2');
+        navigate('/admin2', { replace: true });
       } else {
         console.warn('⚠️ Nivel no reconocido:', sessionContext.nivel);
       }

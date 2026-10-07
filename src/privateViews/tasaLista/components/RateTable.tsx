@@ -4,10 +4,11 @@ import type { ExchangeRateRecord } from "../../../apis/exchangeRate";
 
 interface Props {
   year: number;
-  month: number; // 1-12
+  month: number;
   ratesByDate: Record<string, ExchangeRateRecord>;
   onEdit: (record: ExchangeRateRecord) => void;
   onAdd: (isoDate: string) => void;
+  readOnly?: boolean; // ← NUEVO
 }
 
 const formatRate = (value: number) =>
@@ -29,7 +30,7 @@ const getDaysInMonth = (year: number, month: number) =>
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-export const RateTable = ({ year, month, ratesByDate, onEdit, onAdd }: Props) => {
+export const RateTable = ({ year, month, ratesByDate, onEdit, onAdd, readOnly = false }: Props) => {
   const totalDays = getDaysInMonth(year, month);
   const days = Array.from({ length: totalDays }, (_, i) => i + 1);
 
@@ -48,9 +49,11 @@ export const RateTable = ({ year, month, ratesByDate, onEdit, onAdd }: Props) =>
               <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                 Fuente
               </th>
-              <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Acciones
-              </th>
+              {!readOnly && (
+                <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Acciones
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
@@ -80,27 +83,29 @@ export const RateTable = ({ year, month, ratesByDate, onEdit, onAdd }: Props) =>
                   <td className="px-4 py-3 text-sm">
                     {hasRate ? (record.source || "—") : ""}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right">
-                    {hasRate ? (
-                      <button
-                        type="button"
-                        onClick={() => onEdit(record)}
-                        className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors text-xs font-semibold"
-                      >
-                        <FaEdit className="text-[10px]" />
-                        Editar
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onAdd(iso)}
-                        className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors text-xs font-semibold"
-                      >
-                        <FaPlus className="text-[10px]" />
-                        Agregar
-                      </button>
-                    )}
-                  </td>
+                  {!readOnly && (
+                    <td className="px-4 py-3 text-sm text-right">
+                      {hasRate ? (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(record)}
+                          className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors text-xs font-semibold"
+                        >
+                          <FaEdit className="text-[10px]" />
+                          Editar
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onAdd(iso)}
+                          className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors text-xs font-semibold"
+                        >
+                          <FaPlus className="text-[10px]" />
+                          Agregar
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
