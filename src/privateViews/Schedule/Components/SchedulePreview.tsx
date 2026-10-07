@@ -56,6 +56,19 @@ interface BlockData {
   spans?: number;
 }
 
+// ✅ Convierte "7:00" o "07:00" a "7:00 AM" / "12:20" a "12:20 PM"
+const formatTimeTo12h = (time?: string): string => {
+  if (!time) return '';
+  const parts = time.split(':');
+  if (parts.length < 2) return time;
+  const hour = parseInt(parts[0], 10);
+  const minute = parts[1];
+  if (isNaN(hour)) return time;
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}:${minute} ${period}`;
+};
+
 export default function SchedulePreview({ grade: initialGrade = '1ro', section: initialSection = 'A' }: SchedulePreviewProps) {
   const [grade, setGrade] = useState(initialGrade);
   const [section, setSection] = useState(initialSection);
@@ -144,7 +157,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     const blocks = blockTimesByDay[day];
     if (!blocks) return '';
     const block = blocks.find(b => b.blockNumber === blockNumber);
-    return block ? `${block.startTime} - ${block.endTime}` : '';
+    return block ? `${formatTimeTo12h(block.startTime)} - ${formatTimeTo12h(block.endTime)}` : '';
   };
 
   const getTwoBlockTimeRange = (day: string, startBlockId: number): string => {
@@ -153,7 +166,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
     const startBlock = blocks.find(b => b.blockNumber === startBlockId);
     const endBlock = blocks.find(b => b.blockNumber === startBlockId + 1);
     if (startBlock && endBlock) {
-      return `${startBlock.startTime} - ${endBlock.endTime}`;
+      return `${formatTimeTo12h(startBlock.startTime)} - ${formatTimeTo12h(endBlock.endTime)}`;
     }
     return getBlockTimeString(day, startBlockId);
   };
