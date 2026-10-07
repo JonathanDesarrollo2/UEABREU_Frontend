@@ -469,7 +469,7 @@ export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
   // Al seleccionar un rol distinto a representante se descartan los datos de
   // representante y estudiantes
   useEffect(() => {
-    if (nivel === 2 || nivel === 3 || nivel === 4) {
+    if (nivel === 2 || nivel === 3 || nivel === 4 || nivel === 5) {
       setValue('representativeData', undefined);
       setValue('studentsData', []);
     }
