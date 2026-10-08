@@ -137,6 +137,21 @@ export async function checkPaymentExists(reference: string, representativeId: st
   return response.data;
 }
 
+/**
+ * 🆕 Verifica si ya existe una transacción cuya referencia termine en los
+ * MISMOS ÚLTIMOS 6 DÍGITOS que la referencia suministrada.
+ *
+ * Motivo: el banco BNC valida las operaciones usando solo los últimos 6
+ * dígitos de la referencia. Sin este chequeo, un usuario podría registrar
+ * el mismo pago varias veces cambiando los dígitos anteriores.
+ */
+export async function checkReferenceKey(reference: string) {
+  const response = await api.get('/private/balance/check-reference-key', {
+    params: { reference }
+  });
+  return response.data;
+}
+
 export async function getFinancialStatistics() {
   const response = await api.get('/private/balance/statistics/financial');
   return response.data;
@@ -153,10 +168,8 @@ export async function getAllTransactions(params?: any) {
 }
 
 // ============================================================
-// ELIMINAR TRANSACCIÓN (SOLO ADMIN NIVEL 1)
+// ELIMINAR TRANSACCIÓN (SOLO ADMIN NIVEL 2)
 // ============================================================
-// Elimina un pago y revierte el saldo del estudiante.
-// Requiere la contraseña del admin nivel 1 logueado.
 export async function deleteTransactionAPI(transactionId: string, password: string) {
   const response = await api.post(
     `/private/balance/transaction/${transactionId}/delete`,

@@ -1,3 +1,4 @@
+// src/privateViews/.../hooks/useBalanceTransaction.ts
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { isValidUUID } from '../utils/balanceUtils';
@@ -47,6 +48,18 @@ export const useBalanceTransaction = (
       return;
     }
 
+    // ✅ Referencia OBLIGATORIA con al menos 6 dígitos numéricos
+    const cleanReference = (formData.reference || '').trim();
+    if (!cleanReference) {
+      toast.error('La referencia es obligatoria');
+      return;
+    }
+    const digits = cleanReference.replace(/\D/g, '');
+    if (digits.length < 6) {
+      toast.error('La referencia debe contener al menos 6 dígitos numéricos');
+      return;
+    }
+
     setLoading(true);
     try {
       const endpoint = transactionType === 'deposit'
@@ -63,7 +76,7 @@ export const useBalanceTransaction = (
         amount: parseFloat(formData.amount.toString()),
         description: formData.description,
         paymentMethod: formData.paymentMethod,
-        reference: formData.reference || `MANUAL-${Date.now()}`,
+        reference: cleanReference,   // ✅ sin fallback
         createdBy: validCreatedBy,
         studentId: formData.studentId || undefined,
         paymentDate: formData.paymentDate,
