@@ -9,7 +9,8 @@ import {
 import {
   getRepresentativeBalance,
   manualDeposit,
-  getRepresentativeTransactions
+  getRepresentativeTransactions,
+  checkPaymentExists,
 } from '../../apis/balance';
 import {
   FaUniversity,
@@ -29,19 +30,24 @@ import {
   FaFilter,
   FaChevronLeft,
   FaChevronRight,
-  FaPhone
+  FaPhone,
+  FaTrash
 } from 'react-icons/fa';
+import DeleteTransactionModal from '../../components/deleteTransactionModal';
 
 interface PaymentValidationProps {
   representativeId?: string;
+  /**
+   * Cuando es true, se muestra el botón de eliminar pago en el historial.
+   * Debe pasarse true SOLO si el usuario logueado tiene nivel 1.
+   */
+  canDeletePayments?: boolean;
 }
 
-// ✅ Cuenta fija del colegio (el banco la reconoce por este número)
 const DEFAULT_BANK_ACCOUNT = '01910107012100104749';
 const DEFAULT_PHONE = '';
 const DEFAULT_REQUEST_DATE = new Date().toISOString().split('T')[0];
 
-// Lista de bancos venezolanos con sus códigos reales (BCV)
 const BANKS_LIST: { Name: string; Code: string }[] = [
   { Name: 'Banco de Venezuela, S.A.',                Code: '0102' },
   { Name: 'Banco Venezolano de Crédito, S.A.',        Code: '0104' },
@@ -55,8 +61,10 @@ const BANKS_LIST: { Name: string; Code: string }[] = [
   { Name: 'Banco Bicentenario, C.A.',                 Code: '0175' },
 ];
 
-export default function PaymentValidation({ representativeId: propRepId }: PaymentValidationProps = {}) {
-  // ✅ Fallback: si no llega por prop, lo toma de la URL
+export default function PaymentValidation({
+  representativeId: propRepId,
+  canDeletePayments = false,
+}: PaymentValidationProps = {}) {
   const { representativeId: urlRepId } = useParams<{ representativeId: string }>();
   const representativeId = propRepId || urlRepId || '';
 
@@ -92,6 +100,9 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
     limit: 5,
   });
   const [historyPagination, setHistoryPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1 });
+
+  // Estado del modal de eliminación
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   useEffect(() => {
     const fetchBCVRate = async () => {
@@ -174,6 +185,27 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
     setDepositResult(null);
 
     try {
+      if (!formData.Reference || formData.Reference.trim() === '') {
+        setError('La referencia del pago es obligatoria.');
+        return;
+      }
+
+      try {
+        const preCheck = await checkPaymentExists(formData.Reference, representativeId);
+        const alreadyExists =
+          preCheck?.content?.exists === true ||
+          preCheck?.content?.found === true ||
+          (Array.isArray(preCheck?.content) && preCheck.content.length > 0) ||
+          (preCheck?.content?.transactions && preCheck.content.transactions.length > 0);
+
+        if (alreadyExists) {
+          setError('Esta referencia ya fue registrada previamente. No se puede registrar dos veces.');
+          return;
+        }
+      } catch (preErr: any) {
+        console.warn('⚠️ Pre-check de referencia falló, continuando con validación bancaria:', preErr);
+      }
+
       const fullValidationData: BankValidationRequest = {
         AccountNumber: formData.AccountNumber,
         BankCode: formData.BankCode,
@@ -236,7 +268,7 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'Amount' || name === 'BankCode' ? Number(value) : value
+      [name]: name === 'Amount' || name === 'BankCode' ? Number(value) : value,
     }));
   };
 
@@ -271,36 +303,20 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
 
   const formatBCVDate = (dateStr: string) => {
     const parts = dateStr.split('/');
-    if (parts.length === 3) {
-      return `${parts[0]}/${parts[1]}/${parts[2]}`;
-    }
+    if (parts.length === 3) return `${parts[0]}/${parts[1]}/${parts[2]}`;
     return dateStr;
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-VE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    return new Date(dateStr).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const formatBs = (amount: number) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: 'VES',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
+    return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
   };
 
   const formatUsd = (amount: number) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
+    return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
   };
 
   return (
@@ -355,12 +371,8 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
                         </div>
                       ) : bcvRate ? (
                         <>
-                          <p className="text-blue-800 font-bold text-sm">
-                            {bcvRate.PriceRateBCV.toFixed(2)} Bs/USD
-                          </p>
-                          <p className="text-blue-600 text-xs">
-                            BCV {formatBCVDate(bcvRate.dtRate)}
-                          </p>
+                          <p className="text-blue-800 font-bold text-sm">{bcvRate.PriceRateBCV.toFixed(2)} Bs/USD</p>
+                          <p className="text-blue-600 text-xs">BCV {formatBCVDate(bcvRate.dtRate)}</p>
                         </>
                       ) : (
                         <p className="text-blue-700 text-xs">36.66 Bs/USD</p>
@@ -478,9 +490,7 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
                       className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
                       placeholder="584141234567"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Número del que se hizo el pago (ej: 584141234567)
-                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Número del que se hizo el pago (ej: 584141234567)</p>
                   </div>
 
                   <div>
@@ -513,12 +523,8 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
                             <span className="text-gray-700 text-sm font-medium">Equivalente:</span>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-green-700">
-                              {formatUsd(usdAmount)}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              Tasa: {bcvRate.PriceRateBCV.toFixed(2)} Bs/USD
-                            </p>
+                            <p className="text-lg font-bold text-green-700">{formatUsd(usdAmount)}</p>
+                            <p className="text-xs text-gray-600">Tasa: {bcvRate.PriceRateBCV.toFixed(2)} Bs/USD</p>
                           </div>
                         </div>
                       </div>
@@ -546,7 +552,7 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
                     <FaInfoCircle className="text-blue-600 text-sm mt-0.5" />
                     <div>
                       <p className="text-blue-700 text-xs">
-                        <strong>Nota:</strong> Los campos resaltados en azul son obligatorios. El sistema validará el pago contra la cuenta del colegio registrada en el banco.
+                        <strong>Nota:</strong> Los campos resaltados en azul son obligatorios. La referencia no puede repetirse: si ya fue registrada, el sistema la rechazará automáticamente.
                       </p>
                     </div>
                   </div>
@@ -574,7 +580,7 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
               </form>
             </div>
 
-            {/* Historial de Pagos del Representante */}
+            {/* Historial de Pagos */}
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
@@ -645,6 +651,11 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto Bs</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">USD</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                          {canDeletePayments && (
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              Acciones
+                            </th>
+                          )}
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
@@ -657,23 +668,28 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
                               <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                                 {tx.createdAt ? formatDate(tx.createdAt) : '—'}
                               </td>
-                              <td className="px-4 py-3 text-sm text-gray-700">
-                                {tx.student?.fullName || '—'}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">
-                                {tx.description || '—'}
-                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">{tx.student?.fullName || '—'}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">{tx.description || '—'}</td>
                               <td className={`px-4 py-3 text-sm font-bold ${isDeposit ? 'text-green-600' : 'text-red-600'}`}>
                                 {isDeposit ? '+' : '-'}{formatBs(amountBs)}
                               </td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                ≈ {formatUsd(amountUSD)}
-                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">≈ {formatUsd(amountUSD)}</td>
                               <td className="px-4 py-3">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${tx.displayStatus === 'Completado' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                   {tx.displayStatus}
                                 </span>
                               </td>
+                              {canDeletePayments && (
+                                <td className="px-4 py-3 text-center">
+                                  <button
+                                    onClick={() => setDeleteTarget(tx)}
+                                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Eliminar pago (solo admin nivel 1)"
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           );
                         })}
@@ -721,7 +737,7 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
                   <p className="text-gray-600 text-xs">Estado de verificación</p>
                 </div>
               </div>
-              
+
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5">
                   <div className="flex items-center space-x-2 mb-2">
@@ -760,15 +776,13 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
                     {getStatusIcon(result.overallResult)}
                     <div>
                       <h4 className={`text-base font-bold ${getStatusTextColor(result.overallResult)}`}>
-                        {result.overallResult === 'success' 
-                          ? 'Validación Exitosa' 
+                        {result.overallResult === 'success'
+                          ? 'Validación Exitosa'
                           : result.overallResult === 'manual_review'
                           ? 'Revisión Requerida'
                           : 'Error en Validación'}
                       </h4>
-                      <p className={`${getStatusTextColor(result.overallResult)} text-xs`}>
-                        {result.message}
-                      </p>
+                      <p className={`${getStatusTextColor(result.overallResult)} text-xs`}>{result.message}</p>
                     </div>
                   </div>
 
@@ -796,49 +810,33 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
                         </span>
                       </div>
                     )}
-
-                    {result.details && result.details.validateExistence && (
-                      <div className={`flex justify-between items-center p-3 rounded-lg border ${result.details.validateExistence.movementExists ? 'bg-green-50 border-green-200' : result.details.validateExistence.executed ? 'bg-red-50 border-red-200' : 'bg-gray-100 border-gray-200'}`}>
-                        <div className="flex items-center space-x-2">
-                          <FaUniversity className={result.details.validateExistence.movementExists ? 'text-green-600' : result.details.validateExistence.executed ? 'text-red-600' : 'text-gray-600'} size={14} />
-                          <span className="text-gray-700 text-sm">Existencia</span>
-                        </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${result.details.validateExistence.movementExists ? 'bg-green-500 text-white' : result.details.validateExistence.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>
-                          {result.details.validateExistence.executed ? (result.details.validateExistence.movementExists ? '✓' : '✗') : '—'}
-                        </span>
-                      </div>
-                    )}
                   </div>
 
                   {result.details && (
-                    (result.details.validateP2P?.movementExists || 
-                     result.details.validateReference?.movementExists || 
-                     result.details.validateExistence?.movementExists) && (
+                    (result.details.validateP2P?.movementExists ||
+                     result.details.validateReference?.movementExists) && (
                       <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
                         <h5 className="text-gray-800 font-semibold text-sm mb-2">Detalles</h5>
                         <div className="space-y-2 text-gray-600 text-xs">
                           <div className="flex justify-between">
                             <span>Concepto:</span>
                             <span className="text-gray-800 text-right max-w-[60%]">
-                              {result.details.validateP2P?.data?.Concept || 
-                               result.details.validateReference?.data?.Concept || 
-                               result.details.validateExistence?.data?.Concept || 'N/A'}
+                              {result.details.validateP2P?.data?.Concept ||
+                               result.details.validateReference?.data?.Concept || 'N/A'}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span>Control:</span>
                             <span className="text-gray-800 font-mono">
-                              {result.details.validateP2P?.data?.ControlNumber || 
-                               result.details.validateReference?.data?.ControlNumber || 
-                               result.details.validateExistence?.data?.ControlNumber || 'N/A'}
+                              {result.details.validateP2P?.data?.ControlNumber ||
+                               result.details.validateReference?.data?.ControlNumber || 'N/A'}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span>Monto:</span>
                             <span className="text-gray-800 font-bold">
-                              Bs {formatBs(result.details.validateP2P?.data?.Amount || 
-                                 result.details.validateReference?.data?.Amount || 
-                                 result.details.validateExistence?.data?.Amount || 0)}
+                              Bs {formatBs(result.details.validateP2P?.data?.Amount ||
+                                 result.details.validateReference?.data?.Amount || 0)}
                             </span>
                           </div>
                         </div>
@@ -847,9 +845,7 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
                   )}
 
                   <div className="mt-3 pt-2 border-t border-gray-200">
-                    <p className="text-gray-500 text-xs text-center">
-                      {formatDate(result.timestamp)}
-                    </p>
+                    <p className="text-gray-500 text-xs text-center">{formatDate(result.timestamp)}</p>
                   </div>
                 </div>
               ) : (
@@ -869,6 +865,27 @@ export default function PaymentValidation({ representativeId: propRepId }: Payme
           </div>
         </div>
       </div>
+
+      {/* Modal de eliminación (solo se renderiza si está abierto) */}
+      <DeleteTransactionModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onSuccess={() => {
+          fetchHistory();
+        }}
+        transaction={
+          deleteTarget
+            ? {
+                id: deleteTarget.id,
+                description: deleteTarget.description,
+                amount: deleteTarget.amount,
+                amountUSD: deleteTarget.amountUSD,
+                type: deleteTarget.type,
+                studentName: deleteTarget.student?.fullName,
+              }
+            : null
+        }
+      />
     </div>
   );
 }
