@@ -10,7 +10,7 @@ import {
   getRepresentativeBalance,
   manualDeposit,
   getRepresentativeTransactions,
-  checkPaymentExists,
+  checkReferenceKey,
 } from '../../apis/balance';
 import {
   FaUniversity,
@@ -38,14 +38,6 @@ import { useDetectedNivel } from '../../hooks/useDetectedNivel';
 
 interface PaymentValidationProps {
   representativeId?: string;
-  /**
-   * Cuando es true, se muestra el botón de eliminar pago en el historial.
-   * Debe pasarse true SOLO si el usuario logueado tiene nivel 2
-   * (administrador principal).
-   *
-   * Si no se pasa, el componente intentará autodetectarlo desde localStorage
-   * usando el hook useDetectedNivel (fallback).
-   */
   canDeletePayments?: boolean;
 }
 
@@ -73,7 +65,6 @@ export default function PaymentValidation({
   const { representativeId: urlRepId } = useParams<{ representativeId: string }>();
   const representativeId = propRepId || urlRepId || '';
 
-  // 🔍 Auto-detección del nivel (solo si el prop no fue pasado explícitamente)
   const detectedNivel = useDetectedNivel();
   const canDelete = canDeletePayments === true || detectedNivel === 2;
 
@@ -110,7 +101,6 @@ export default function PaymentValidation({
   });
   const [historyPagination, setHistoryPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1 });
 
-  // Transacción seleccionada para eliminar
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   useEffect(() => {
@@ -199,20 +189,22 @@ export default function PaymentValidation({
         return;
       }
 
+      // ✅ CAPA 2: Pre-check por CLAVE de referencia (últimos 6 dígitos)
+      // El banco BNC valida con los últimos 6 dígitos, por lo que si ya existe
+      // una transacción con la misma clave, se rechaza sin llamar al banco.
       try {
-        const preCheck = await checkPaymentExists(formData.Reference, representativeId);
-        const alreadyExists =
-          preCheck?.content?.exists === true ||
-          preCheck?.content?.found === true ||
-          (Array.isArray(preCheck?.content) && preCheck.content.length > 0) ||
-          (preCheck?.content?.transactions && preCheck.content.transactions.length > 0);
-
-        if (alreadyExists) {
-          setError('Esta referencia ya fue registrada previamente. No se puede registrar dos veces.');
+        const refCheck = await checkReferenceKey(formData.Reference);
+        if (refCheck?.result && refCheck?.content?.exists) {
+          const existing = refCheck.content.existingTransaction;
+          setError(
+            `Ya existe un pago registrado con la misma clave (últimos 6 dígitos: ${refCheck.content.last6}). ` +
+            `Referencia en sistema: ${existing?.reference || '—'}. ` +
+            `No se puede registrar el mismo pago dos veces.`
+          );
           return;
         }
-      } catch (preErr: any) {
-        console.warn('⚠️ Pre-check de referencia falló, continuando con validación bancaria:', preErr);
+      } catch (refErr: any) {
+        console.warn('⚠️ Pre-check de clave de referencia falló, continuando con validación bancaria:', refErr);
       }
 
       const fullValidationData: BankValidationRequest = {
@@ -331,7 +323,6 @@ export default function PaymentValidation({
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Encabezado */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div className="flex items-center space-x-4">
@@ -358,7 +349,6 @@ export default function PaymentValidation({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Formulario */}
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg">
               <div className="flex items-center justify-between mb-6">
@@ -561,7 +551,7 @@ export default function PaymentValidation({
                     <FaInfoCircle className="text-blue-600 text-sm mt-0.5" />
                     <div>
                       <p className="text-blue-700 text-xs">
-                        <strong>Nota:</strong> Los campos resaltados en azul son obligatorios. La referencia no puede repetirse: si ya fue registrada, el sistema la rechazará automáticamente.
+                        <strong>Nota:</strong> Los campos resaltados en azul son obligatorios. El banco valida usando los <strong>últimos 6 dígitos</strong> de la referencia, por lo que si esa clave ya fue registrada, el sistema la rechazará automáticamente.
                       </p>
                     </div>
                   </div>
@@ -875,7 +865,6 @@ export default function PaymentValidation({
         </div>
       </div>
 
-      {/* Modal de eliminación (solo admin nivel 2) */}
       <DeleteTransactionModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}

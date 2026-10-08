@@ -610,8 +610,20 @@ export default function ManualBalance() {
                 </div>
 
                 <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Referencia (opcional)</label>
-                  <input type="text" value={formData.reference || ''} onChange={(e) => setFormData({...formData, reference: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg" placeholder="Número de referencia o comprobante" />
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Referencia *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.reference || ''}
+                    onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg"
+                    placeholder="Número de referencia (mínimo 6 dígitos)"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    El sistema validará que los <strong>últimos 6 dígitos</strong> no coincidan con otra transacción registrada.
+                  </p>
                 </div>
 
                 {selectedRep && formData.amount > 0 && (
@@ -645,9 +657,23 @@ export default function ManualBalance() {
                   </div>
                 )}
 
-                <button type="submit" disabled={loading || !selectedRep || formData.amount <= 0 || (transactionType === 'withdrawal' && formData.amount > usdToBs(selectedRep?.balance || 0)) || (hasMultipleStudents && !formData.studentId) || loadingDateRate || !selectedDateRate} className={`w-full py-3 rounded-xl font-semibold transition-all ${transactionType === 'deposit' ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'} disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-md`}>
-                  {loading ? <div className="flex items-center justify-center space-x-2"><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div><span>Procesando...</span></div> : (transactionType === 'deposit' ? 'Registrar Depósito' : 'Registrar Retiro')}
-                </button>
+                <button
+                    type="submit"
+                    disabled={
+                      loading ||
+                      !selectedRep ||
+                      formData.amount <= 0 ||
+                      (transactionType === 'withdrawal' && formData.amount > usdToBs(selectedRep?.balance || 0)) ||
+                      (hasMultipleStudents && !formData.studentId) ||
+                      loadingDateRate ||
+                      !selectedDateRate ||
+                      !formData.reference ||
+                      formData.reference.trim() === ''
+                    }
+                    className={`w-full py-3 rounded-xl font-semibold transition-all ${transactionType === 'deposit' ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'} disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-md`}
+                  >
+                    {loading ? <div className="flex items-center justify-center space-x-2"><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div><span>Procesando...</span></div> : (transactionType === 'deposit' ? 'Registrar Depósito' : 'Registrar Retiro')}
+                  </button>
               </form>
             </div>
           </div>
