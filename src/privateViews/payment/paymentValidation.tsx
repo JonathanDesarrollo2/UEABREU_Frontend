@@ -39,7 +39,8 @@ interface PaymentValidationProps {
   representativeId?: string;
   /**
    * Cuando es true, se muestra el botón de eliminar pago en el historial.
-   * Debe pasarse true SOLO si el usuario logueado tiene nivel 1.
+   * Debe pasarse true SOLO si el usuario logueado tiene nivel 2
+   * (administrador principal).
    */
   canDeletePayments?: boolean;
 }
@@ -101,7 +102,7 @@ export default function PaymentValidation({
   });
   const [historyPagination, setHistoryPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1 });
 
-  // Estado del modal de eliminación
+  // Transacción seleccionada para eliminar
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   useEffect(() => {
@@ -684,7 +685,7 @@ export default function PaymentValidation({
                                   <button
                                     onClick={() => setDeleteTarget(tx)}
                                     className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Eliminar pago (solo admin nivel 1)"
+                                    title="Eliminar pago (solo admin nivel 2)"
                                   >
                                     <FaTrash />
                                   </button>
@@ -866,7 +867,7 @@ export default function PaymentValidation({
         </div>
       </div>
 
-      {/* Modal de eliminación (solo se renderiza si está abierto) */}
+      {/* Modal de eliminación (solo admin nivel 2) */}
       <DeleteTransactionModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
