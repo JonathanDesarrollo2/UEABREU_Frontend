@@ -9,7 +9,7 @@ export interface BalanceResponse {
       fullName: string;
       identityCard: string;
       phone: string;
-      balance: number;        // USD
+      balance: number;
       balanceUSD: number;
       balanceFormatted: string;
       balanceStatus: 'debt' | 'credit' | 'zero';
@@ -21,7 +21,7 @@ export interface BalanceResponse {
         fullName: string;
         status: string;
         currentGrade: string;
-        balance: number;      // USD
+        balance: number;
         balanceUSD: number;
         balanceFormatted: string;
       }>;
@@ -42,17 +42,15 @@ export interface BalanceResponse {
   error: string[];
 }
 
-// Obtener balance y datos de un representante específico
 export async function getRepresentativeBalance(id: string): Promise<BalanceResponse> {
   const response = await api.get(`/private/balance/representative/${id}/balance`);
   return response.data;
 }
 
-// Depósito manual
 export async function manualDeposit(
   representativeId: string,
   data: {
-    amount: number; // Bs
+    amount: number;
     description: string;
     paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
     reference?: string;
@@ -66,11 +64,10 @@ export async function manualDeposit(
   return response.data;
 }
 
-// Retiro manual
 export async function manualWithdrawal(
   representativeId: string,
   data: {
-    amount: number; // Bs
+    amount: number;
     description: string;
     paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
     reference?: string;
@@ -84,11 +81,10 @@ export async function manualWithdrawal(
   return response.data;
 }
 
-// Mover un pago (parcial o total) de un estudiante a otro
 export async function movePaymentBetweenStudents(
   transactionId: string,
   targetStudentId: string,
-  amountToMove: number  // monto en Bs
+  amountToMove: number
 ) {
   const response = await api.post('/private/balance/transaction/move', {
     transactionId,
@@ -98,7 +94,6 @@ export async function movePaymentBetweenStudents(
   return response.data;
 }
 
-// Buscar representantes por término
 export async function searchRepresentatives(searchTerm: string, limit = 10) {
   const response = await api.get('/private/balance/representatives', {
     params: { search: searchTerm, limit, page: 1 }
@@ -106,7 +101,6 @@ export async function searchRepresentatives(searchTerm: string, limit = 10) {
   return response.data;
 }
 
-// Historial de transacciones de un representante
 export async function getRepresentativeTransactions(
   representativeId: string,
   params?: {
@@ -136,7 +130,6 @@ export async function getRepresentativeTransactions(
   }
 }
 
-// Verificar si existe pago por referencia
 export async function checkPaymentExists(reference: string, representativeId: string) {
   const response = await api.get('/private/balance/check-payment', {
     params: { reference, representativeId }
@@ -144,23 +137,34 @@ export async function checkPaymentExists(reference: string, representativeId: st
   return response.data;
 }
 
-// Obtener estadísticas financieras generales
 export async function getFinancialStatistics() {
   const response = await api.get('/private/balance/statistics/financial');
   return response.data;
 }
 
-// Obtener representante por email
 export async function getRepresentativeByEmail(email: string): Promise<any> {
   const response = await api.get('/private/balance/representative-by-email', { params: { email } });
   return response.data;
 }
 
-// Obtener todas las transacciones del sistema
 export async function getAllTransactions(params?: any) {
   const response = await api.get('/private/balance/transactions', { params });
   return response.data;
 }
+
+// ============================================================
+// ELIMINAR TRANSACCIÓN (SOLO ADMIN NIVEL 1)
+// ============================================================
+// Elimina un pago y revierte el saldo del estudiante.
+// Requiere la contraseña del admin nivel 1 logueado.
+export async function deleteTransactionAPI(transactionId: string, password: string) {
+  const response = await api.post(
+    `/private/balance/transaction/${transactionId}/delete`,
+    { password }
+  );
+  return response.data;
+}
+
 // ============================================================
 // ESTADO DE CUENTA POR REPRESENTANTE
 // ============================================================

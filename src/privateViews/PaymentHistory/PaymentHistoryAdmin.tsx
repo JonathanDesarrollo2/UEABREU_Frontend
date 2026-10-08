@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FaSearch, FaHistory, FaFilter, FaTimes, FaChevronLeft, FaChevronRight,
   FaFilePdf, FaFileExcel, FaExchangeAlt, FaUserShield, FaUserTie,
-  FaCog, FaUser, FaClipboardList, FaBalanceScale
+  FaCog, FaUser, FaClipboardList, FaBalanceScale, FaTrash
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { getAllTransactions, getAccountStatement } from '../../apis/balance';
@@ -12,6 +12,7 @@ import { getStoredRateAPI, type BCVRateResponse } from '../../apis/bank';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import ExcelJS from 'exceljs';
+import DeleteTransactionModal from '../../components/deleteTransactionModal';
 
 (pdfMake as any).vfs = pdfFonts.vfs;
 
@@ -56,6 +57,14 @@ interface TransactionItem {
   creator?: TransactionCreator | null;
 }
 
+interface PaymentHistoryProps {
+  /**
+   * Cuando es true, se muestra el botón de eliminar pago en cada fila.
+   * Debe pasarse true SOLO si el usuario logueado tiene nivel 1.
+   */
+  canDeletePayments?: boolean;
+}
+
 const GRADE_OPTIONS = ['1ro', '2do', '3ro', '4to', '5to', '6to'];
 const SECTION_OPTIONS = ['A', 'B', 'C', 'D'];
 
@@ -68,7 +77,7 @@ const formatCurrencyLocal = (amount: number, currency: 'VES' | 'USD') => {
   }).format(amount);
 };
 
-const PaymentHistory: React.FC = () => {
+const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments = false }) => {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -100,6 +109,9 @@ const PaymentHistory: React.FC = () => {
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountData, setAccountData] = useState<any>(null);
+
+  // Transacción seleccionada para eliminar (solo admin nivel 1)
+  const [deleteTarget, setDeleteTarget] = useState<TransactionItem | null>(null);
 
   const repInputRef = useRef<HTMLInputElement>(null);
   const studentInputRef = useRef<HTMLInputElement>(null);
@@ -677,6 +689,9 @@ const PaymentHistory: React.FC = () => {
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Referencia</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Hecho por</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Estado</th>
+                        {canDeletePayments && (
+                          <th className="px-6 py-4 text-center text-xs font-bold text-white uppercase">Acciones</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -759,6 +774,17 @@ const PaymentHistory: React.FC = () => {
                                 {displayStatus}
                               </span>
                             </td>
+                            {canDeletePayments && (
+                              <td className="px-6 py-4 text-center">
+                                <button
+                                  onClick={() => setDeleteTarget(t)}
+                                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Eliminar pago (solo admin nivel 1)"
+                                >
+                                  <FaTrash />
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
@@ -910,6 +936,27 @@ const PaymentHistory: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de eliminación de pago (solo admin nivel 1) */}
+      <DeleteTransactionModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onSuccess={() => {
+          fetchTransactions();
+        }}
+        transaction={
+          deleteTarget
+            ? {
+                id: deleteTarget.id,
+                description: deleteTarget.description,
+                amount: deleteTarget.amount,
+                amountUSD: deleteTarget.amountUSD,
+                type: deleteTarget.type,
+                studentName: deleteTarget.student?.fullName,
+              }
+            : null
+        }
+      />
     </div>
   );
 };
