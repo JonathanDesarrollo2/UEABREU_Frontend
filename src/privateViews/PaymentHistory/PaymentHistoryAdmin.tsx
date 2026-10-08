@@ -60,7 +60,8 @@ interface TransactionItem {
 interface PaymentHistoryProps {
   /**
    * Cuando es true, se muestra el botón de eliminar pago en cada fila.
-   * Debe pasarse true SOLO si el usuario logueado tiene nivel 1.
+   * Debe pasarse true SOLO si el usuario logueado tiene nivel 2
+   * (administrador principal).
    */
   canDeletePayments?: boolean;
 }
@@ -110,7 +111,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments = fal
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountData, setAccountData] = useState<any>(null);
 
-  // Transacción seleccionada para eliminar (solo admin nivel 1)
+  // Transacción seleccionada para eliminar (solo admin nivel 2)
   const [deleteTarget, setDeleteTarget] = useState<TransactionItem | null>(null);
 
   const repInputRef = useRef<HTMLInputElement>(null);
@@ -779,7 +780,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments = fal
                                 <button
                                   onClick={() => setDeleteTarget(t)}
                                   className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="Eliminar pago (solo admin nivel 1)"
+                                  title="Eliminar pago (solo admin nivel 2)"
                                 >
                                   <FaTrash />
                                 </button>
@@ -937,7 +938,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments = fal
         </div>
       )}
 
-      {/* Modal de eliminación de pago (solo admin nivel 1) */}
+      {/* Modal de eliminación de pago (solo admin nivel 2) */}
       <DeleteTransactionModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
