@@ -13,6 +13,7 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import ExcelJS from 'exceljs';
 import DeleteTransactionModal from '../../components/deleteTransactionModal';
+import { useDetectedNivel } from '../../hooks/useDetectedNivel';
 
 (pdfMake as any).vfs = pdfFonts.vfs;
 
@@ -62,6 +63,9 @@ interface PaymentHistoryProps {
    * Cuando es true, se muestra el botón de eliminar pago en cada fila.
    * Debe pasarse true SOLO si el usuario logueado tiene nivel 2
    * (administrador principal).
+   *
+   * Si no se pasa, el componente intentará autodetectarlo desde localStorage
+   * usando el hook useDetectedNivel (fallback).
    */
   canDeletePayments?: boolean;
 }
@@ -78,7 +82,11 @@ const formatCurrencyLocal = (amount: number, currency: 'VES' | 'USD') => {
   }).format(amount);
 };
 
-const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments = false }) => {
+const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) => {
+  // 🔍 Auto-detección del nivel (solo si el prop no fue pasado explícitamente)
+  const detectedNivel = useDetectedNivel();
+  const canDelete = canDeletePayments === true || detectedNivel === 2;
+
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -690,7 +698,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments = fal
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Referencia</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Hecho por</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Estado</th>
-                        {canDeletePayments && (
+                        {canDelete && (
                           <th className="px-6 py-4 text-center text-xs font-bold text-white uppercase">Acciones</th>
                         )}
                       </tr>
@@ -775,7 +783,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments = fal
                                 {displayStatus}
                               </span>
                             </td>
-                            {canDeletePayments && (
+                            {canDelete && (
                               <td className="px-6 py-4 text-center">
                                 <button
                                   onClick={() => setDeleteTarget(t)}
