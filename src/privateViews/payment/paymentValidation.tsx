@@ -457,7 +457,7 @@ export default function PaymentValidation({
                         placeholder="J000121532"
                       />
                       <p className="text-sm text-gray-700 font-medium mt-1.5">
-                        Cédula o RIF del pagador (ej: V12345678, J000121532)
+                        (ej: V12345678)
                       </p>
                     </div>
 
@@ -476,7 +476,7 @@ export default function PaymentValidation({
                           placeholder="001127234831"
                         />
                         <p className="text-sm text-gray-700 font-medium mt-1.5">
-                          Ingresa la referencia completa del pago. El banco valida con los <strong>últimos 6 dígitos</strong> (ej: 842696).
+                          <strong>últimos 6 dígitos</strong> (ej: 842696).
                         </p>
                       </div>
 
@@ -495,7 +495,7 @@ export default function PaymentValidation({
                         placeholder="04121234567"
                       />
                       <p className="text-sm text-gray-700 font-medium mt-1.5">
-                        Número del que se hizo el pago (ej: 04121234567). Puedes quitar el <strong>58</strong> del inicio y usar <strong>0</strong> en su lugar.
+                        (ej: 04121234567). 
                       </p>
                     </div>
 
