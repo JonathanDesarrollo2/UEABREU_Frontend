@@ -34,6 +34,7 @@ import {
   FaTrash
 } from 'react-icons/fa';
 import DeleteTransactionModal from '../../components/deleteTransactionModal';
+import { useDetectedNivel } from '../../hooks/useDetectedNivel';
 
 interface PaymentValidationProps {
   representativeId?: string;
@@ -41,6 +42,9 @@ interface PaymentValidationProps {
    * Cuando es true, se muestra el botón de eliminar pago en el historial.
    * Debe pasarse true SOLO si el usuario logueado tiene nivel 2
    * (administrador principal).
+   *
+   * Si no se pasa, el componente intentará autodetectarlo desde localStorage
+   * usando el hook useDetectedNivel (fallback).
    */
   canDeletePayments?: boolean;
 }
@@ -64,10 +68,14 @@ const BANKS_LIST: { Name: string; Code: string }[] = [
 
 export default function PaymentValidation({
   representativeId: propRepId,
-  canDeletePayments = false,
+  canDeletePayments,
 }: PaymentValidationProps = {}) {
   const { representativeId: urlRepId } = useParams<{ representativeId: string }>();
   const representativeId = propRepId || urlRepId || '';
+
+  // 🔍 Auto-detección del nivel (solo si el prop no fue pasado explícitamente)
+  const detectedNivel = useDetectedNivel();
+  const canDelete = canDeletePayments === true || detectedNivel === 2;
 
   const [formData, setFormData] = useState({
     BankCode: 102,
@@ -652,7 +660,7 @@ export default function PaymentValidation({
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto Bs</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">USD</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                          {canDeletePayments && (
+                          {canDelete && (
                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                               Acciones
                             </th>
@@ -680,7 +688,7 @@ export default function PaymentValidation({
                                   {tx.displayStatus}
                                 </span>
                               </td>
-                              {canDeletePayments && (
+                              {canDelete && (
                                 <td className="px-4 py-3 text-center">
                                   <button
                                     onClick={() => setDeleteTarget(tx)}
