@@ -11,6 +11,8 @@ interface BusStudentProps {
     idBus: string;
     DeBus: string;
     status?: string;
+    grade?: string;    // 🆕
+    section?: string;  // 🆕
   };
 }
 
@@ -20,7 +22,15 @@ export default function LoadListStudentsAPI({ Buscar }: BusStudentProps) {
 
   const { data, isError, isLoading } = useQuery({
     queryKey: ['students', { page, limit, Buscar }],
-    queryFn: () => getPaginatedStudentsAPI(page, limit, Buscar.DeBus, Buscar.status),
+    queryFn: () =>
+      getPaginatedStudentsAPI(
+        page,
+        limit,
+        Buscar.DeBus,
+        Buscar.status,
+        Buscar.grade,    // 🆕
+        Buscar.section   // 🆕
+      ),
   });
 
   useEffect(() => {

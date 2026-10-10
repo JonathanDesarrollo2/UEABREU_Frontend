@@ -1,5 +1,8 @@
+import api from '../library/axios';
+export const createRepresentativeRegistration = async (studentData: Record<string, unknown>) =>
+  (await api.post('/private/registrations/existing-representative', { studentData })).data;
+
 import { isAxiosError } from "axios";
-import api from "../library/axios";
 import type { TypeStudentGenericResponse, TypeStudentListResponse } from "../types/student";
 
 // Listar estudiantes paginados
@@ -7,12 +10,17 @@ export async function getPaginatedStudentsAPI(
   page: number = 1,
   limit: number = 10,
   search: string = '',
-  status?: string
+  status?: string,
+  grade?: string,     // 🆕
+  section?: string    // 🆕
 ): Promise<TypeStudentListResponse> {
   try {
     const params: any = { page, limit, search };
     if (status && status !== 'all') params.status = status;
-    
+    // 🆕 Solo enviamos si están definidos y no son 'all'
+    if (grade && grade !== 'all') params.grade = grade;
+    if (section && section !== 'all') params.section = section;
+
     const { data } = await api.get<TypeStudentListResponse>('/private/user/students/list', {
       params
     });
@@ -74,6 +82,7 @@ export async function addStudentToRepresentativeAPI(
     throw new Error(mensaje);
   }
 }
+
 // Actualizar porcentaje de exoneración
 export async function updateStudentExonerationAPI(
   studentId: string,
@@ -97,6 +106,7 @@ export async function updateStudentExonerationAPI(
     throw new Error(mensaje);
   }
 }
+
 export async function updateStudentSectionAPI(
   studentId: string,
   section: string
