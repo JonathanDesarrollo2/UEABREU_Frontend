@@ -138,12 +138,12 @@ export async function checkPaymentExists(reference: string, representativeId: st
 }
 
 /**
- * 🆕 Verifica si ya existe una transacción cuya referencia termine en los
+ * Verifica si ya existe una transacción cuya referencia termine en los
  * MISMOS ÚLTIMOS 6 DÍGITOS que la referencia suministrada.
  *
- * Motivo: el banco BNC valida las operaciones usando solo los últimos 6
- * dígitos de la referencia. Sin este chequeo, un usuario podría registrar
- * el mismo pago varias veces cambiando los dígitos anteriores.
+ * El banco BNC valida las operaciones usando solo los últimos 6 dígitos.
+ * Sin este chequeo, un usuario podría registrar el mismo pago varias veces
+ * cambiando los dígitos anteriores.
  */
 export async function checkReferenceKey(reference: string) {
   const response = await api.get('/private/balance/check-reference-key', {
