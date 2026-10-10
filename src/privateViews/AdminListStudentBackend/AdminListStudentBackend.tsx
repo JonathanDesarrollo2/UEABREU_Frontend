@@ -32,7 +32,6 @@ const statusOptions = [
   { value: 'inactivo', label: 'Inactivo' }
 ];
 
-// 🆕 Filtros de año y sección
 const GRADE_OPTIONS = [
   { value: 'all', label: 'Todos los años' },
   { value: '1ro', label: '1er Año' },
@@ -45,33 +44,31 @@ const GRADE_OPTIONS = [
 
 const SECTION_OPTIONS = [
   { value: 'all', label: 'Todas las secciones' },
-  { value: 'A', label: 'A' },
-  { value: 'B', label: 'B' },
-  { value: 'C', label: 'C' },
-  { value: 'D', label: 'D' },
-  { value: 'E', label: 'E' },
+  { value: 'A', label: 'Sección A' },
+  { value: 'B', label: 'Sección B' },
+  { value: 'C', label: 'Sección C' },
+  { value: 'D', label: 'Sección D' },
+  { value: 'E', label: 'Sección E' },
 ];
 
 export default function AdminListStudentsBackend() {
-  const inputStyle = "bg-transparent text-blue-500 font-semibold py-2 px-4 border-2 border-solid border-blue-500 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors";
-  const btnStyleGreen = "bg-transparent text-green-500 font-semibold py-2 px-4 border-2 border-solid border-green-500 rounded-md hover:bg-green-50 active:bg-green-100 transition-colors w-full lg:w-32";
-  const btnStyleRed = "bg-transparent text-red-500 font-semibold py-2 px-4 border-2 border-solid border-red-500 rounded-md hover:bg-red-50 active:bg-red-100 transition-colors w-full lg:w-32";
-  
+  const inputStyle = "bg-transparent text-blue-500 font-semibold py-2 px-3 border-2 border-solid border-blue-500 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors text-sm";
+  const btnStyleGreen = "bg-transparent text-green-500 font-semibold py-2 px-4 border-2 border-solid border-green-500 rounded-md hover:bg-green-50 active:bg-green-100 transition-colors inline-flex items-center justify-center whitespace-nowrap";
+  const btnStyleRed = "bg-transparent text-red-500 font-semibold py-2 px-4 border-2 border-solid border-red-500 rounded-md hover:bg-red-50 active:bg-red-100 transition-colors inline-flex items-center justify-center whitespace-nowrap";
+
   const navigate = useNavigate();
   const [idBus, setIdBus] = useState<BusquedaType>(BusquedaType.Nombre);
   const [DeBus, setDeBus] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  // 🆕 Estados nuevos
   const [gradeFilter, setGradeFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
   const [debouncedDeBus] = useDebounce(DeBus, 400);
-  
+
   const buscar = useMemo(() => {
-    return { 
-      idBus, 
-      DeBus: debouncedDeBus, 
+    return {
+      idBus,
+      DeBus: debouncedDeBus,
       status: statusFilter === 'all' ? undefined : statusFilter,
-      // 🆕 Nuevos filtros
       grade: gradeFilter === 'all' ? undefined : gradeFilter,
       section: sectionFilter === 'all' ? undefined : sectionFilter,
     };
@@ -85,14 +82,18 @@ export default function AdminListStudentsBackend() {
           Lista de Estudiantes
         </h2>
 
-        {/* Controles de Búsqueda */}
-        <div className="flex flex-col lg:flex-row gap-4 w-full mb-6">
-          <div className="w-full lg:w-[900px] flex flex-col lg:flex-row items-start lg:items-center gap-2 flex-wrap">
-            <span className="text-gray-700 whitespace-nowrap">Buscar por:</span>
-            <select 
+        {/* Controles de Búsqueda — 2 filas */}
+        <div className="w-full mb-6 bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
+
+          {/* FILA 1: Búsqueda principal */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+            <label className="md:col-span-2 text-gray-700 whitespace-nowrap text-sm font-medium">
+              Buscar por:
+            </label>
+            <select
               value={idBus}
               onChange={(e) => setIdBus(e.target.value as BusquedaType)}
-              className={`${inputStyle} w-full lg:w-40`}
+              className={`${inputStyle} md:col-span-2 w-full`}
             >
               {opcionesBusqueda.map((op) => (
                 <option key={op.key} value={op.key}>
@@ -100,19 +101,17 @@ export default function AdminListStudentsBackend() {
                 </option>
               ))}
             </select>
-
             <input
               type="text"
               value={DeBus}
               onChange={(e) => setDeBus(sanitizeText(e.target.value))}
               placeholder="Buscar..."
-              className={`${inputStyle} w-full lg:w-64`}
+              className={`${inputStyle} md:col-span-4 w-full`}
             />
-
-            <select 
+            <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className={`${inputStyle} w-full lg:w-44`}
+              className={`${inputStyle} md:col-span-4 w-full`}
             >
               {statusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -120,12 +119,17 @@ export default function AdminListStudentsBackend() {
                 </option>
               ))}
             </select>
+          </div>
 
-            {/* 🆕 Selector de Año */}
+          {/* FILA 2: Año + Sección + Botones */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+            <label className="md:col-span-2 text-gray-700 whitespace-nowrap text-sm font-medium">
+              Filtrar por:
+            </label>
             <select
               value={gradeFilter}
               onChange={(e) => setGradeFilter(e.target.value)}
-              className={`${inputStyle} w-full lg:w-40`}
+              className={`${inputStyle} md:col-span-2 w-full`}
             >
               {GRADE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -133,12 +137,10 @@ export default function AdminListStudentsBackend() {
                 </option>
               ))}
             </select>
-
-            {/* 🆕 Selector de Sección */}
             <select
               value={sectionFilter}
               onChange={(e) => setSectionFilter(e.target.value)}
-              className={`${inputStyle} w-full lg:w-44`}
+              className={`${inputStyle} md:col-span-3 w-full`}
             >
               {SECTION_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -146,26 +148,24 @@ export default function AdminListStudentsBackend() {
                 </option>
               ))}
             </select>
-          </div>
-          
-          <div className="flex gap-2 w-full lg:w-auto">
-            <button
-              type="button"
-              onClick={() => { navigate('/admin/users/insert'); }}
-              className={btnStyleGreen}
-            >
-              <FaUserPlus className="mr-2 inline-block" />
-              Nuevo
-            </button>
-            
-            <button
-              type="button"
-              onClick={() => { navigate(-1); }}
-              className={btnStyleRed}
-            >
-              <FaDeleteLeft className="mr-2 inline-block" />
-              Cancelar
-            </button>
+            <div className="md:col-span-5 flex flex-wrap gap-2 md:justify-end">
+              <button
+                type="button"
+                onClick={() => { navigate('/admin/users/insert'); }}
+                className={btnStyleGreen}
+              >
+                <FaUserPlus className="mr-2" />
+                Nuevo
+              </button>
+              <button
+                type="button"
+                onClick={() => { navigate(-1); }}
+                className={btnStyleRed}
+              >
+                <FaDeleteLeft className="mr-2" />
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
 
