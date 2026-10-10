@@ -189,9 +189,6 @@ export default function PaymentValidation({
         return;
       }
 
-      // ✅ CAPA 2: Pre-check por CLAVE de referencia (últimos 6 dígitos)
-      // El banco BNC valida con los últimos 6 dígitos, por lo que si ya existe
-      // una transacción con la misma clave, se rechaza sin llamar al banco.
       try {
         const refCheck = await checkReferenceKey(formData.Reference);
         if (refCheck?.result && refCheck?.content?.exists) {
@@ -442,62 +439,63 @@ export default function PaymentValidation({
                       })}
                     </select>
                   </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        <FaCreditCard className="inline mr-1 text-blue-600" />
-                        Cédula *
-                      </label>
-                      <input
-                        type="text"
-                        name="ClientID"
-                        value={formData.ClientID}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
-                        placeholder="J000121532"
-                      />
-                      <p className="text-sm text-gray-700 font-medium mt-1.5">
-                        (ej: V12345678)
-                      </p>
-                    </div>
 
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          <FaFileInvoiceDollar className="inline mr-1 text-blue-600" />
-                          Referencia *
-                        </label>
-                        <input
-                          type="text"
-                          name="Reference"
-                          value={formData.Reference}
-                          onChange={handleChange}
-                          required
-                          className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
-                          placeholder="001127234831"
-                        />
-                        <p className="text-sm text-gray-700 font-medium mt-1.5">
-                          <strong>últimos 6 dígitos</strong> (ej: 842696).
-                        </p>
-                      </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <FaCreditCard className="inline mr-1 text-blue-600" />
+                      Cédula *
+                    </label>
+                    <input
+                      type="text"
+                      name="ClientID"
+                      value={formData.ClientID}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
+                      placeholder="J000121532"
+                    />
+                    <p className="text-sm text-gray-700 font-medium mt-1.5">
+                      Cédula o RIF del pagador (ej: V12345678, J000121532)
+                    </p>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        <FaPhone className="inline mr-1 text-blue-600" />
-                        Teléfono del pagador *
-                      </label>
-                      <input
-                        type="text"
-                        name="PhoneNumber"
-                        value={formData.PhoneNumber}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
-                        placeholder="04121234567"
-                      />
-                      <p className="text-sm text-gray-700 font-medium mt-1.5">
-                        (ej: 04121234567). 
-                      </p>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <FaFileInvoiceDollar className="inline mr-1 text-blue-600" />
+                      Referencia *
+                    </label>
+                    <input
+                      type="text"
+                      name="Reference"
+                      value={formData.Reference}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
+                      placeholder="001127234831"
+                    />
+                    <p className="text-sm text-gray-700 font-medium mt-1.5">
+                      Ingresa la referencia completa del pago. El banco valida con los <strong>últimos 6 dígitos</strong> (ej: 842696).
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <FaPhone className="inline mr-1 text-blue-600" />
+                      Teléfono del pagador *
+                    </label>
+                    <input
+                      type="text"
+                      name="PhoneNumber"
+                      value={formData.PhoneNumber}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
+                      placeholder="04121234567"
+                    />
+                    <p className="text-sm text-gray-700 font-medium mt-1.5">
+                      Número del que se hizo el pago (ej: 04121234567). Puedes quitar el <strong>58</strong> del inicio y usar <strong>0</strong> en su lugar.
+                    </p>
+                  </div>
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -731,7 +729,6 @@ export default function PaymentValidation({
             </div>
           </div>
 
-          {/* Panel de resultados */}
           <div className="lg:col-span-1">
             <div className="bg-gradient-to-b from-gray-50 to-white rounded-2xl p-5 border border-gray-200 shadow-lg h-full">
               <div className="flex items-center space-x-3 mb-5 pb-4 border-b border-gray-200">
