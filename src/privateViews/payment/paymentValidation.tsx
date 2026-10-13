@@ -222,7 +222,6 @@ export default function PaymentValidation({
 
       setResult({
         ...response.content,
-        details: undefined,
         message: response.content.overallResult === 'success'
           ? 'Pago registrado con éxito'
           : 'No se encontró el pago con los datos suministrados'
@@ -474,7 +473,7 @@ export default function PaymentValidation({
                       placeholder="001127234831"
                     />
                     <p className="text-sm text-gray-700 font-medium mt-1.5">
-                      Ingresa la referencia completa del pago. El banco valida con los <strong>últimos 6 dígitos</strong> (ej: 842696).
+                      Ingresa la referencia completa del pago. (ej: 001147842696).
                     </p>
                   </div>
 
@@ -493,7 +492,7 @@ export default function PaymentValidation({
                       placeholder="04121234567"
                     />
                     <p className="text-sm text-gray-700 font-medium mt-1.5">
-                      Número del que se hizo el pago (ej: 04121234567). Puedes quitar el <strong>58</strong> del inicio y usar <strong>0</strong> en su lugar.
+                      Número del que se hizo el pago (ej: 04121234567). 
                     </p>
                   </div>
 
@@ -556,7 +555,7 @@ export default function PaymentValidation({
                     <FaInfoCircle className="text-blue-600 text-sm mt-0.5" />
                     <div>
                       <p className="text-blue-700 text-xs">
-                        <strong>Nota:</strong> Los campos resaltados en azul son obligatorios. El banco valida usando los <strong>últimos 6 dígitos</strong> de la referencia, por lo que si esa clave ya fue registrada, el sistema la rechazará automáticamente.
+                        <strong>Nota:</strong> El banco valida los pagos con <strong>2 métodos en paralelo</strong> (por referencia y por existencia/teléfono). El pago se considera verificado solo si <strong>ambos</strong> encuentran el movimiento.
                       </p>
                     </div>
                   </div>
@@ -790,18 +789,7 @@ export default function PaymentValidation({
                   </div>
 
                   <div className="space-y-3 mt-4">
-                    {result.details && result.details.validateP2P && (
-                      <div className={`flex justify-between items-center p-3 rounded-lg border ${result.details.validateP2P.movementExists ? 'bg-green-50 border-green-200' : result.details.validateP2P.executed ? 'bg-red-50 border-red-200' : 'bg-gray-100 border-gray-200'}`}>
-                        <div className="flex items-center space-x-2">
-                          <FaCreditCard className={result.details.validateP2P.movementExists ? 'text-green-600' : result.details.validateP2P.executed ? 'text-red-600' : 'text-gray-600'} size={14} />
-                          <span className="text-gray-700 text-sm">P2P</span>
-                        </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${result.details.validateP2P.movementExists ? 'bg-green-500 text-white' : result.details.validateP2P.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>
-                          {result.details.validateP2P.executed ? (result.details.validateP2P.movementExists ? '✓' : '✗') : '—'}
-                        </span>
-                      </div>
-                    )}
-
+                    {/* Validación con Referencia */}
                     {result.details && result.details.validateReference && (
                       <div className={`flex justify-between items-center p-3 rounded-lg border ${result.details.validateReference.movementExists ? 'bg-green-50 border-green-200' : result.details.validateReference.executed ? 'bg-red-50 border-red-200' : 'bg-gray-100 border-gray-200'}`}>
                         <div className="flex items-center space-x-2">
@@ -813,35 +801,59 @@ export default function PaymentValidation({
                         </span>
                       </div>
                     )}
+
+                    {/* Validación de Existencia */}
+                    {result.details && result.details.validateExistence && (
+                      <div className={`flex justify-between items-center p-3 rounded-lg border ${result.details.validateExistence.movementExists ? 'bg-green-50 border-green-200' : result.details.validateExistence.executed ? 'bg-red-50 border-red-200' : 'bg-gray-100 border-gray-200'}`}>
+                        <div className="flex items-center space-x-2">
+                          <FaPhone className={result.details.validateExistence.movementExists ? 'text-green-600' : result.details.validateExistence.executed ? 'text-red-600' : 'text-gray-600'} size={14} />
+                          <span className="text-gray-700 text-sm">Existencia</span>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${result.details.validateExistence.movementExists ? 'bg-green-500 text-white' : result.details.validateExistence.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>
+                          {result.details.validateExistence.executed ? (result.details.validateExistence.movementExists ? '✓' : '✗') : '—'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {result.details && (
-                    (result.details.validateP2P?.movementExists ||
-                     result.details.validateReference?.movementExists) && (
+                    (result.details.validateReference?.movementExists ||
+                     result.details.validateExistence?.movementExists) && (
                       <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
                         <h5 className="text-gray-800 font-semibold text-sm mb-2">Detalles</h5>
                         <div className="space-y-2 text-gray-600 text-xs">
                           <div className="flex justify-between">
                             <span>Concepto:</span>
                             <span className="text-gray-800 text-right max-w-[60%]">
-                              {result.details.validateP2P?.data?.Concept ||
-                               result.details.validateReference?.data?.Concept || 'N/A'}
+                              {result.details.validateReference?.data?.Concept ||
+                               result.details.validateExistence?.data?.Concept || 'N/A'}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span>Control:</span>
                             <span className="text-gray-800 font-mono">
-                              {result.details.validateP2P?.data?.ControlNumber ||
-                               result.details.validateReference?.data?.ControlNumber || 'N/A'}
+                              {result.details.validateReference?.data?.ControlNumber ||
+                               result.details.validateExistence?.data?.ControlNumber || 'N/A'}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span>Monto:</span>
                             <span className="text-gray-800 font-bold">
-                              Bs {formatBs(result.details.validateP2P?.data?.Amount ||
-                                 result.details.validateReference?.data?.Amount || 0)}
+                              Bs {formatBs(result.details.validateReference?.data?.Amount ||
+                                 result.details.validateExistence?.data?.Amount || 0)}
                             </span>
                           </div>
+                          {(() => {
+                            const debtorID = result.details.validateReference?.data?.DebtorID ||
+                                             result.details.validateExistence?.data?.DebtorID;
+                            if (!debtorID) return null;
+                            return (
+                              <div className="flex justify-between">
+                                <span>Pagador:</span>
+                                <span className="text-gray-800 font-mono">{debtorID}</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     )
