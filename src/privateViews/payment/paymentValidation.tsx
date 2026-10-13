@@ -222,9 +222,11 @@ export default function PaymentValidation({
 
       setResult({
         ...response.content,
-        message: response.content.overallResult === 'success'
-          ? 'Pago registrado con éxito'
-          : 'No se encontró el pago con los datos suministrados'
+        message: response.content.message || (
+          response.content.overallResult === 'success'
+            ? 'Pago registrado con éxito'
+            : 'No se encontró el pago con los datos suministrados'
+        )
       });
 
       if (
