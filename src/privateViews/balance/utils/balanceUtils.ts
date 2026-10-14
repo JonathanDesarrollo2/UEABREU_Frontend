@@ -9,7 +9,6 @@ export const formatCurrency = (amount: number, currency: 'VES' | 'USD' = 'USD'):
   }).format(amount);
 };
 
-// Nuevas funciones para facilitar conversión
 export const formatBs = (amount: number): string => {
   return formatCurrency(amount, 'VES');
 };
@@ -43,7 +42,8 @@ export const mapPaymentMethodToDisplay = (method: string): string => {
     'debit_card': 'Tarjeta de Débito',
     'credit_card': 'Tarjeta de Crédito',
     'pago_movil': 'Pago Móvil',
-    'check': 'Cheque'
+    'check': 'Cheque',
+    'zelle': 'Zelle',
   };
   return map[method] || method;
 };

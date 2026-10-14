@@ -77,18 +77,29 @@ export default function ChildrenScheduleView() {
   const currentStudent = studentsData[selectedStudentIndex];
   const { schedulesByDay, blockTimesByDay, grade, section, studentName } = currentStudent;
 
+  // ─────────────────────────────────────────────────────────────────────
+  // Fallbacks: si el backend no trae los bloques de algún día, usamos
+  // los bloques del lunes como plantilla. Así los horarios de los 5 días
+  // siempre muestran horas reales.
+  // ─────────────────────────────────────────────────────────────────────
+  const fallbackBlocks = blockTimesByDay['lunes'] || [];
+  const getDayBlocks = (day: string) => {
+    const blocks = blockTimesByDay[day];
+    if (blocks && blocks.length > 0) return blocks;
+    return fallbackBlocks;
+  };
+
   // Obtener el rango de tiempo para un bloque y día específico
   const getBlockTimeString = (day: string, blockNumber: number): string => {
-    const blocks = blockTimesByDay[day];
-    if (!blocks) return '';
+    const blocks = getDayBlocks(day);
     const block = blocks.find(b => b.blockNumber === blockNumber);
-    return block ? `${block.startTime} - ${block.endTime}` : '';
+    if (!block) return '';
+    return `${block.startTime} - ${block.endTime}`;
   };
 
   // Obtener el rango para materias de dos bloques
   const getTwoBlockTimeRange = (day: string, startBlockId: number): string => {
-    const blocks = blockTimesByDay[day];
-    if (!blocks) return '';
+    const blocks = getDayBlocks(day);
     const startBlock = blocks.find(b => b.blockNumber === startBlockId);
     const endBlock = blocks.find(b => b.blockNumber === startBlockId + 1);
     if (startBlock && endBlock) {
@@ -97,14 +108,17 @@ export default function ChildrenScheduleView() {
     return getBlockTimeString(day, startBlockId);
   };
 
-  // Obtener todos los números de bloque únicos que aparecen en algún día
+  // Números de bloque únicos (union de bloques configurados + bloques con contenido)
   const allBlockNumbers = Array.from(
-      new Set(
-      DAYS.flatMap(day => [
-        ...(blockTimesByDay[day] || []).map(b => b.blockNumber),
-        ...(schedulesByDay[day] || []).flatMap(b => Array.from({ length: b.spans || 1 }, (_, index) => b.blockId + index))
-      ])
-      )
+    new Set([
+      ...fallbackBlocks.map(b => b.blockNumber),
+      ...DAYS.flatMap(day => [
+        ...getDayBlocks(day).map(b => b.blockNumber),
+        ...(schedulesByDay[day] || []).flatMap(b =>
+          Array.from({ length: b.spans || 1 }, (_, index) => b.blockId + index)
+        ),
+      ]),
+    ])
   ).sort((a, b) => a - b);
 
   // Verificar si una celda debe ser oculta por span de una materia anterior
@@ -120,8 +134,25 @@ export default function ChildrenScheduleView() {
     return false;
   };
 
+  // ✅ Obtener el contenido de la celda. Si no hay, y es receso (bloque 5),
+  // devolvemos un placeholder de RECESO con su horario.
   const getCellContent = (day: string, blockNumber: number): BlockData | null => {
-    return schedulesByDay[day]?.find(b => b.blockId === blockNumber) || null;
+    const blocks = schedulesByDay[day] || [];
+    const existing = blocks.find(b => b.blockId === blockNumber);
+    if (existing) return existing;
+
+    // Fallback: bloque 5 siempre es receso
+    if (blockNumber === 5) {
+      return {
+        blockId: 5,
+        time: '5-5',
+        period: 'Receso',
+        isBreak: true,
+        subject: 'RECESO',
+        spans: 1,
+      };
+    }
+    return null;
   };
 
   const getCellClass = (block: BlockData | null): string => {
@@ -171,7 +202,7 @@ export default function ChildrenScheduleView() {
             </span>
           </div>
 
-          {/* Tabla de horario igual a la de preview */}
+          {/* Tabla de horario */}
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-100">
