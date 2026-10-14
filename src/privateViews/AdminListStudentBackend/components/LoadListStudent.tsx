@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import SpinnerGeneral from '../../../layouts/components/spinnerGeneral';
@@ -58,35 +58,67 @@ export default function LoadListStudentsAPI({ Buscar }: BusStudentProps) {
   const [printData, setPrintData] = useState<TypeStudent[] | null>(null);
   const [printing, setPrinting] = useState(false);
 
-  // ✅ Normalizar valores a primitivos (sin undefined) para el queryKey y para el API
+  // Valores normalizados (nunca undefined) para el queryKey
   const safeIdBus = Buscar.idBus || '';
   const safeDeBus = Buscar.DeBus || '';
   const safeStatus = Buscar.status || '';
   const safeGrade = Buscar.grade || '';
   const safeSection = Buscar.section || '';
 
-  // Reset page cuando cambian los filtros
-  useEffect(() => {
-    setPage(1);
-  }, [safeIdBus, safeDeBus, safeStatus, safeGrade, safeSection]);
-
-  const { data, isError, isLoading, isFetching } = useQuery({
-    // ✅ queryKey plano: cada filtro es un elemento del array.
-    // Cuando CUALQUIERA cambia, React Query refetch automáticamente.
-    queryKey: ['students', page, limit, safeIdBus, safeDeBus, safeStatus, safeGrade, safeSection],
-    queryFn: () =>
-      getPaginatedStudentsAPI(
+  const { data, isError, isLoading, isFetching, refetch } = useQuery({
+    queryKey: [
+      'students',
+      page,
+      limit,
+      safeIdBus,
+      safeDeBus,
+      safeStatus,
+      safeGrade,
+      safeSection,
+    ],
+    queryFn: async () => {
+      const resp = await getPaginatedStudentsAPI(
         page,
         limit,
         safeDeBus,
         safeStatus || undefined,
         safeGrade || undefined,
         safeSection || undefined
-      ),
-    refetchOnMount: true,
+      );
+      console.log('✅ [LoadListStudentsAPI] Respuesta del backend:', {
+        params: { page, limit, search: safeDeBus, status: safeStatus, grade: safeGrade, section: safeSection },
+        total: resp?.pagination?.totalRecords,
+        primerosRegistros: resp?.content?.slice(0, 3).map((s: any) => ({
+          nombre: s.fullName,
+          grado: s.currentGrade,
+          seccion: s.section,
+        })),
+      });
+      return resp;
+    },
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
     staleTime: 0,
     gcTime: 0,
+    networkMode: 'always',
   });
+
+  // Reset de página cuando cambian los filtros
+  useEffect(() => {
+    setPage(1);
+  }, [safeIdBus, safeDeBus, safeStatus, safeGrade, safeSection]);
+
+  // ✅ Fuerza refetch cada vez que cambia cualquier filtro
+  const filtersSignature = `${safeIdBus}|${safeDeBus}|${safeStatus}|${safeGrade}|${safeSection}`;
+  const lastSignatureRef = useRef<string>('');
+  useEffect(() => {
+    if (lastSignatureRef.current === filtersSignature) return;
+    lastSignatureRef.current = filtersSignature;
+    console.log('🔄 [LoadListStudentsAPI] Cambiaron los filtros. Forzando refetch:', {
+      safeIdBus, safeDeBus, safeStatus, safeGrade, safeSection,
+    });
+    refetch();
+  }, [filtersSignature, refetch, safeIdBus, safeDeBus, safeStatus, safeGrade, safeSection]);
 
   const handleLimitChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setLimit(parseInt(event.target.value, 10));
@@ -161,7 +193,7 @@ export default function LoadListStudentsAPI({ Buscar }: BusStudentProps) {
   if (!data.content || data.content.length === 0) {
     const mensaje = safeDeBus
       ? `No hay estudiantes que coincidan con "${safeDeBus}"...`
-      : `No hay estudiantes registrados con los filtros aplicados...`;
+      : `No hay estudiantes con los filtros aplicados...`;
 
     return (
       <ListEmpty
@@ -186,31 +218,12 @@ export default function LoadListStudentsAPI({ Buscar }: BusStudentProps) {
       <style>{`
         .print-content { display: none; }
         @media print {
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
+          html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
           body > *:not(.print-content) { display: none !important; }
           .print-content { display: block !important; }
-          .print-content table {
-            border-collapse: collapse;
-            width: 100%;
-            font-size: 10px;
-          }
-          .print-content th,
-          .print-content td {
-            border: 1px solid #333 !important;
-            padding: 4px 6px !important;
-            text-align: left;
-            vertical-align: top;
-          }
-          .print-content thead {
-            background: #f0f0f0 !important;
-            display: table-header-group;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
+          .print-content table { border-collapse: collapse; width: 100%; font-size: 10px; }
+          .print-content th, .print-content td { border: 1px solid #333 !important; padding: 4px 6px !important; text-align: left; vertical-align: top; }
+          .print-content thead { background: #f0f0f0 !important; display: table-header-group; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .print-content tr { page-break-inside: avoid; }
           .print-content th { font-weight: bold; }
         }
@@ -258,16 +271,9 @@ export default function LoadListStudentsAPI({ Buscar }: BusStudentProps) {
               <td>{student.identityCard || '—'}</td>
               <td>{student.currentGrade || 'En asignar'}</td>
               <td>{student.section || 'Pendiente'}</td>
-              <td>
-                {(student.status || 'pendiente').charAt(0).toUpperCase() +
-                  (student.status || 'pendiente').slice(1)}
-              </td>
+              <td>{(student.status || 'pendiente').charAt(0).toUpperCase() + (student.status || 'pendiente').slice(1)}</td>
               <td>{formatDate(student.admissionDate)}</td>
-              <td>
-                {student.representative
-                  ? `${student.representative.fullName} (${student.representative.identityCard})`
-                  : 'No asignado'}
-              </td>
+              <td>{student.representative ? `${student.representative.fullName} (${student.representative.identityCard})` : 'No asignado'}</td>
             </tr>
           ))}
         </tbody>
@@ -291,15 +297,9 @@ export default function LoadListStudentsAPI({ Buscar }: BusStudentProps) {
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {printing ? (
-            <>
-              <FaSpinner className="animate-spin" />
-              Preparando...
-            </>
+            <><FaSpinner className="animate-spin" />Preparando...</>
           ) : (
-            <>
-              <FaPrint />
-              Imprimir lista
-            </>
+            <><FaPrint />Imprimir lista</>
           )}
         </button>
       </div>
