@@ -11,15 +11,17 @@ export async function getPaginatedStudentsAPI(
   limit: number = 10,
   search: string = '',
   status?: string,
-  grade?: string,     // 🆕
-  section?: string    // 🆕
+  grade?: string,
+  section?: string
 ): Promise<TypeStudentListResponse> {
   try {
-    const params: any = { page, limit, search };
+    const params: any = { page, limit };
+    if (search && search.trim() !== '') params.search = search;
     if (status && status !== 'all') params.status = status;
-    // 🆕 Solo enviamos si están definidos y no son 'all'
     if (grade && grade !== 'all') params.grade = grade;
     if (section && section !== 'all') params.section = section;
+
+    console.log('📡 [getPaginatedStudentsAPI] Params enviados:', params);
 
     const { data } = await api.get<TypeStudentListResponse>('/private/user/students/list', {
       params
@@ -29,9 +31,7 @@ export async function getPaginatedStudentsAPI(
     let mensaje = 'Error Desconocido';
     if (isAxiosError(error) && error.response) {
       const errores = error.response.data.error;
-      if (errores && errores.length > 0) {
-        mensaje = errores.join(', ');
-      }
+      if (errores && errores.length > 0) mensaje = errores.join(', ');
       throw new Error(mensaje);
     }
     throw new Error(mensaje);

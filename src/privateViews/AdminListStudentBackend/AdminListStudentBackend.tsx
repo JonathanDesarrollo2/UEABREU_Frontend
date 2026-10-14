@@ -65,13 +65,15 @@ export default function AdminListStudentsBackend() {
   const [debouncedDeBus] = useDebounce(DeBus, 400);
 
   const buscar = useMemo(() => {
-    return {
+    const b = {
       idBus,
       DeBus: debouncedDeBus,
       status: statusFilter === 'all' ? undefined : statusFilter,
       grade: gradeFilter === 'all' ? undefined : gradeFilter,
       section: sectionFilter === 'all' ? undefined : sectionFilter,
     };
+    console.log('🔍 [AdminList] Filtros a enviar:', b);
+    return b;
   }, [idBus, debouncedDeBus, statusFilter, gradeFilter, sectionFilter]);
 
   return (
@@ -82,10 +84,7 @@ export default function AdminListStudentsBackend() {
           Lista de Estudiantes
         </h2>
 
-        {/* Controles de Búsqueda — 2 filas */}
         <div className="w-full mb-6 bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-
-          {/* FILA 1: Búsqueda principal */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
             <label className="md:col-span-2 text-gray-700 whitespace-nowrap text-sm font-medium">
               Buscar por:
@@ -121,14 +120,16 @@ export default function AdminListStudentsBackend() {
             </select>
           </div>
 
-          {/* FILA 2: Año + Sección + Botones */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
             <label className="md:col-span-2 text-gray-700 whitespace-nowrap text-sm font-medium">
               Filtrar por:
             </label>
             <select
               value={gradeFilter}
-              onChange={(e) => setGradeFilter(e.target.value)}
+              onChange={(e) => {
+                console.log('🎯 [AdminList] Cambio de grado:', e.target.value);
+                setGradeFilter(e.target.value);
+              }}
               className={`${inputStyle} md:col-span-2 w-full`}
             >
               {GRADE_OPTIONS.map((opt) => (
@@ -139,7 +140,10 @@ export default function AdminListStudentsBackend() {
             </select>
             <select
               value={sectionFilter}
-              onChange={(e) => setSectionFilter(e.target.value)}
+              onChange={(e) => {
+                console.log('🎯 [AdminList] Cambio de sección:', e.target.value);
+                setSectionFilter(e.target.value);
+              }}
               className={`${inputStyle} md:col-span-3 w-full`}
             >
               {SECTION_OPTIONS.map((opt) => (
@@ -169,7 +173,6 @@ export default function AdminListStudentsBackend() {
           </div>
         </div>
 
-        {/* Lista de estudiantes */}
         <div className="flex-1">
           <LoadListStudentsAPI Buscar={buscar} />
         </div>
