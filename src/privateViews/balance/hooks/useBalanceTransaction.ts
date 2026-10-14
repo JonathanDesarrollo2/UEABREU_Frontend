@@ -7,7 +7,7 @@ import api from '../../../library/axios';
 export interface TransactionForm {
   amount: number;
   description: string;
-  paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
+  paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check' | 'zelle';
   reference?: string;
   createdBy?: string;
   studentId?: string;
@@ -48,7 +48,6 @@ export const useBalanceTransaction = (
       return;
     }
 
-    // ✅ Referencia OBLIGATORIA con al menos 6 dígitos numéricos
     const cleanReference = (formData.reference || '').trim();
     if (!cleanReference) {
       toast.error('La referencia es obligatoria');
@@ -76,7 +75,7 @@ export const useBalanceTransaction = (
         amount: parseFloat(formData.amount.toString()),
         description: formData.description,
         paymentMethod: formData.paymentMethod,
-        reference: cleanReference,   // ✅ sin fallback
+        reference: cleanReference,
         createdBy: validCreatedBy,
         studentId: formData.studentId || undefined,
         paymentDate: formData.paymentDate,

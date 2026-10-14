@@ -56,7 +56,6 @@ interface BlockData {
   spans?: number;
 }
 
-// ✅ Convierte "7:00" o "07:00" a "7:00 AM" / "12:20" a "12:20 PM"
 const formatTimeTo12h = (time?: string): string => {
   if (!time) return '';
   const parts = time.split(':');
@@ -301,7 +300,57 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+      {/* ──────────────────────────────────────────────────────────────────
+          Estilos de impresión: cuando se imprima, solo se muestra el
+          título y la tabla. El resto (filtros, leyenda, resumen, botones)
+          queda oculto.
+      ────────────────────────────────────────────────────────────────── */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-area, .print-area * {
+            visibility: visible;
+          }
+          .print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 10px;
+          }
+          .print-area table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 10px;
+          }
+          .print-area th,
+          .print-area td {
+            border: 1px solid #333 !important;
+            padding: 6px !important;
+            page-break-inside: avoid;
+          }
+          .print-area thead {
+            background: #f0f0f0 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .print-area .bg-green-50 { background: #dcfce7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-area .bg-yellow-100 { background: #fef3c7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-area .bg-red-100 { background: #fee2e2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .no-print {
+            display: none !important;
+          }
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
+          }
+        }
+      `}</style>
+
+      {/* Filtros y botones — no se imprimen */}
+      <div className="no-print bg-gray-50 p-4 rounded-lg border border-gray-200">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
             <h2 className="text-xl font-bold text-gray-800">Vista Previa del Horario</h2>
@@ -333,98 +382,114 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="flex items-center"><div className="w-4 h-4 bg-green-100 border border-green-300 mr-2"></div><span className="text-sm">Materia asignada</span></div>
-        <div className="flex items-center"><div className="w-4 h-4 bg-red-100 border border-red-300 mr-2"></div><span className="text-sm">Bloque ocupado</span></div>
-        <div className="flex items-center"><div className="w-4 h-4 bg-yellow-100 border border-yellow-300 mr-2"></div><span className="text-sm">Receso</span></div>
-        <div className="flex items-center"><div className="w-4 h-4 bg-white border border-gray-300 mr-2"></div><span className="text-sm">Disponible</span></div>
-      </div>
+      {/* ──────────────────────────────────────────────────────────────────
+          ÁREA IMPRIMIBLE: título + tabla
+      ────────────────────────────────────────────────────────────────── */}
+      <div className="print-area">
+        {/* Título solo visible al imprimir (y oculto en pantalla normal) */}
+        <div className="hidden print:block text-center mb-4">
+          <h1 className="text-2xl font-bold text-gray-900">Horario de Clases</h1>
+          <p className="text-lg text-gray-700">
+            {GRADE_OPTIONS.find(g => g.value === grade)?.text || grade} - {SECTION_OPTIONS.find(s => s.value === section)?.text || section}
+          </p>
+        </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bloques</th>
-              {DAYS.map(day => (
-                <th key={day} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  {day.charAt(0).toUpperCase() + day.slice(1)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {uniqueBlockNumbers.map(blockNumber => (
-              <tr key={blockNumber} className="hover:bg-gray-50">
-                <td className="px-4 py-3 whitespace-nowrap text-sm border-r border-gray-200 bg-gray-50">
-                  <div className="font-medium text-gray-900">Bloque {blockNumber}</div>
-                  <div className="text-gray-500 text-xs">{getBlockTimeString('lunes', blockNumber)}</div>
-                  <div className="text-gray-400 text-xs">{getPeriodName(blockNumber)}</div>
-                </td>
-                {DAYS.map(day => {
-                  const isSpanned = isBlockSpanned(day, blockNumber);
-                  if (isSpanned) return null;
-                  const cellData = getCellContent(day, blockNumber);
-                  const isSelected = selectedCell?.day === day && selectedCell?.blockId === blockNumber;
-                  const cellClass = getCellClass(cellData);
-                  return (
-                    <td
-                      key={`${day}-${blockNumber}`}
-                      className={`px-4 py-3 text-sm border border-gray-200 ${cellClass} ${isSelected ? 'ring-2 ring-blue-500' : ''} ${cellData?.spans === 2 ? 'align-top' : ''}`}
-                      onClick={() => handleCellClick(day, blockNumber)}
-                      rowSpan={cellData?.spans === 2 ? 2 : 1}
-                    >
-                      {cellData?.isBreak ? (
-                        <div className="text-center text-yellow-700 font-medium py-2 relative group">
-                          {cellData.scheduleId && (
-                            <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <FaTrash className="text-red-500 hover:text-red-700 cursor-pointer" onClick={(e) => {
-                                e.stopPropagation();
-                                setScheduleToDelete({ id: cellData.scheduleId, code: cellData.subjectCode, subject: cellData.subject, day, blockId: blockNumber, isBreak: true });
-                                setShowDeleteModal(true);
-                              }} />
-                            </div>
-                          )}
-                          RECESO
-                          <div className="text-xs text-yellow-600 mt-1">{getBlockTimeString(day, blockNumber)}</div>
-                        </div>
-                      ) : cellData?.subject && cellData.subject !== 'RECESO' ? (
-                        <div className="space-y-1 group relative">
-                          {cellData.scheduleId && (
-                            <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <FaTrash className="text-red-500 hover:text-red-700 cursor-pointer" onClick={(e) => {
-                                e.stopPropagation();
-                                setScheduleToDelete({ id: cellData.scheduleId, code: cellData.subjectCode, subject: cellData.subject, day, blockId: blockNumber, isBreak: false });
-                                setShowDeleteModal(true);
-                              }} />
-                            </div>
-                          )}
-                          <div className="font-medium text-gray-900">{cellData.subject}</div>
-                          {cellData.subjectCode && <div className="text-xs text-gray-500">({cellData.subjectCode})</div>}
-                          {cellData.teacher && <div className="text-xs text-blue-600 font-medium">{cellData.teacher}</div>}
-                          {cellData.classroom && <div className="text-xs text-gray-500">Aula: {cellData.classroom}</div>}
-                          <div className="text-xs text-gray-400 mt-2">
-                            {cellData.spans === 2 ? getTwoBlockTimeRange(day, blockNumber) : getBlockTimeString(day, blockNumber)}
-                          </div>
-                        </div>
-                      ) : cellData?.isOccupied ? (
-                        <div className="text-center text-red-600 font-medium py-2">OCUPADO</div>
-                      ) : (
-                        <div className="text-center text-gray-400 py-2">
-                          Disponible
-                          <div className="text-xs text-gray-300 mt-1">{getBlockTimeString(day, blockNumber)}</div>
-                        </div>
-                      )}
-                    </td>
-                  );
-                })}
+        {/* Leyenda — no se imprime */}
+        <div className="no-print grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+          <div className="flex items-center"><div className="w-4 h-4 bg-green-100 border border-green-300 mr-2"></div><span className="text-sm">Materia asignada</span></div>
+          <div className="flex items-center"><div className="w-4 h-4 bg-red-100 border border-red-300 mr-2"></div><span className="text-sm">Bloque ocupado</span></div>
+          <div className="flex items-center"><div className="w-4 h-4 bg-yellow-100 border border-yellow-300 mr-2"></div><span className="text-sm">Receso</span></div>
+          <div className="flex items-center"><div className="w-4 h-4 bg-white border border-gray-300 mr-2"></div><span className="text-sm">Disponible</span></div>
+        </div>
+
+        {/* Tabla del horario */}
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bloques</th>
+                {DAYS.map(day => (
+                  <th key={day} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    {day.charAt(0).toUpperCase() + day.slice(1)}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {uniqueBlockNumbers.map(blockNumber => (
+                <tr key={blockNumber} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm border-r border-gray-200 bg-gray-50">
+                    <div className="font-medium text-gray-900">Bloque {blockNumber}</div>
+                    <div className="text-gray-500 text-xs">{getBlockTimeString('lunes', blockNumber)}</div>
+                    <div className="text-gray-400 text-xs">{getPeriodName(blockNumber)}</div>
+                  </td>
+                  {DAYS.map(day => {
+                    const isSpanned = isBlockSpanned(day, blockNumber);
+                    if (isSpanned) return null;
+                    const cellData = getCellContent(day, blockNumber);
+                    const isSelected = selectedCell?.day === day && selectedCell?.blockId === blockNumber;
+                    const cellClass = getCellClass(cellData);
+                    return (
+                      <td
+                        key={`${day}-${blockNumber}`}
+                        className={`px-4 py-3 text-sm border border-gray-200 ${cellClass} ${isSelected ? 'ring-2 ring-blue-500' : ''} ${cellData?.spans === 2 ? 'align-top' : ''}`}
+                        onClick={() => handleCellClick(day, blockNumber)}
+                        rowSpan={cellData?.spans === 2 ? 2 : 1}
+                      >
+                        {cellData?.isBreak ? (
+                          <div className="text-center text-yellow-700 font-medium py-2 relative group">
+                            {cellData.scheduleId && (
+                              <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                                <FaTrash className="text-red-500 hover:text-red-700 cursor-pointer" onClick={(e) => {
+                                  e.stopPropagation();
+                                  setScheduleToDelete({ id: cellData.scheduleId, code: cellData.subjectCode, subject: cellData.subject, day, blockId: blockNumber, isBreak: true });
+                                  setShowDeleteModal(true);
+                                }} />
+                              </div>
+                            )}
+                            RECESO
+                            <div className="text-xs text-yellow-600 mt-1">{getBlockTimeString(day, blockNumber)}</div>
+                          </div>
+                        ) : cellData?.subject && cellData.subject !== 'RECESO' ? (
+                          <div className="space-y-1 group relative">
+                            {cellData.scheduleId && (
+                              <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                                <FaTrash className="text-red-500 hover:text-red-700 cursor-pointer" onClick={(e) => {
+                                  e.stopPropagation();
+                                  setScheduleToDelete({ id: cellData.scheduleId, code: cellData.subjectCode, subject: cellData.subject, day, blockId: blockNumber, isBreak: false });
+                                  setShowDeleteModal(true);
+                                }} />
+                              </div>
+                            )}
+                            <div className="font-medium text-gray-900">{cellData.subject}</div>
+                            {cellData.subjectCode && <div className="text-xs text-gray-500">({cellData.subjectCode})</div>}
+                            {cellData.teacher && <div className="text-xs text-blue-600 font-medium">{cellData.teacher}</div>}
+                            {cellData.classroom && <div className="text-xs text-gray-500">Aula: {cellData.classroom}</div>}
+                            <div className="text-xs text-gray-400 mt-2">
+                              {cellData.spans === 2 ? getTwoBlockTimeRange(day, blockNumber) : getBlockTimeString(day, blockNumber)}
+                            </div>
+                          </div>
+                        ) : cellData?.isOccupied ? (
+                          <div className="text-center text-red-600 font-medium py-2">OCUPADO</div>
+                        ) : (
+                          <div className="text-center text-gray-400 py-2">
+                            Disponible
+                            <div className="text-xs text-gray-300 mt-1">{getBlockTimeString(day, blockNumber)}</div>
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
+      {/* Info del bloque seleccionado — no se imprime */}
       {selectedCell && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="no-print bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="font-semibold text-blue-800 mb-2">Información del Bloque</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div><span className="text-gray-600">Día:</span><span className="ml-2 font-medium capitalize">{selectedCell.day}</span></div>
@@ -443,7 +508,8 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         </div>
       )}
 
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+      {/* Resumen — no se imprime */}
+      <div className="no-print bg-gray-50 p-4 rounded-lg border border-gray-200">
         <h3 className="font-semibold text-gray-800 mb-3">Resumen del Horario</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center p-3 bg-white rounded border">
@@ -475,8 +541,9 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
         </div>
       </div>
 
+      {/* Modal de eliminar — no se imprime */}
       {showDeleteModal && scheduleToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" onClick={closeDeleteModal}></div>
           <div className="relative bg-white rounded-xl shadow-xl border border-gray-200 max-w-md w-full">
             <div className="p-6 border-b border-gray-100">

@@ -606,6 +606,7 @@ export default function ManualBalance() {
                     <option value="debit_card">Tarjeta de Débito</option>
                     <option value="credit_card">Tarjeta de Crédito</option>
                     <option value="check">Cheque</option>
+                    <option value="zelle">Zelle</option>
                   </select>
                 </div>
 
