@@ -58,8 +58,13 @@ export async function manualDeposit(
     studentId?: string;
     paymentDate: string;
     paymentTime?: string;
+    // 🆕
+    bankCode?: string;
+    payerId?: string;
+    payerPhone?: string;
+    accountNumber?: string;
   }
-) {
+){
   const response = await api.post(`/private/balance/representative/${representativeId}/deposit`, data);
   return response.data;
 }
