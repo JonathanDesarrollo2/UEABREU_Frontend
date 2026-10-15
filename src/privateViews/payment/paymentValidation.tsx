@@ -242,6 +242,10 @@ export default function PaymentValidation({
             reference: formData.Reference,
             studentId: selectedStudentId || undefined,
             paymentDate: formData.RequestDate,
+            // 🆕 opcionales pero se guardan:
+            bankCode: String(formData.BankCode),
+            payerId: formData.ClientID,
+            payerPhone: formData.PhoneNumber,
           };
           const depositRes = await manualDeposit(representativeId, depositPayload);
           setDepositResult(depositRes);
