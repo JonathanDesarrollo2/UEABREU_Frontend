@@ -45,6 +45,7 @@ import TasaLista from './privateViews/tasaLista/TasaListaVista'
 import EditSubjectPage from './privateViews/EditSubject/EditSubjectPage'
 import Admin2Layout from './layouts/admin2layout'
 import Admin2Dashboard from './layouts/admin2Dashboard'
+import ForgotPasswordKey from './publicViews/LoginAuthPublic/forgotPasswordKey'
 
 function ListRoutes() {
   return (
@@ -58,6 +59,7 @@ function ListRoutes() {
         <Route path="PrivacyPolicy" element={<PrivacyPolicy />} />
         <Route path="TermsAndConditions" element={<TermsAndConditions />} />
         <Route path="Solicitud" element={<SolicitudInscripcion />} />
+  <Route path="forgot-password" element={<ForgotPasswordKey />} />  {/* ⬅️ NUEVO */}
       </Route>
 
       {/* Rutas Privadas */}
