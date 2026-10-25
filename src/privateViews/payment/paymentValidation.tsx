@@ -31,10 +31,15 @@ import {
   FaChevronLeft,
   FaChevronRight,
   FaPhone,
-  FaTrash
+  FaTrash,
+  FaFilePdf,
 } from 'react-icons/fa';
 import DeleteTransactionModal from '../../components/deleteTransactionModal';
 import { useDetectedNivel } from '../../hooks/useDetectedNivel';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+
+(pdfMake as any).vfs = pdfFonts.vfs;
 
 interface PaymentValidationProps {
   representativeId?: string;
@@ -57,6 +62,22 @@ const BANKS_LIST: { Name: string; Code: string }[] = [
   { Name: 'Banco Nacional de Crédito, C.A.',          Code: '0191' },
   { Name: 'Banco Bicentenario, C.A.',                 Code: '0175' },
 ];
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  bank_transfer: 'Transferencia',
+  cash: 'Efectivo',
+  debit_card: 'Tarjeta de Débito',
+  credit_card: 'Tarjeta de Crédito',
+  pago_movil: 'Pago Móvil',
+  check: 'Cheque',
+  zelle: 'Zelle',
+};
+
+const getBankName = (code?: string | null): string => {
+  if (!code) return '—';
+  const found = BANKS_LIST.find(b => b.Code === String(code));
+  return found ? found.Name : `Banco ${code}`;
+};
 
 export default function PaymentValidation({
   representativeId: propRepId,
@@ -242,7 +263,6 @@ export default function PaymentValidation({
             reference: formData.Reference,
             studentId: selectedStudentId || undefined,
             paymentDate: formData.RequestDate,
-            // 🆕 opcionales pero se guardan:
             bankCode: String(formData.BankCode),
             payerId: formData.ClientID,
             payerPhone: formData.PhoneNumber,
@@ -278,6 +298,135 @@ export default function PaymentValidation({
   const handleHistoryFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setHistoryFilters(prev => ({ ...prev, [name]: value, page: 1 }));
+  };
+
+  // ============================================================
+  // 🧾 DESCARGA DE RECIBO EN PDF
+  // ============================================================
+  const handleDownloadReceipt = (tx: any) => {
+    try {
+      const receiptNumber = (tx.id || '').slice(0, 8).toUpperCase();
+        const paymentDateStr = tx.transactionDate
+        ? (() => {
+            const d = String(tx.transactionDate).slice(0, 10);
+            const [y, m, day] = d.split('-');
+            return `${day}/${m}/${y}`;
+          })()
+        : '—';
+      const registeredDateStr = tx.createdAt
+        ? new Date(tx.createdAt).toLocaleString('es-VE')
+        : '—';
+      const amountBs = new Intl.NumberFormat('es-VE', {
+        style: 'currency', currency: 'VES',
+        minimumFractionDigits: 2, maximumFractionDigits: 2,
+      }).format(tx.amount || 0);
+      const amountUsd = new Intl.NumberFormat('es-VE', {
+        style: 'currency', currency: 'USD',
+        minimumFractionDigits: 2, maximumFractionDigits: 2,
+      }).format(tx.amountUSD || 0);
+
+      const docDefinition: any = {
+        pageSize: 'A5',
+        pageMargins: [28, 28, 28, 28],
+        content: [
+          // Encabezado
+          { text: 'U.E. JOSÉ ANTONIO ABREU', style: 'header' },
+          { text: 'RIF: J-505275356', style: 'subheader' },
+          { text: 'Naguanagua — Estado Carabobo', style: 'subheader' },
+          { text: 'RECIBO DE PAGO', style: 'title' },
+          { text: `N° ${receiptNumber}`, style: 'receiptNumber' },
+          { text: '\n' },
+
+          // Datos del representante
+          { text: 'DATOS DEL REPRESENTANTE', style: 'sectionTitle' },
+          {
+            columns: [
+              {
+                stack: [
+                  { text: `Nombre: ${tx.representative?.fullName || '—'}` },
+                  { text: `Cédula: ${tx.representative?.identityCard || '—'}` },
+                ],
+              },
+              {
+                stack: [
+                  { text: `Fecha de emisión: ${registeredDateStr}`, alignment: 'right' },
+                  { text: `Estado: ${tx.displayStatus || tx.status || '—'}`, alignment: 'right' },
+                ],
+              },
+            ],
+          },
+          { text: '\n' },
+
+          // Datos del estudiante
+          { text: 'DATOS DEL ESTUDIANTE', style: 'sectionTitle' },
+          { text: `Nombre: ${tx.student?.fullName || '—'}` },
+          { text: `Año/Sección: ${tx.student?.currentGrade || '—'}${tx.student?.section ? ' — ' + tx.student.section : ''}` },
+          { text: '\n' },
+
+          // Detalle del pago
+          { text: 'DETALLE DEL PAGO', style: 'sectionTitle' },
+          {
+            table: {
+              widths: ['35%', '*'],
+              body: [
+                [{ text: 'Concepto', style: 'cellKey' }, { text: tx.description || '—' }],
+                [{ text: 'Método de pago', style: 'cellKey' }, { text: PAYMENT_METHOD_LABELS[tx.paymentMethod] || tx.paymentMethod || '—' }],
+                [{ text: 'Referencia', style: 'cellKey' }, { text: tx.reference || '—' }],
+                [{ text: 'Fecha del pago', style: 'cellKey' }, { text: paymentDateStr }],
+                [{ text: 'Banco emisor', style: 'cellKey' }, { text: getBankName(tx.bankCode) }],
+                [{ text: 'Tasa BCV', style: 'cellKey' }, { text: tx.bcvRate ? `${Number(tx.bcvRate).toFixed(4)} Bs/USD` : '—' }],
+                [{ text: 'Monto (Bs)', style: 'cellKey' }, { text: amountBs, bold: true }],
+                [{ text: 'Monto (USD)', style: 'cellKey' }, { text: amountUsd, bold: true }],
+              ],
+            },
+            layout: 'lightHorizontalLines',
+          },
+          { text: '\n\n\n\n' },
+
+          // Firmas
+          {
+            columns: [
+              {
+                stack: [
+                  { text: '_________________________________' },
+                  { text: 'Firma del Representante', alignment: 'center', fontSize: 8 },
+                ],
+                alignment: 'center',
+              },
+              {
+                stack: [
+                  { text: '_________________________________' },
+                  { text: 'Sello de la Institución', alignment: 'center', fontSize: 8 },
+                ],
+                alignment: 'center',
+              },
+            ],
+          },
+          { text: '\n' },
+          {
+            text: 'Este recibo es un comprobante de pago registrado en el sistema. Conserve este documento para cualquier aclaración.',
+            style: 'footer',
+          },
+        ],
+        styles: {
+          header: { fontSize: 13, bold: true, alignment: 'center' },
+          subheader: { fontSize: 8, alignment: 'center', color: '#555' },
+          title: { fontSize: 11, bold: true, alignment: 'center', margin: [0, 12, 0, 0], color: '#1e3a8a' },
+          receiptNumber: { fontSize: 9, alignment: 'center', color: '#666', margin: [0, 2, 0, 0] },
+          sectionTitle: { fontSize: 9, bold: true, margin: [0, 8, 0, 4], color: '#1e3a8a' },
+          cellKey: { bold: true, fontSize: 8.5, color: '#444' },
+          footer: { fontSize: 7, alignment: 'center', color: '#888', italics: true, margin: [0, 4, 0, 0] },
+        },
+        defaultStyle: { fontSize: 8.5, lineHeight: 1.2 },
+      };
+
+      pdfMake
+        .createPdf(docDefinition)
+        .download(`Recibo_${tx.reference || receiptNumber}.pdf`);
+    } catch (err: any) {
+      console.error('Error al generar recibo:', err);
+      alert('No se pudo generar el recibo. Intente nuevamente.');
+    }
   };
 
   const getStatusIcon = (overallResult: string) => {
@@ -660,11 +809,7 @@ export default function PaymentValidation({
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto Bs</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">USD</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                          {canDelete && (
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              Acciones
-                            </th>
-                          )}
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
@@ -688,17 +833,26 @@ export default function PaymentValidation({
                                   {tx.displayStatus}
                                 </span>
                               </td>
-                              {canDelete && (
-                                <td className="px-4 py-3 text-center">
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex justify-center gap-1">
                                   <button
-                                    onClick={() => setDeleteTarget(tx)}
-                                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Eliminar pago (solo admin nivel 2)"
+                                    onClick={() => handleDownloadReceipt(tx)}
+                                    className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Descargar recibo en PDF"
                                   >
-                                    <FaTrash />
+                                    <FaFilePdf />
                                   </button>
-                                </td>
-                              )}
+                                  {canDelete && (
+                                    <button
+                                      onClick={() => setDeleteTarget(tx)}
+                                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                      title="Eliminar pago (solo admin nivel 2)"
+                                    >
+                                      <FaTrash />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
                             </tr>
                           );
                         })}

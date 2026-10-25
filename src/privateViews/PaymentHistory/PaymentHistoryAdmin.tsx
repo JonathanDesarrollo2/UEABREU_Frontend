@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FaSearch, FaHistory, FaFilter, FaTimes, FaChevronLeft, FaChevronRight,
   FaFilePdf, FaFileExcel, FaExchangeAlt, FaUserShield, FaUserTie,
-  FaCog, FaUser, FaClipboardList, FaBalanceScale, FaTrash
+  FaCog, FaUser, FaClipboardList, FaBalanceScale, FaTrash, FaMobileAlt
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { getAllTransactions, getAccountStatement } from '../../apis/balance';
@@ -29,6 +29,9 @@ interface TransactionMetadata {
   movedAmountUSD?: number;
   remainingAmountBs?: number;
   remainingAmountUSD?: number;
+  payerId?: string;
+  payerPhone?: string;
+  registeredAt?: string;
 }
 
 interface TransactionCreator {
@@ -52,6 +55,9 @@ interface TransactionItem {
   paymentStatus?: string;
   balanceAfter?: number;
   createdAt: string;
+  transactionDate?: string;
+  bankCode?: string;
+  paymentTime?: string;
   student?: { id: string; fullName: string; currentGrade?: string; section?: string; balance?: number } | null;
   representative?: { id: string; fullName: string; identityCard: string };
   metadata?: TransactionMetadata | null;
@@ -59,19 +65,29 @@ interface TransactionItem {
 }
 
 interface PaymentHistoryProps {
-  /**
-   * Cuando es true, se muestra el botón de eliminar pago en cada fila.
-   * Debe pasarse true SOLO si el usuario logueado tiene nivel 2
-   * (administrador principal).
-   *
-   * Si no se pasa, el componente intentará autodetectarlo desde localStorage
-   * usando el hook useDetectedNivel (fallback).
-   */
   canDeletePayments?: boolean;
 }
 
 const GRADE_OPTIONS = ['1ro', '2do', '3ro', '4to', '5to', '6to'];
 const SECTION_OPTIONS = ['A', 'B', 'C', 'D'];
+
+const BANKS_MAP: Record<string, string> = {
+  '0102': 'Banco de Venezuela',
+  '0104': 'Venezolano de Crédito',
+  '0105': 'Mercantil',
+  '0108': 'Provincial',
+  '0114': 'Bancaribe',
+  '0115': 'Exterior',
+  '0134': 'Banesco',
+  '0172': 'Bancamiga',
+  '0175': 'Bicentenario',
+  '0191': 'BNC',
+};
+
+const getBankName = (code?: string | null): string => {
+  if (!code) return '—';
+  return BANKS_MAP[String(code)] || `Banco ${code}`;
+};
 
 const formatCurrencyLocal = (amount: number, currency: 'VES' | 'USD') => {
   return new Intl.NumberFormat('es-VE', {
@@ -82,11 +98,13 @@ const formatCurrencyLocal = (amount: number, currency: 'VES' | 'USD') => {
   }).format(amount);
 };
 
+type ViewMode = 'all' | 'pago_movil';
+
 const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) => {
-  // 🔍 Auto-detección del nivel (solo si el prop no fue pasado explícitamente)
   const detectedNivel = useDetectedNivel();
   const canDelete = canDeletePayments === true || detectedNivel === 2;
 
+  const [view, setView] = useState<ViewMode>('all');
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -119,7 +137,6 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountData, setAccountData] = useState<any>(null);
 
-  // Transacción seleccionada para eliminar (solo admin nivel 2)
   const [deleteTarget, setDeleteTarget] = useState<TransactionItem | null>(null);
 
   const repInputRef = useRef<HTMLInputElement>(null);
@@ -185,6 +202,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
         balanceStatus: filters.balanceStatus !== 'all' ? filters.balanceStatus : undefined,
         studentGrade: filters.studentGrade || undefined,
         studentSection: filters.studentSection || undefined,
+        paymentMethod: view === 'pago_movil' ? 'pago_movil' : undefined,
       });
       if (response.result) {
         setTransactions(response.content.transactions);
@@ -195,11 +213,11 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, view]);
 
   useEffect(() => {
     fetchTransactions();
-  }, [filters.page]);
+  }, [filters.page, view]);
 
   useEffect(() => {
     if (tableWidthRef.current && topScrollRef.current) {
@@ -209,7 +227,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
         innerDiv.style.width = `${contentWidth}px`;
       }
     }
-  }, [transactions]);
+  }, [transactions, view]);
 
   const handleApplyFilters = () => {
     setFilters(prev => ({ ...prev, page: 1 }));
@@ -230,6 +248,12 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
     setShowRepDropdown(false);
     setShowStudentDropdown(false);
     fetchTransactions();
+  };
+
+  const switchView = (newView: ViewMode) => {
+    if (newView === view) return;
+    setView(newView);
+    setFilters(prev => ({ ...prev, page: 1 }));
   };
 
   const selectRepresentative = (rep: any) => {
@@ -288,6 +312,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
         balanceStatus: filters.balanceStatus !== 'all' ? filters.balanceStatus : undefined,
         studentGrade: filters.studentGrade || undefined,
         studentSection: filters.studentSection || undefined,
+        paymentMethod: view === 'pago_movil' ? 'pago_movil' : undefined,
         page,
         limit,
       });
@@ -567,6 +592,32 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
           )}
         </div>
 
+        {/* Tabs de vista */}
+        <div className="flex gap-2 mb-4 p-1 bg-white rounded-xl shadow-sm border border-gray-200 w-fit">
+          <button
+            onClick={() => switchView('all')}
+            className={`px-5 py-2.5 rounded-lg font-semibold text-sm transition flex items-center gap-2 ${
+              view === 'all'
+                ? 'bg-blue-600 text-white shadow'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            <FaHistory className="text-xs" />
+            Todas las transacciones
+          </button>
+          <button
+            onClick={() => switchView('pago_movil')}
+            className={`px-5 py-2.5 rounded-lg font-semibold text-sm transition flex items-center gap-2 ${
+              view === 'pago_movil'
+                ? 'bg-emerald-600 text-white shadow'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            <FaMobileAlt className="text-xs" />
+            Pago Móvil
+          </button>
+        </div>
+
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 mb-8">
           <div className="flex items-center space-x-2 mb-6"><FaFilter className="text-blue-600" /><h2 className="text-lg font-bold text-gray-700">Filtros de búsqueda</h2></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -669,143 +720,229 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+        {/* ========== CONTENEDOR DE TABLA CON STICKY SCROLL ========== */}
+        <div className="bg-white shadow-lg border border-gray-200" style={{ clipPath: 'inset(0 round 16px)' }}>
+          {/* Barra sticky de scroll horizontal */}
+          {!loading && transactions.length > 0 && (
+            <div
+              ref={topScrollRef}
+              className="sticky top-0 z-20 bg-gray-100 border-b border-gray-300"
+              style={{ overflowX: 'auto', overflowY: 'hidden', height: '18px' }}
+              onScroll={() => syncScroll('top')}
+            >
+              <div style={{ height: '1px' }}></div>
+            </div>
+          )}
+
           {loading ? (
-            <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div></div>
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
+            </div>
           ) : transactions.length === 0 ? (
-            <div className="text-center py-20"><FaHistory className="mx-auto text-4xl text-gray-300 mb-4" /><p className="text-gray-500 text-lg">No se encontraron transacciones</p><p className="text-gray-400">Pruebe ajustando los filtros</p></div>
-          ) : (
-            <>
-              <div ref={topScrollRef} className="overflow-x-auto overflow-y-hidden border-b border-gray-200" style={{ height: '16px' }} onScroll={() => syncScroll('top')}>
-                <div style={{ height: '1px' }}></div>
-              </div>
-
-              <div ref={mainScrollRef} className="overflow-x-auto" onScroll={() => syncScroll('main')}>
-                <div ref={tableWidthRef}>
-                  <table className="w-full min-w-max">
-                    <thead>
-                      <tr className="bg-blue-600">
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Fecha</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Representante</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Estudiante</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Descripción</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Tipo</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Monto (Bs)</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Pendiente (Bs)</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">A Favor (Bs)</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Tasa</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">USD</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Referencia</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Hecho por</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Estado</th>
-                        {canDelete && (
-                          <th className="px-6 py-4 text-center text-xs font-bold text-white uppercase">Acciones</th>
-                        )}
+            <div className="text-center py-20">
+              <FaHistory className="mx-auto text-4xl text-gray-300 mb-4" />
+              <p className="text-gray-500 text-lg">No se encontraron transacciones</p>
+              <p className="text-gray-400">
+                {view === 'pago_movil'
+                  ? 'No hay pagos móviles registrados con los filtros actuales'
+                  : 'Pruebe ajustando los filtros'}
+              </p>
+            </div>
+          ) : view === 'pago_movil' ? (
+            /* ============ VISTA PAGO MÓVIL ============ */
+            <div ref={mainScrollRef} className="overflow-x-auto" onScroll={() => syncScroll('main')}>
+              <div ref={tableWidthRef}>
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-emerald-600">
+                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Fecha registro</th>
+                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Fecha del pago</th>
+                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Hora</th>
+                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Referencia</th>
+                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Banco</th>
+                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Cédula</th>
+                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Teléfono</th>
+                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Monto (Bs)</th>
+                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Monto (USD)</th>
+                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Representante</th>
+                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Estudiante</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {transactions.map(t => (
+                      <tr key={t.id} className="hover:bg-emerald-50/40 transition-colors">
+                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                          {t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-semibold text-gray-800 whitespace-nowrap">
+                          {t.transactionDate
+                            ? (() => {
+                                const d = String(t.transactionDate).slice(0, 10);
+                                const [y, m, day] = d.split('-');
+                                return `${day}/${m}/${y}`;
+                              })()
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                          {t.paymentTime || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 font-mono whitespace-nowrap">
+                          {t.reference || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                          {getBankName(t.bankCode)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 font-mono whitespace-nowrap">
+                          {t.metadata?.payerId || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 font-mono whitespace-nowrap">
+                          {t.metadata?.payerPhone || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-green-700 whitespace-nowrap">
+                          {formatCurrencyLocal(t.amount || 0, 'VES')}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-emerald-700 whitespace-nowrap">
+                          {formatCurrencyLocal(t.amountUSD || 0, 'USD')}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                          {t.representative?.fullName || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                          {t.student?.fullName || '—'}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {transactions.map(t => {
-                        const isFee = t.type === 'fee';
-                        const isDeposit = t.type === 'deposit';
-                        const balanceAfterUSD = t.balanceAfter ?? 0;
-                        const pendingUSD = balanceAfterUSD < 0 ? Math.abs(balanceAfterUSD) : 0;
-                        const creditUSD = balanceAfterUSD > 0 ? balanceAfterUSD : 0;
-                        const pendingBs = usdToBs(pendingUSD);
-                        const creditBs = usdToBs(creditUSD);
-                        const amountBs = t.amount;
-                        const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
-
-                        const studentBalance = t.student?.balance ?? 0;
-                        const studentBalanceBs = studentBalance * (bcvRate?.PriceRateBCV || 0);
-
-                        return (
-                          <tr key={t.id} className="hover:bg-blue-50/30 transition-colors">
-                            <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '-'}</td>
-                            <td className="px-6 py-4 font-medium text-gray-900">
-                              {t.representative?.fullName ? (
-                                <button
-                                  onClick={() => openAccountStatement(t.representative!.id)}
-                                  className="text-left hover:text-indigo-600 hover:underline inline-flex items-center gap-1"
-                                  title="Ver estado de cuenta"
-                                >
-                                  <FaUser className="text-[10px] text-gray-400" />
-                                  {t.representative.fullName}
-                                </button>
-                              ) : '—'}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-700">
-                              <div>{t.student?.fullName || '—'}</div>
-                              {t.student && studentBalance > 0 && (
-                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">
-                                  <FaBalanceScale className="text-[10px]" />
-                                  Saldo: {formatCurrencyLocal(studentBalanceBs, 'VES')}
-                                  <span className="text-green-600 font-bold">
-                                    ≈ {formatCurrencyLocal(studentBalance, 'USD')}
-                                  </span>
-                                </div>
-                              )}
-                              {t.student && studentBalance < 0 && (
-                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded px-2 py-0.5">
-                                  <FaBalanceScale className="text-[10px]" />
-                                  Saldo: {formatCurrencyLocal(studentBalanceBs, 'VES')}
-                                  <span className="text-red-600 font-bold">
-                                    ≈ {formatCurrencyLocal(studentBalance, 'USD')}
-                                  </span>
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600 max-w-[260px]">
-                              <div className="truncate">{t.description || '—'}</div>
-                              {renderMoveInfo(t)}
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${isDeposit ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {isDeposit ? 'DEPÓSITO' : t.type.toUpperCase()}
-                              </span>
-                            </td>
-                            <td className={`px-6 py-4 text-sm font-bold ${isDeposit ? 'text-green-600' : 'text-red-600'}`}>
-                              {isDeposit ? '+' : '-'}{formatCurrencyLocal(amountBs, 'VES')}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-700">
-                              {pendingBs > 0 ? formatCurrencyLocal(pendingBs, 'VES') : '—'}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-green-700">
-                              {creditBs > 0 ? formatCurrencyLocal(creditBs, 'VES') : '—'}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-500">{t.bcvRate ? t.bcvRate.toFixed(4) : '—'}</td>
-                            <td className="px-6 py-4 text-sm text-gray-700">
-                              {t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—'}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-500 font-mono">{t.reference || '—'}</td>
-                            <td className="px-6 py-4">{renderCreator(t)}</td>
-                            <td className="px-6 py-4">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${displayStatus === 'Completado' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                {displayStatus}
-                              </span>
-                            </td>
-                            {canDelete && (
-                              <td className="px-6 py-4 text-center">
-                                <button
-                                  onClick={() => setDeleteTarget(t)}
-                                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="Eliminar pago (solo admin nivel 2)"
-                                >
-                                  <FaTrash />
-                                </button>
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </>
+            </div>
+          ) : (
+            /* ============ VISTA TODAS ============ */
+            <div ref={mainScrollRef} className="overflow-x-auto" onScroll={() => syncScroll('main')}>
+              <div ref={tableWidthRef}>
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-blue-600">
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Fecha</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Representante</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Estudiante</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Descripción</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Tipo</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Monto (Bs)</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Pendiente (Bs)</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">A Favor (Bs)</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Tasa</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">USD</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Referencia</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Hecho por</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Estado</th>
+                      {canDelete && (
+                        <th className="px-6 py-4 text-center text-xs font-bold text-white uppercase">Acciones</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {transactions.map(t => {
+                      const isFee = t.type === 'fee';
+                      const isDeposit = t.type === 'deposit';
+                      const balanceAfterUSD = t.balanceAfter ?? 0;
+                      const pendingUSD = balanceAfterUSD < 0 ? Math.abs(balanceAfterUSD) : 0;
+                      const creditUSD = balanceAfterUSD > 0 ? balanceAfterUSD : 0;
+                      const pendingBs = usdToBs(pendingUSD);
+                      const creditBs = usdToBs(creditUSD);
+                      const amountBs = t.amount;
+                      const displayStatus = isFee ? 'Pendiente' : (t.status === 'completed' ? 'Completado' : t.status);
+
+                      const studentBalance = t.student?.balance ?? 0;
+                      const studentBalanceBs = studentBalance * (bcvRate?.PriceRateBCV || 0);
+
+                      return (
+                        <tr key={t.id} className="hover:bg-blue-50/30 transition-colors">
+                          <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '-'}</td>
+                          <td className="px-6 py-4 font-medium text-gray-900">
+                            {t.representative?.fullName ? (
+                              <button
+                                onClick={() => openAccountStatement(t.representative!.id)}
+                                className="text-left hover:text-indigo-600 hover:underline inline-flex items-center gap-1"
+                                title="Ver estado de cuenta"
+                              >
+                                <FaUser className="text-[10px] text-gray-400" />
+                                {t.representative.fullName}
+                              </button>
+                            ) : '—'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-700">
+                            <div>{t.student?.fullName || '—'}</div>
+                            {t.student && studentBalance > 0 && (
+                              <div className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">
+                                <FaBalanceScale className="text-[10px]" />
+                                Saldo: {formatCurrencyLocal(studentBalanceBs, 'VES')}
+                                <span className="text-green-600 font-bold">
+                                  ≈ {formatCurrencyLocal(studentBalance, 'USD')}
+                                </span>
+                              </div>
+                            )}
+                            {t.student && studentBalance < 0 && (
+                              <div className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded px-2 py-0.5">
+                                <FaBalanceScale className="text-[10px]" />
+                                Saldo: {formatCurrencyLocal(studentBalanceBs, 'VES')}
+                                <span className="text-red-600 font-bold">
+                                  ≈ {formatCurrencyLocal(studentBalance, 'USD')}
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 max-w-[260px]">
+                            <div className="truncate">{t.description || '—'}</div>
+                            {renderMoveInfo(t)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${isDeposit ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                              {isDeposit ? 'DEPÓSITO' : t.type.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className={`px-6 py-4 text-sm font-bold ${isDeposit ? 'text-green-600' : 'text-red-600'}`}>
+                            {isDeposit ? '+' : '-'}{formatCurrencyLocal(amountBs, 'VES')}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-700">
+                            {pendingBs > 0 ? formatCurrencyLocal(pendingBs, 'VES') : '—'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-green-700">
+                            {creditBs > 0 ? formatCurrencyLocal(creditBs, 'VES') : '—'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">{t.bcvRate ? t.bcvRate.toFixed(4) : '—'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-700">
+                            {t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500 font-mono">{t.reference || '—'}</td>
+                          <td className="px-6 py-4">{renderCreator(t)}</td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${displayStatus === 'Completado' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                              {displayStatus}
+                            </span>
+                          </td>
+                          {canDelete && (
+                            <td className="px-6 py-4 text-center">
+                              <button
+                                onClick={() => setDeleteTarget(t)}
+                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Eliminar pago (solo admin nivel 2)"
+                              >
+                                <FaTrash />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
 
           {pagination.totalPages > 1 && (
-            <div className="flex justify-between items-center px-6 py-4 bg-gray-50">
+            <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-100">
               <span className="text-sm text-gray-600">Página {pagination.currentPage} de {pagination.totalPages} (Total: {pagination.totalRecords})</span>
               <div className="flex space-x-2">
                 <button disabled={filters.page === 1} onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))} className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 hover:bg-gray-100"><FaChevronLeft className="text-gray-600" /></button>
@@ -946,7 +1083,6 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
         </div>
       )}
 
-      {/* Modal de eliminación de pago (solo admin nivel 2) */}
       <DeleteTransactionModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
