@@ -19,9 +19,7 @@ import {
   FaExclamationTriangle,
   FaTimesCircle,
   FaMoneyBillWave,
-  FaDollarSign,
   FaExchangeAlt,
-  FaInfoCircle,
   FaCreditCard,
   FaCalendarDay,
   FaFileInvoiceDollar,
@@ -33,6 +31,7 @@ import {
   FaPhone,
   FaTrash,
   FaFilePdf,
+  FaExclamationCircle,
 } from 'react-icons/fa';
 import DeleteTransactionModal from '../../components/deleteTransactionModal';
 import { useDetectedNivel } from '../../hooks/useDetectedNivel';
@@ -46,8 +45,15 @@ interface PaymentValidationProps {
   canDeletePayments?: boolean;
 }
 
+type StudentPayMode = 'full' | 'partial';
+
+interface StudentPayConfig {
+  selected: boolean;
+  mode: StudentPayMode;
+  partialUSD: string;
+}
+
 const DEFAULT_BANK_ACCOUNT = '01910107012100104749';
-const DEFAULT_PHONE = '';
 const DEFAULT_REQUEST_DATE = new Date().toISOString().split('T')[0];
 
 const BANKS_LIST: { Name: string; Code: string }[] = [
@@ -89,13 +95,12 @@ export default function PaymentValidation({
   const detectedNivel = useDetectedNivel();
   const canDelete = canDeletePayments === true || detectedNivel === 2;
 
-  const [formData, setFormData] = useState({
-    BankCode: 102,
-    ClientID: '',
+  // Estado del formulario bancario (referencia, cédula, teléfono, banco, fecha)
+  const [bankForm, setBankForm] = useState({
     Reference: '',
-    Amount: 0,
-    AccountNumber: DEFAULT_BANK_ACCOUNT,
-    PhoneNumber: DEFAULT_PHONE,
+    ClientID: '',
+    PhoneNumber: '',
+    BankCode: 102,
     RequestDate: DEFAULT_REQUEST_DATE,
   });
 
@@ -104,13 +109,14 @@ export default function PaymentValidation({
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string>('');
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
-  const [usdAmount, setUsdAmount] = useState<number>(0);
 
   const [students, setStudents] = useState<any[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [depositResult, setDepositResult] = useState<any>(null);
   const [depositLoading, setDepositLoading] = useState(false);
+
+  // Configuración de pago por estudiante
+  const [payConfig, setPayConfig] = useState<Record<string, StudentPayConfig>>({});
 
   const [history, setHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -124,11 +130,14 @@ export default function PaymentValidation({
 
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
+  // ═══════════════════════════════════════════════════════════════
+  // Tasa BCV
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     const fetchBCVRate = async () => {
       try {
         setLoadingRate(true);
-        const response = await getStoredRateAPI(formData.RequestDate);
+        const response = await getStoredRateAPI(bankForm.RequestDate);
         if (response.result && response.content) {
           setBcvRate(response.content);
         }
@@ -139,8 +148,11 @@ export default function PaymentValidation({
       }
     };
     fetchBCVRate();
-  }, [formData.RequestDate]);
+  }, [bankForm.RequestDate]);
 
+  // ═══════════════════════════════════════════════════════════════
+  // Estudiantes
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     const fetchStudents = async () => {
       if (!representativeId) return;
@@ -148,11 +160,7 @@ export default function PaymentValidation({
         setLoadingStudents(true);
         const res = await getRepresentativeBalance(representativeId);
         if (res.result && res.content.representative.students) {
-          const studentsList = res.content.representative.students;
-          setStudents(studentsList);
-          if (studentsList.length === 1) {
-            setSelectedStudentId(studentsList[0].id);
-          }
+          setStudents(res.content.representative.students);
         }
       } catch (err: any) {
         console.error('Error al cargar alumnos:', err);
@@ -163,6 +171,69 @@ export default function PaymentValidation({
     fetchStudents();
   }, [representativeId]);
 
+  // Inicializar config cuando cambian los estudiantes
+  useEffect(() => {
+    const initial: Record<string, StudentPayConfig> = {};
+    students.forEach(s => {
+      initial[s.id] = { selected: false, mode: 'full', partialUSD: '' };
+    });
+    setPayConfig(initial);
+  }, [students]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // Helpers de cálculo
+  // ═══════════════════════════════════════════════════════════════
+  const getDebtUSD = (studentId: string): number => {
+    const s = students.find(x => x.id === studentId);
+    if (!s) return 0;
+    const bal = s.balance || 0;
+    return bal < 0 ? Math.round(Math.abs(bal) * 100) / 100 : 0;
+  };
+
+  const getPayAmountUSD = (studentId: string): number => {
+    const cfg = payConfig[studentId];
+    if (!cfg || !cfg.selected) return 0;
+    const debt = getDebtUSD(studentId);
+    if (debt <= 0) return 0;
+    if (cfg.mode === 'full') return debt;
+    const partial = parseFloat(cfg.partialUSD) || 0;
+    return Math.min(Math.max(0, partial), debt);
+  };
+
+  const totalUSD = Object.keys(payConfig).reduce(
+    (sum, sid) => sum + getPayAmountUSD(sid),
+    0
+  );
+  const totalBs = bcvRate
+    ? Math.round(totalUSD * bcvRate.PriceRateBCV * 100) / 100
+    : 0;
+
+  // Validaciones
+  const hasIncompletePartial = Object.keys(payConfig).some(sid => {
+    const cfg = payConfig[sid];
+    return cfg.selected
+      && cfg.mode === 'partial'
+      && (!cfg.partialUSD || parseFloat(cfg.partialUSD) <= 0);
+  });
+  const hasExcessPartial = Object.keys(payConfig).some(sid => {
+    const cfg = payConfig[sid];
+    if (!cfg.selected || cfg.mode !== 'partial') return false;
+    const partial = parseFloat(cfg.partialUSD) || 0;
+    return partial > getDebtUSD(sid) + 0.01;
+  });
+
+  const canSubmit =
+    totalUSD > 0
+    && totalBs > 0
+    && bankForm.Reference.trim() !== ''
+    && bankForm.ClientID.trim() !== ''
+    && bankForm.PhoneNumber.trim() !== ''
+    && !hasIncompletePartial
+    && !hasExcessPartial;
+
+  // ═══════════════════════════════════════════════════════════════
+  // Historial
+  // ═══════════════════════════════════════════════════════════════
   const fetchHistory = useCallback(async () => {
     if (!representativeId) return;
     setHistoryLoading(true);
@@ -188,51 +259,43 @@ export default function PaymentValidation({
     fetchHistory();
   }, [fetchHistory]);
 
-  useEffect(() => {
-    if (bcvRate && formData.Amount > 0) {
-      const usd = formData.Amount / bcvRate.PriceRateBCV;
-      setUsdAmount(parseFloat(usd.toFixed(2)));
-    } else {
-      setUsdAmount(0);
-    }
-  }, [formData.Amount, bcvRate]);
-
+  // ═══════════════════════════════════════════════════════════════
+  // Submit — validar con monto EXACTO calculado
+  // ═══════════════════════════════════════════════════════════════
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSubmit) return;
+
     setLoading(true);
     setError('');
     setResult(null);
     setDepositResult(null);
 
     try {
-      if (!formData.Reference || formData.Reference.trim() === '') {
-        setError('La referencia del pago es obligatoria.');
-        return;
-      }
-
+      // 1) Pre-check de referencia duplicada
       try {
-        const refCheck = await checkReferenceKey(formData.Reference);
+        const refCheck = await checkReferenceKey(bankForm.Reference);
         if (refCheck?.result && refCheck?.content?.exists) {
           const existing = refCheck.content.existingTransaction;
           setError(
             `Ya existe un pago registrado con la misma clave (últimos 6 dígitos: ${refCheck.content.last6}). ` +
-            `Referencia en sistema: ${existing?.reference || '—'}. ` +
-            `No se puede registrar el mismo pago dos veces.`
+            `Referencia en sistema: ${existing?.reference || '—'}.`
           );
           return;
         }
       } catch (refErr: any) {
-        console.warn('⚠️ Pre-check de clave de referencia falló, continuando con validación bancaria:', refErr);
+        console.warn('⚠️ Pre-check de referencia falló, continuando:', refErr);
       }
 
+      // 2) Validación bancaria con el monto EXACTO
       const fullValidationData: BankValidationRequest = {
-        AccountNumber: formData.AccountNumber,
-        BankCode: formData.BankCode,
-        PhoneNumber: formData.PhoneNumber,
-        ClientID: formData.ClientID,
-        Reference: formData.Reference,
-        RequestDate: `${formData.RequestDate}T00:00:00`,
-        Amount: formData.Amount,
+        AccountNumber: DEFAULT_BANK_ACCOUNT,
+        BankCode: bankForm.BankCode,
+        PhoneNumber: bankForm.PhoneNumber,
+        ClientID: bankForm.ClientID,
+        Reference: bankForm.Reference,
+        RequestDate: `${bankForm.RequestDate}T00:00:00`,
+        Amount: totalBs,
       };
 
       const response = await cascadedValidationAPI(fullValidationData);
@@ -245,31 +308,58 @@ export default function PaymentValidation({
         ...response.content,
         message: response.content.message || (
           response.content.overallResult === 'success'
-            ? 'Pago registrado con éxito'
+            ? 'Pago validado correctamente'
             : 'No se encontró el pago con los datos suministrados'
-        )
+        ),
       });
 
+      // 3) Si validó, registrar el depósito con distribución
       if (
         response.content.overallResult === 'success' &&
         response.content.message.includes('Pago verificado exitosamente')
       ) {
         setDepositLoading(true);
         try {
+          // Construir distribución
+          const distribution = Object.keys(payConfig)
+            .filter(sid => {
+              const cfg = payConfig[sid];
+              return cfg.selected && getPayAmountUSD(sid) > 0;
+            })
+            .map(sid => ({
+              studentId: sid,
+              amountUSD: Math.round(getPayAmountUSD(sid) * 100) / 100,
+            }));
+
           const depositPayload = {
-            amount: formData.Amount,
-            description: `Pago validado - Ref: ${formData.Reference}`,
+            amount: totalBs,
+            description: `Pago validado - Ref: ${bankForm.Reference}`,
             paymentMethod: 'pago_movil' as const,
-            reference: formData.Reference,
-            studentId: selectedStudentId || undefined,
-            paymentDate: formData.RequestDate,
-            bankCode: String(formData.BankCode),
-            payerId: formData.ClientID,
-            payerPhone: formData.PhoneNumber,
+            reference: bankForm.Reference,
+            paymentDate: bankForm.RequestDate,
+            bankCode: String(bankForm.BankCode),
+            payerId: bankForm.ClientID,
+            payerPhone: bankForm.PhoneNumber,
+            distribution,
           };
+
           const depositRes = await manualDeposit(representativeId, depositPayload);
           setDepositResult(depositRes);
           fetchHistory();
+
+          // Refrescar estudiantes
+          const balRes = await getRepresentativeBalance(representativeId);
+          if (balRes.result && balRes.content.representative.students) {
+            setStudents(balRes.content.representative.students);
+          }
+
+          // Resetear formulario bancario
+          setBankForm(prev => ({
+            ...prev,
+            Reference: '',
+            ClientID: '',
+            PhoneNumber: '',
+          }));
         } catch (depErr: any) {
           const serverMessage =
             depErr?.response?.data?.error?.[0] ||
@@ -287,11 +377,11 @@ export default function PaymentValidation({
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleBankChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setBankForm(prev => ({
       ...prev,
-      [name]: name === 'Amount' || name === 'BankCode' ? Number(value) : value,
+      [name]: name === 'BankCode' ? Number(value) : value,
     }));
   };
 
@@ -300,13 +390,23 @@ export default function PaymentValidation({
     setHistoryFilters(prev => ({ ...prev, [name]: value, page: 1 }));
   };
 
-  // ============================================================
-  // 🧾 DESCARGA DE RECIBO EN PDF
-  // ============================================================
+  // ═══════════════════════════════════════════════════════════════
+  // Actualizar config de estudiante
+  // ═══════════════════════════════════════════════════════════════
+  const updateStudentConfig = (studentId: string, patch: Partial<StudentPayConfig>) => {
+    setPayConfig(prev => ({
+      ...prev,
+      [studentId]: { ...prev[studentId], ...patch },
+    }));
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // Recibo PDF
+  // ═══════════════════════════════════════════════════════════════
   const handleDownloadReceipt = (tx: any) => {
     try {
       const receiptNumber = (tx.id || '').slice(0, 8).toUpperCase();
-        const paymentDateStr = tx.transactionDate
+      const paymentDateStr = tx.transactionDate
         ? (() => {
             const d = String(tx.transactionDate).slice(0, 10);
             const [y, m, day] = d.split('-');
@@ -325,11 +425,44 @@ export default function PaymentValidation({
         minimumFractionDigits: 2, maximumFractionDigits: 2,
       }).format(tx.amountUSD || 0);
 
+      const distribution = tx.metadata?.distribution;
+
+      const studentSection = Array.isArray(distribution) && distribution.length > 0
+        ? {
+            stack: [
+              { text: 'DISTRIBUCIÓN', style: 'sectionTitle' },
+              {
+                table: {
+                  widths: ['*', '25%', '25%'],
+                  body: [
+                    [
+                      { text: 'Estudiante', style: 'cellKey' },
+                      { text: 'USD', style: 'cellKey' },
+                      { text: 'Bs', style: 'cellKey' },
+                    ],
+                    ...distribution.map((d: any) => [
+                      { text: d.studentName || '—' },
+                      { text: `$${(d.amountUSD || 0).toFixed(2)}` },
+                      { text: `Bs ${(d.amountBs || 0).toFixed(2)}` },
+                    ]),
+                  ],
+                },
+                layout: 'lightHorizontalLines',
+              },
+            ],
+          }
+        : {
+            stack: [
+              { text: 'DATOS DEL ESTUDIANTE', style: 'sectionTitle' },
+              { text: `Nombre: ${tx.student?.fullName || '—'}` },
+              { text: `Año/Sección: ${tx.student?.currentGrade || '—'}${tx.student?.section ? ' — ' + tx.student.section : ''}` },
+            ],
+          };
+
       const docDefinition: any = {
         pageSize: 'A5',
         pageMargins: [28, 28, 28, 28],
         content: [
-          // Encabezado
           { text: 'U.E. JOSÉ ANTONIO ABREU', style: 'header' },
           { text: 'RIF: J-505275356', style: 'subheader' },
           { text: 'Naguanagua — Estado Carabobo', style: 'subheader' },
@@ -337,7 +470,6 @@ export default function PaymentValidation({
           { text: `N° ${receiptNumber}`, style: 'receiptNumber' },
           { text: '\n' },
 
-          // Datos del representante
           { text: 'DATOS DEL REPRESENTANTE', style: 'sectionTitle' },
           {
             columns: [
@@ -357,13 +489,9 @@ export default function PaymentValidation({
           },
           { text: '\n' },
 
-          // Datos del estudiante
-          { text: 'DATOS DEL ESTUDIANTE', style: 'sectionTitle' },
-          { text: `Nombre: ${tx.student?.fullName || '—'}` },
-          { text: `Año/Sección: ${tx.student?.currentGrade || '—'}${tx.student?.section ? ' — ' + tx.student.section : ''}` },
+          studentSection,
           { text: '\n' },
 
-          // Detalle del pago
           { text: 'DETALLE DEL PAGO', style: 'sectionTitle' },
           {
             table: {
@@ -375,15 +503,14 @@ export default function PaymentValidation({
                 [{ text: 'Fecha del pago', style: 'cellKey' }, { text: paymentDateStr }],
                 [{ text: 'Banco emisor', style: 'cellKey' }, { text: getBankName(tx.bankCode) }],
                 [{ text: 'Tasa BCV', style: 'cellKey' }, { text: tx.bcvRate ? `${Number(tx.bcvRate).toFixed(4)} Bs/USD` : '—' }],
-                [{ text: 'Monto (Bs)', style: 'cellKey' }, { text: amountBs, bold: true }],
-                [{ text: 'Monto (USD)', style: 'cellKey' }, { text: amountUsd, bold: true }],
+                [{ text: 'Monto total (Bs)', style: 'cellKey' }, { text: amountBs, bold: true }],
+                [{ text: 'Monto total (USD)', style: 'cellKey' }, { text: amountUsd, bold: true }],
               ],
             },
             layout: 'lightHorizontalLines',
           },
           { text: '\n\n\n\n' },
 
-          // Firmas
           {
             columns: [
               {
@@ -429,6 +556,24 @@ export default function PaymentValidation({
     }
   };
 
+  // ═══════════════════════════════════════════════════════════════
+  // Formatters
+  // ═══════════════════════════════════════════════════════════════
+  const formatBCVDate = (dateStr: string) => {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) return `${parts[0]}/${parts[1]}/${parts[2]}`;
+    return dateStr;
+  };
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+  const formatBs = (amount: number) => {
+    return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+  };
+  const formatUsd = (amount: number) => {
+    return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+  };
+
   const getStatusIcon = (overallResult: string) => {
     switch (overallResult) {
       case 'success': return <FaCheckCircle className="text-3xl text-green-500" />;
@@ -436,7 +581,6 @@ export default function PaymentValidation({
       default: return <FaTimesCircle className="text-3xl text-red-500" />;
     }
   };
-
   const getStatusColor = (overallResult: string) => {
     switch (overallResult) {
       case 'success': return 'bg-green-50 border-green-200';
@@ -444,7 +588,6 @@ export default function PaymentValidation({
       default: return 'bg-red-50 border-red-200';
     }
   };
-
   const getStatusTextColor = (overallResult: string) => {
     switch (overallResult) {
       case 'success': return 'text-green-800';
@@ -453,27 +596,15 @@ export default function PaymentValidation({
     }
   };
 
-  const formatBCVDate = (dateStr: string) => {
-    const parts = dateStr.split('/');
-    if (parts.length === 3) return `${parts[0]}/${parts[1]}/${parts[2]}`;
-    return dateStr;
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
-
-  const formatBs = (amount: number) => {
-    return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
-  };
-
-  const formatUsd = (amount: number) => {
-    return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
-  };
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════
+  const studentsWithDebt = students.filter(s => (s.balance || 0) < 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div className="flex items-center space-x-4">
@@ -486,133 +617,225 @@ export default function PaymentValidation({
               </div>
             </div>
 
-            <div className="flex items-center space-x-4 bg-blue-50 border border-blue-200 rounded-xl p-3">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <FaMoneyBillWave className="text-xl text-blue-700" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm text-blue-800">Pago Móvil</p>
-                <p className="text-xs text-blue-700">0412-208.84.51 | BNC 0191</p>
-                <p className="text-xs text-blue-700 font-mono font-semibold">RIF: J-505275356</p>
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-2">
+              <div className="flex items-center space-x-2">
+                <FaExchangeAlt className="text-blue-600 text-sm" />
+                <div className="text-right">
+                  {loadingRate ? (
+                    <div className="flex items-center space-x-1">
+                      <div className="animate-spin rounded-full h-3 w-3 border-2 border-blue-600 border-t-transparent"></div>
+                      <span className="text-blue-700 text-xs">Cargando...</span>
+                    </div>
+                  ) : bcvRate ? (
+                    <>
+                      <p className="text-blue-800 font-bold text-sm">{bcvRate.PriceRateBCV.toFixed(2)} Bs/USD</p>
+                      <p className="text-blue-600 text-xs">BCV {formatBCVDate(bcvRate.dtRate)}</p>
+                    </>
+                  ) : (
+                    <p className="text-blue-700 text-xs">No disponible</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-blue-100 p-2 rounded-lg">
-                    <FaSearch className="text-lg text-blue-600" />
+          <div className="lg:col-span-2 space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
+
+              {/* ══════════════════════════════════════════════ */}
+              {/* PASO 1: Selección de estudiantes              */}
+              {/* ══════════════════════════════════════════════ */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="bg-indigo-100 p-2 rounded-lg">
+                    <FaUserGraduate className="text-lg text-indigo-600" />
                   </div>
-                  <h2 className="text-xl font-bold text-gray-800">Consulta de Transacción</h2>
+                  <h2 className="text-xl font-bold text-gray-800">Paso 1: ¿A quién vas a pagar?</h2>
                 </div>
 
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-2">
-                  <div className="flex items-center space-x-2">
-                    <FaExchangeAlt className="text-blue-600 text-sm" />
-                    <div className="text-right">
-                      {loadingRate ? (
-                        <div className="flex items-center space-x-1">
-                          <div className="animate-spin rounded-full h-3 w-3 border-2 border-blue-600 border-t-transparent"></div>
-                          <span className="text-blue-700 text-xs">Cargando...</span>
+                {loadingStudents ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-indigo-600 border-t-transparent"></div>
+                    <span className="ml-2 text-sm text-indigo-700">Cargando estudiantes...</span>
+                  </div>
+                ) : studentsWithDebt.length === 0 ? (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                    <FaCheckCircle className="mx-auto text-2xl text-green-600 mb-2" />
+                    <p className="text-green-800 font-semibold">No hay estudiantes con deuda pendiente</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {studentsWithDebt.map(student => {
+                      const debt = getDebtUSD(student.id);
+                      const cfg = payConfig[student.id] || { selected: false, mode: 'full', partialUSD: '' };
+                      const payUSD = getPayAmountUSD(student.id);
+                      const payBs = bcvRate ? Math.round(payUSD * bcvRate.PriceRateBCV * 100) / 100 : 0;
+
+                      return (
+                        <div
+                          key={student.id}
+                          className={`border rounded-xl p-4 transition ${
+                            cfg.selected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white'
+                          }`}
+                        >
+                          <label className="flex items-start gap-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={cfg.selected}
+                              onChange={e => updateStudentConfig(student.id, { selected: e.target.checked })}
+                              className="w-5 h-5 mt-1 accent-indigo-600"
+                            />
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-800">{student.fullName}</p>
+                              <p className="text-sm text-gray-600">
+                                {student.currentGrade || 'Sin grado'} — {student.section || '—'}
+                              </p>
+                              <p className="text-sm text-red-600 font-medium mt-1">
+                                Deuda: {formatUsd(debt)} (≈ {formatBs(debt * (bcvRate?.PriceRateBCV || 0))})
+                              </p>
+                            </div>
+                          </label>
+
+                          {cfg.selected && (
+                            <div className="mt-3 pl-8 space-y-3 border-t border-indigo-200 pt-3">
+                              <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`mode-${student.id}`}
+                                  checked={cfg.mode === 'full'}
+                                  onChange={() => updateStudentConfig(student.id, { mode: 'full', partialUSD: '' })}
+                                  className="accent-indigo-600"
+                                />
+                                <span className="text-sm">
+                                  Pagar totalidad: <strong>{formatUsd(debt)}</strong>
+                                </span>
+                              </label>
+
+                              <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`mode-${student.id}`}
+                                  checked={cfg.mode === 'partial'}
+                                  onChange={() => updateStudentConfig(student.id, { mode: 'partial' })}
+                                  className="accent-indigo-600"
+                                />
+                                <span className="text-sm">Pago parcial</span>
+                              </label>
+
+                              {cfg.mode === 'partial' && (
+                                <div className="ml-7">
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                    Monto a pagar (USD)
+                                  </label>
+                                  <div className="flex items-center gap-2">
+                                    <div className="relative">
+                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0.01"
+                                        max={debt}
+                                        value={cfg.partialUSD}
+                                        onChange={e => updateStudentConfig(student.id, { partialUSD: e.target.value })}
+                                        placeholder="0.00"
+                                        className="w-32 pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                      />
+                                    </div>
+                                    <span className="text-sm text-gray-600">
+                                      ≈ {formatBs((parseFloat(cfg.partialUSD) || 0) * (bcvRate?.PriceRateBCV || 0))}
+                                    </span>
+                                    {hasExcessPartial && parseFloat(cfg.partialUSD) > debt && (
+                                      <span className="text-xs text-red-600 font-medium">
+                                        Excede la deuda
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {payUSD > 0 && (
+                                <div className="bg-white border border-indigo-200 rounded-lg p-2 text-sm">
+                                  <span className="text-gray-600">A pagar: </span>
+                                  <span className="font-bold text-indigo-700">{formatUsd(payUSD)}</span>
+                                  <span className="text-gray-500"> (≈ </span>
+                                  <span className="font-bold text-indigo-700">{formatBs(payBs)}</span>
+                                  <span className="text-gray-500">)</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      ) : bcvRate ? (
-                        <>
-                          <p className="text-blue-800 font-bold text-sm">{bcvRate.PriceRateBCV.toFixed(2)} Bs/USD</p>
-                          <p className="text-blue-600 text-xs">BCV {formatBCVDate(bcvRate.dtRate)}</p>
-                        </>
-                      ) : (
-                        <p className="text-blue-700 text-xs">36.66 Bs/USD</p>
-                      )}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* ══════════════════════════════════════════════ */}
+              {/* PASO 2: Monto total a transferir              */}
+              {/* ══════════════════════════════════════════════ */}
+              {totalUSD > 0 && (
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-300 rounded-2xl p-6 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-700 mb-1">
+                        Paso 2: Transfiere EXACTAMENTE
+                      </p>
+                      <p className="text-3xl font-bold text-emerald-900">{formatBs(totalBs)}</p>
+                      <p className="text-sm text-emerald-700">≈ {formatUsd(totalUSD)}</p>
                     </div>
+                    <div className="bg-emerald-100 p-4 rounded-full">
+                      <FaMoneyBillWave className="text-3xl text-emerald-600" />
+                    </div>
+                  </div>
+                  <div className="mt-4 bg-white border border-amber-300 rounded-lg p-3 flex items-start gap-2">
+                    <FaExclamationCircle className="text-amber-600 text-lg flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-900">
+                      <strong>Importante:</strong> el banco valida el monto <strong>exacto</strong>.
+                      Si transfieres {formatBs(totalBs + 1)} o {formatBs(totalBs - 1)}, la validación fallará.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ══════════════════════════════════════════════ */}
+              {/* PASO 3: Datos de Pago Móvil (institucionales) */}
+              {/* ══════════════════════════════════════════════ */}
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-lg">
+                <div className="flex items-center space-x-3 mb-4">
+                  <FaMoneyBillWave className="text-2xl" />
+                  <h2 className="text-xl font-bold">Paso 3: Realiza el Pago Móvil</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="bg-white/10 rounded-lg p-3">
+                    <p className="text-blue-100 text-xs">Banco</p>
+                    <p className="font-bold">BNC — 0191</p>
+                  </div>
+                  <div className="bg-white/10 rounded-lg p-3">
+                    <p className="text-blue-100 text-xs">Teléfono</p>
+                    <p className="font-bold">0412-208.84.51</p>
+                  </div>
+                  <div className="bg-white/10 rounded-lg p-3">
+                    <p className="text-blue-100 text-xs">RIF</p>
+                    <p className="font-bold">J-505275356</p>
                   </div>
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {students.length > 1 && (
-                  <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                    <div className="flex items-center space-x-2 mb-3">
-                      <FaUserGraduate className="text-indigo-600" />
-                      <label className="block text-sm font-semibold text-indigo-700">
-                        Selecciona el estudiante al que se aplicará el pago
-                      </label>
-                    </div>
-                    {loadingStudents ? (
-                      <div className="flex items-center justify-center py-4">
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-600 border-t-transparent"></div>
-                        <span className="ml-2 text-sm text-indigo-700">Cargando estudiantes...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <select
-                          value={selectedStudentId}
-                          onChange={(e) => setSelectedStudentId(e.target.value)}
-                          className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="">Repartir entre todos los hijos</option>
-                          {students.map((student: any) => (
-                            <option key={student.id} value={student.id}>
-                              {student.fullName} – Saldo: {formatBs((student.balance || 0) * (bcvRate?.PriceRateBCV || 0))} (≈ {formatUsd(student.balance || 0)})
-                            </option>
-                          ))}
-                        </select>
-                        {selectedStudentId === '' && (
-                          <p className="text-xs text-indigo-600 mt-2">
-                            El monto se dividirá equitativamente entre los {students.length} hijos.
-                          </p>
-                        )}
-                      </>
-                    )}
+              {/* ══════════════════════════════════════════════ */}
+              {/* PASO 4: Datos del pago para validar           */}
+              {/* ══════════════════════════════════════════════ */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="bg-green-100 p-2 rounded-lg">
+                    <FaCheckCircle className="text-lg text-green-600" />
                   </div>
-                )}
+                  <h2 className="text-xl font-bold text-gray-800">Paso 4: Valida tu pago</h2>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      <FaUniversity className="inline mr-1 text-blue-600" />
-                      Banco *
-                    </label>
-                    <select
-                      name="BankCode"
-                      value={formData.BankCode}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
-                    >
-                      {BANKS_LIST.map((bank) => {
-                        const codeNumber = parseInt(bank.Code, 10);
-                        return (
-                          <option key={bank.Code} value={codeNumber}>
-                            {bank.Name} ({bank.Code})
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      <FaCreditCard className="inline mr-1 text-blue-600" />
-                      Cédula *
-                    </label>
-                    <input
-                      type="text"
-                      name="ClientID"
-                      value={formData.ClientID}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
-                      placeholder="J000121532"
-                    />
-                    <p className="text-sm text-gray-700 font-medium mt-1.5">
-                      Cédula o RIF del pagador (ej: V12345678, J000121532)
-                    </p>
-                  </div>
-
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       <FaFileInvoiceDollar className="inline mr-1 text-blue-600" />
@@ -621,15 +844,48 @@ export default function PaymentValidation({
                     <input
                       type="text"
                       name="Reference"
-                      value={formData.Reference}
-                      onChange={handleChange}
+                      value={bankForm.Reference}
+                      onChange={handleBankChange}
                       required
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 font-medium"
                       placeholder="001127234831"
                     />
-                    <p className="text-sm text-gray-700 font-medium mt-1.5">
-                      Ingresa la referencia completa del pago. (ej: 001147842696).
-                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <FaUniversity className="inline mr-1 text-blue-600" />
+                      Banco emisor *
+                    </label>
+                    <select
+                      name="BankCode"
+                      value={bankForm.BankCode}
+                      onChange={handleBankChange}
+                      required
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 font-medium"
+                    >
+                      {BANKS_LIST.map(bank => (
+                        <option key={bank.Code} value={parseInt(bank.Code, 10)}>
+                          {bank.Name} ({bank.Code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <FaCreditCard className="inline mr-1 text-blue-600" />
+                      Cédula del pagador *
+                    </label>
+                    <input
+                      type="text"
+                      name="ClientID"
+                      value={bankForm.ClientID}
+                      onChange={handleBankChange}
+                      required
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 font-medium"
+                      placeholder="V12345678"
+                    />
                   </div>
 
                   <div>
@@ -640,56 +896,15 @@ export default function PaymentValidation({
                     <input
                       type="text"
                       name="PhoneNumber"
-                      value={formData.PhoneNumber}
-                      onChange={handleChange}
+                      value={bankForm.PhoneNumber}
+                      onChange={handleBankChange}
                       required
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 font-medium"
                       placeholder="04121234567"
                     />
-                    <p className="text-sm text-gray-700 font-medium mt-1.5">
-                      Número del que se hizo el pago (ej: 04121234567).
-                    </p>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      <FaMoneyBillWave className="inline mr-1 text-blue-600" />
-                      Monto (Bs) *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="0.01"
-                        name="Amount"
-                        value={formData.Amount}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all pr-12 font-bold text-lg"
-                        placeholder="0.00"
-                        min="0"
-                      />
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <span className="text-gray-600 font-bold text-sm">Bs</span>
-                      </div>
-                    </div>
-
-                    {formData.Amount > 0 && bcvRate && (
-                      <div className="mt-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <FaDollarSign className="text-green-600" />
-                            <span className="text-gray-700 text-sm font-medium">Equivalente:</span>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-green-700">{formatUsd(usdAmount)}</p>
-                            <p className="text-xs text-gray-600">Tasa: {bcvRate.PriceRateBCV.toFixed(2)} Bs/USD</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       <FaCalendarDay className="inline mr-1 text-blue-600" />
                       Fecha del pago *
@@ -697,30 +912,22 @@ export default function PaymentValidation({
                     <input
                       type="date"
                       name="RequestDate"
-                      value={formData.RequestDate}
-                      onChange={handleChange}
+                      value={bankForm.RequestDate}
+                      onChange={handleBankChange}
                       required
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 transition-all font-medium"
+                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500 font-medium"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Déjala en hoy si el pago se hizo hoy. Si fue antes, pon la fecha real.
+                    </p>
                   </div>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-2">
-                    <FaInfoCircle className="text-blue-600 text-sm mt-0.5" />
-                    <div>
-                      <p className="text-blue-700 text-xs">
-                        <strong>Nota:</strong> El banco valida el pago por <strong>referencia + monto + fecha</strong>. Si los 3 datos coinciden con un pago real, el sistema lo registra automáticamente.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-2">
+                <div className="flex justify-end pt-4 mt-4 border-t border-gray-200">
                   <button
                     type="submit"
-                    disabled={loading || depositLoading}
-                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-blue-400 disabled:to-blue-500 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 disabled:scale-100 shadow-md flex items-center space-x-2"
+                    disabled={loading || depositLoading || !canSubmit}
+                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 text-white px-8 py-3 rounded-lg font-bold transition-all duration-300 shadow-md flex items-center space-x-2 disabled:cursor-not-allowed"
                   >
                     {loading || depositLoading ? (
                       <>
@@ -729,16 +936,18 @@ export default function PaymentValidation({
                       </>
                     ) : (
                       <>
-                        <FaSearch className="text-sm" />
-                        <span>Validar Transacción</span>
+                        <FaCheckCircle className="text-sm" />
+                        <span>Validar y Registrar Pago</span>
                       </>
                     )}
                   </button>
                 </div>
-              </form>
-            </div>
+              </div>
+            </form>
 
-            {/* Historial de Pagos */}
+            {/* ══════════════════════════════════════════════ */}
+            {/* Historial                                     */}
+            {/* ══════════════════════════════════════════════ */}
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
@@ -755,27 +964,23 @@ export default function PaymentValidation({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-600 mb-1">
-                    <FaFilter className="inline mr-1 text-gray-400" />
-                    Estudiante
+                    <FaFilter className="inline mr-1 text-gray-400" /> Estudiante
                   </label>
                   <select
                     name="studentId"
                     value={historyFilters.studentId}
                     onChange={handleHistoryFilterChange}
-                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">Todos los hijos</option>
-                    {students.map((student: any) => (
-                      <option key={student.id} value={student.id}>
-                        {student.fullName}
-                      </option>
+                    {students.map(student => (
+                      <option key={student.id} value={student.id}>{student.fullName}</option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-600 mb-1">
-                    <FaSearch className="inline mr-1 text-gray-400" />
-                    Buscar
+                    <FaSearch className="inline mr-1 text-gray-400" /> Buscar
                   </label>
                   <input
                     type="text"
@@ -783,7 +988,7 @@ export default function PaymentValidation({
                     value={historyFilters.search}
                     onChange={handleHistoryFilterChange}
                     placeholder="Descripción, referencia..."
-                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
@@ -816,13 +1021,29 @@ export default function PaymentValidation({
                         {history.map((tx: any) => {
                           const isDeposit = tx.type === 'deposit';
                           const amountBs = tx.amount || 0;
-                          const amountUSD = tx.amountUSD || (bcvRate ? amountBs / bcvRate.PriceRateBCV : 0);
+                          const amountUSD = tx.amountUSD || 0;
+                          const dist = tx.metadata?.distribution;
+                          const hasDist = Array.isArray(dist) && dist.length > 0;
+
                           return (
                             <tr key={tx.id} className="hover:bg-gray-50">
                               <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                                 {tx.createdAt ? formatDate(tx.createdAt) : '—'}
                               </td>
-                              <td className="px-4 py-3 text-sm text-gray-700">{tx.student?.fullName || '—'}</td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
+                                {hasDist ? (
+                                  <div>
+                                    <span className="text-xs text-indigo-600 font-semibold">Distribuido:</span>
+                                    <ul className="text-xs mt-1">
+                                      {dist.map((d: any, i: number) => (
+                                        <li key={i}>{d.studentName}: ${d.amountUSD.toFixed(2)}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ) : (
+                                  tx.student?.fullName || '—'
+                                )}
+                              </td>
                               <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">{tx.description || '—'}</td>
                               <td className={`px-4 py-3 text-sm font-bold ${isDeposit ? 'text-green-600' : 'text-red-600'}`}>
                                 {isDeposit ? '+' : '-'}{formatBs(amountBs)}
@@ -838,7 +1059,7 @@ export default function PaymentValidation({
                                   <button
                                     onClick={() => handleDownloadReceipt(tx)}
                                     className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                                    title="Descargar recibo en PDF"
+                                    title="Descargar recibo"
                                   >
                                     <FaFilePdf />
                                   </button>
@@ -846,7 +1067,7 @@ export default function PaymentValidation({
                                     <button
                                       onClick={() => setDeleteTarget(tx)}
                                       className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                      title="Eliminar pago (solo admin nivel 2)"
+                                      title="Eliminar (admin)"
                                     >
                                       <FaTrash />
                                     </button>
@@ -888,6 +1109,9 @@ export default function PaymentValidation({
             </div>
           </div>
 
+          {/* ══════════════════════════════════════════════ */}
+          {/* Panel lateral: resultados                     */}
+          {/* ══════════════════════════════════════════════ */}
           <div className="lg:col-span-1">
             <div className="bg-gradient-to-b from-gray-50 to-white rounded-2xl p-5 border border-gray-200 shadow-lg h-full">
               <div className="flex items-center space-x-3 mb-5 pb-4 border-b border-gray-200">
@@ -903,9 +1127,7 @@ export default function PaymentValidation({
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5">
                   <div className="flex items-center space-x-2 mb-2">
-                    <div className="bg-red-100 p-1.5 rounded-lg">
-                      <FaTimesCircle className="text-lg text-red-600" />
-                    </div>
+                    <FaTimesCircle className="text-lg text-red-600" />
                     <h4 className="text-base font-semibold text-red-800">Error</h4>
                   </div>
                   <p className="text-red-700 text-xs">{error}</p>
@@ -916,24 +1138,29 @@ export default function PaymentValidation({
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-5">
                   <div className="flex items-center space-x-2 mb-2">
                     <FaCheckCircle className="text-lg text-green-600" />
-                    <h4 className="text-base font-semibold text-green-800">Depósito registrado</h4>
+                    <h4 className="text-base font-semibold text-green-800">Pago registrado</h4>
                   </div>
                   <p className="text-green-700 text-xs">
                     {depositResult.content.message}
-                    {depositResult.content.appliedToStudent && (
-                      <span className="block mt-1 font-semibold">
-                        Aplicado a: {students.find(s => s.id === depositResult.content.appliedToStudent)?.fullName}
-                      </span>
-                    )}
                   </p>
-                  <p className="text-green-700 text-xs mt-1">
+                  {depositResult.content.distribution && depositResult.content.distribution.length > 1 && (
+                    <div className="mt-2 text-xs text-green-800">
+                      <p className="font-semibold">Distribuido:</p>
+                      <ul className="ml-3">
+                        {depositResult.content.distribution.map((d: any, i: number) => (
+                          <li key={i}>• {d.studentName}: ${d.amountUSD.toFixed(2)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <p className="text-green-700 text-xs mt-2 font-semibold">
                     Nuevo saldo (USD): ${depositResult.content.newBalanceUSD?.toFixed(2)}
                   </p>
                 </div>
               )}
 
               {result ? (
-                <div className={`${getStatusColor(result.overallResult)} rounded-xl p-4 border-2 transition-all duration-300`}>
+                <div className={`${getStatusColor(result.overallResult)} rounded-xl p-4 border-2 transition-all`}>
                   <div className="flex items-center space-x-3 mb-3">
                     {getStatusIcon(result.overallResult)}
                     <div>
@@ -948,23 +1175,18 @@ export default function PaymentValidation({
                     </div>
                   </div>
 
-                  <div className="space-y-3 mt-4">
-                    {result.details && result.details.validateReference && (
-                      <div className={`flex justify-between items-center p-3 rounded-lg border ${result.details.validateReference.movementExists ? 'bg-green-50 border-green-200' : result.details.validateReference.executed ? 'bg-red-50 border-red-200' : 'bg-gray-100 border-gray-200'}`}>
-                        <div className="flex items-center space-x-2">
-                          <FaCalendarDay className={result.details.validateReference.movementExists ? 'text-green-600' : result.details.validateReference.executed ? 'text-red-600' : 'text-gray-600'} size={14} />
-                          <span className="text-gray-700 text-sm">Referencia</span>
-                        </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${result.details.validateReference.movementExists ? 'bg-green-500 text-white' : result.details.validateReference.executed ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>
-                          {result.details.validateReference.executed ? (result.details.validateReference.movementExists ? '✓' : '✗') : '—'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  {result.details?.validateReference && (
+                    <div className={`flex justify-between items-center p-3 rounded-lg border ${result.details.validateReference.movementExists ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                      <span className="text-gray-700 text-sm">Referencia</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${result.details.validateReference.movementExists ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                        {result.details.validateReference.executed ? (result.details.validateReference.movementExists ? '✓' : '✗') : '—'}
+                      </span>
+                    </div>
+                  )}
 
-                  {result.details && result.details.validateReference?.movementExists && (
+                  {result.details?.validateReference?.movementExists && (
                     <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
-                      <h5 className="text-gray-800 font-semibold text-sm mb-2">Detalles</h5>
+                      <h5 className="text-gray-800 font-semibold text-sm mb-2">Detalles del banco</h5>
                       <div className="space-y-2 text-gray-600 text-xs">
                         <div className="flex justify-between">
                           <span>Concepto:</span>
@@ -973,45 +1195,31 @@ export default function PaymentValidation({
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Control:</span>
-                          <span className="text-gray-800 font-mono">
-                            {result.details.validateReference?.data?.ControlNumber || 'N/A'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Monto:</span>
+                          <span>Monto verificado:</span>
                           <span className="text-gray-800 font-bold">
                             Bs {formatBs(result.details.validateReference?.data?.Amount || 0)}
                           </span>
                         </div>
-                        {(() => {
-                          const debtorID = result.details.validateReference?.data?.DebtorID;
-                          if (!debtorID) return null;
-                          return (
-                            <div className="flex justify-between">
-                              <span>Pagador:</span>
-                              <span className="text-gray-800 font-mono">{debtorID}</span>
-                            </div>
-                          );
-                        })()}
+                        {result.details.validateReference?.data?.DebtorID && (
+                          <div className="flex justify-between">
+                            <span>Pagador:</span>
+                            <span className="text-gray-800 font-mono">
+                              {result.details.validateReference.data.DebtorID}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
-
-                  <div className="mt-3 pt-2 border-t border-gray-200">
-                    <p className="text-gray-500 text-xs text-center">{formatDate(result.timestamp)}</p>
-                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
-                  <div className="mb-3">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-100 to-gray-100 rounded-full border-2 border-gray-300">
-                      <FaSearch className="text-xl text-gray-400" />
-                    </div>
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-3">
+                    <FaSearch className="text-xl text-blue-400" />
                   </div>
                   <h4 className="text-base font-semibold text-gray-700 mb-1">Sin resultados</h4>
                   <p className="text-gray-500 text-xs max-w-xs mx-auto">
-                    Complete los campos azules y ejecute la validación
+                    Completa los pasos y presiona "Validar y Registrar Pago"
                   </p>
                 </div>
               )}
@@ -1023,9 +1231,7 @@ export default function PaymentValidation({
       <DeleteTransactionModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        onSuccess={() => {
-          fetchHistory();
-        }}
+        onSuccess={() => fetchHistory()}
         transaction={
           deleteTarget
             ? {

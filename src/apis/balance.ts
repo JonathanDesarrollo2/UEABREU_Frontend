@@ -52,19 +52,18 @@ export async function manualDeposit(
   data: {
     amount: number;
     description: string;
-    paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check';
-    reference?: string;
-    createdBy?: string;
+    paymentMethod: 'cash' | 'bank_transfer' | 'debit_card' | 'credit_card' | 'pago_movil' | 'check' | 'zelle';
+    reference: string;
     studentId?: string;
     paymentDate: string;
     paymentTime?: string;
-    // 🆕
     bankCode?: string;
     payerId?: string;
     payerPhone?: string;
-    accountNumber?: string;
+    // 🆕 distribución multi-estudiante
+    distribution?: Array<{ studentId: string; amountUSD: number }>;
   }
-){
+) {
   const response = await api.post(`/private/balance/representative/${representativeId}/deposit`, data);
   return response.data;
 }
