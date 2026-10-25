@@ -721,13 +721,14 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
           </div>
         </div>
 
-        {/* ========== CONTENEDOR DE TABLA CON DOBLE STICKY (scroll + cabecera) ========== */}
-        <div className="bg-white shadow-lg border border-gray-200" style={{ clipPath: 'inset(0 round 16px)' }}>
+        {/* ========== CONTENEDOR DE TABLA CON SCROLL Y CABECERA PEGADA ========== */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 flex flex-col mb-8" style={{ maxHeight: '75vh' }}>
+          
           {/* Barra sticky de scroll horizontal */}
           {!loading && transactions.length > 0 && (
             <div
               ref={topScrollRef}
-              className="sticky top-0 z-20 bg-gray-100 border-b border-gray-300"
+              className="bg-gray-100 border-b border-gray-300 shrink-0"
               style={{ overflowX: 'auto', overflowY: 'hidden', height: '18px' }}
               onScroll={() => syncScroll('top')}
             >
@@ -736,11 +737,11 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
           )}
 
           {loading ? (
-            <div className="flex justify-center items-center h-64">
+            <div className="flex justify-center items-center h-64 flex-1">
               <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
             </div>
           ) : transactions.length === 0 ? (
-            <div className="text-center py-20">
+            <div className="text-center py-20 flex-1">
               <FaHistory className="mx-auto text-4xl text-gray-300 mb-4" />
               <p className="text-gray-500 text-lg">No se encontraron transacciones</p>
               <p className="text-gray-400">
@@ -753,24 +754,24 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
             /* ============ VISTA PAGO MÓVIL ============ */
             <div
               ref={mainScrollRef}
-              style={{ overflowX: 'auto', overflowY: 'clip' }}
+              className="overflow-auto flex-1"
               onScroll={() => syncScroll('main')}
             >
               <div ref={tableWidthRef}>
-                <table className="w-full min-w-max">
-                  <thead>
+                <table className="w-full min-w-max border-collapse">
+                  <thead className="sticky top-0 z-10">
                     <tr>
-                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Fecha registro</th>
-                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Fecha del pago</th>
-                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Hora</th>
-                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Referencia</th>
-                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Banco</th>
-                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Cédula</th>
-                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Teléfono</th>
-                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Monto (Bs)</th>
-                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Monto (USD)</th>
-                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Representante</th>
-                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Estudiante</th>
+                      <th className="bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Fecha registro</th>
+                      <th className="bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Fecha del pago</th>
+                      <th className="bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Hora</th>
+                      <th className="bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Referencia</th>
+                      <th className="bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Banco</th>
+                      <th className="bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Cédula</th>
+                      <th className="bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Teléfono</th>
+                      <th className="bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Monto (Bs)</th>
+                      <th className="bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Monto (USD)</th>
+                      <th className="bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Representante</th>
+                      <th className="bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Estudiante</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 bg-white">
@@ -825,28 +826,28 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
             /* ============ VISTA TODAS ============ */
             <div
               ref={mainScrollRef}
-              style={{ overflowX: 'auto', overflowY: 'clip' }}
+              className="overflow-auto flex-1"
               onScroll={() => syncScroll('main')}
             >
               <div ref={tableWidthRef}>
-                <table className="w-full min-w-max">
-                  <thead>
+                <table className="w-full min-w-max border-collapse">
+                  <thead className="sticky top-0 z-10">
                     <tr>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Fecha</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Representante</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Estudiante</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Descripción</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Tipo</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Monto (Bs)</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Pendiente (Bs)</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">A Favor (Bs)</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Tasa</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">USD</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Referencia</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Hecho por</th>
-                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Estado</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Fecha</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Representante</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Estudiante</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Descripción</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Tipo</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Monto (Bs)</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Pendiente (Bs)</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">A Favor (Bs)</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Tasa</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">USD</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Referencia</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Hecho por</th>
+                      <th className="bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Estado</th>
                       {canDelete && (
-                        <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-center text-xs font-bold text-white uppercase">Acciones</th>
+                        <th className="bg-blue-600 px-6 py-4 text-center text-xs font-bold text-white uppercase whitespace-nowrap">Acciones</th>
                       )}
                     </tr>
                   </thead>
@@ -868,7 +869,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
                       return (
                         <tr key={t.id} className="hover:bg-blue-50/30 transition-colors">
                           <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-VE') : '-'}</td>
-                          <td className="px-6 py-4 font-medium text-gray-900">
+                          <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                             {t.representative?.fullName ? (
                               <button
                                 onClick={() => openAccountStatement(t.representative!.id)}
@@ -880,7 +881,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
                               </button>
                             ) : '—'}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-700">
+                          <td className="px-6 py-4 text-sm text-gray-700 min-w-[180px]">
                             <div>{t.student?.fullName || '—'}</div>
                             {t.student && studentBalance > 0 && (
                               <div className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">
@@ -910,28 +911,28 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
                               {isDeposit ? 'DEPÓSITO' : t.type.toUpperCase()}
                             </span>
                           </td>
-                          <td className={`px-6 py-4 text-sm font-bold ${isDeposit ? 'text-green-600' : 'text-red-600'}`}>
+                          <td className={`px-6 py-4 text-sm font-bold whitespace-nowrap ${isDeposit ? 'text-green-600' : 'text-red-600'}`}>
                             {isDeposit ? '+' : '-'}{formatCurrencyLocal(amountBs, 'VES')}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-700">
+                          <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                             {pendingBs > 0 ? formatCurrencyLocal(pendingBs, 'VES') : '—'}
                           </td>
-                          <td className="px-6 py-4 text-sm text-green-700">
+                          <td className="px-6 py-4 text-sm text-green-700 whitespace-nowrap">
                             {creditBs > 0 ? formatCurrencyLocal(creditBs, 'VES') : '—'}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">{t.bcvRate ? t.bcvRate.toFixed(4) : '—'}</td>
-                          <td className="px-6 py-4 text-sm text-gray-700">
+                          <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{t.bcvRate ? t.bcvRate.toFixed(4) : '—'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                             {t.amountUSD !== undefined ? formatCurrencyLocal(t.amountUSD, 'USD') : '—'}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-500 font-mono">{t.reference || '—'}</td>
-                          <td className="px-6 py-4">{renderCreator(t)}</td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-4 text-sm text-gray-500 font-mono whitespace-nowrap">{t.reference || '—'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{renderCreator(t)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${displayStatus === 'Completado' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
                               {displayStatus}
                             </span>
                           </td>
                           {canDelete && (
-                            <td className="px-6 py-4 text-center">
+                            <td className="px-6 py-4 text-center whitespace-nowrap">
                               <button
                                 onClick={() => setDeleteTarget(t)}
                                 className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
@@ -951,7 +952,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
           )}
 
           {pagination.totalPages > 1 && (
-            <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-100">
+            <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-100 shrink-0">
               <span className="text-sm text-gray-600">Página {pagination.currentPage} de {pagination.totalPages} (Total: {pagination.totalRecords})</span>
               <div className="flex space-x-2">
                 <button disabled={filters.page === 1} onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))} className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 hover:bg-gray-100"><FaChevronLeft className="text-gray-600" /></button>
