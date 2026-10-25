@@ -32,6 +32,7 @@ interface TransactionMetadata {
   payerId?: string;
   payerPhone?: string;
   registeredAt?: string;
+  distribution?: Array<{ studentId: string; studentName?: string; amountUSD: number; amountBs: number }>;
 }
 
 interface TransactionCreator {
@@ -720,7 +721,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
           </div>
         </div>
 
-        {/* ========== CONTENEDOR DE TABLA CON STICKY SCROLL ========== */}
+        {/* ========== CONTENEDOR DE TABLA CON DOBLE STICKY (scroll + cabecera) ========== */}
         <div className="bg-white shadow-lg border border-gray-200" style={{ clipPath: 'inset(0 round 16px)' }}>
           {/* Barra sticky de scroll horizontal */}
           {!loading && transactions.length > 0 && (
@@ -750,25 +751,29 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
             </div>
           ) : view === 'pago_movil' ? (
             /* ============ VISTA PAGO MÓVIL ============ */
-            <div ref={mainScrollRef} className="overflow-x-auto" onScroll={() => syncScroll('main')}>
+            <div
+              ref={mainScrollRef}
+              style={{ overflowX: 'auto', overflowY: 'clip' }}
+              onScroll={() => syncScroll('main')}
+            >
               <div ref={tableWidthRef}>
                 <table className="w-full min-w-max">
                   <thead>
-                    <tr className="bg-emerald-600">
-                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Fecha registro</th>
-                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Fecha del pago</th>
-                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Hora</th>
-                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Referencia</th>
-                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Banco</th>
-                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Cédula</th>
-                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Teléfono</th>
-                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Monto (Bs)</th>
-                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Monto (USD)</th>
-                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Representante</th>
-                      <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Estudiante</th>
+                    <tr>
+                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Fecha registro</th>
+                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Fecha del pago</th>
+                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Hora</th>
+                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Referencia</th>
+                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Banco</th>
+                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Cédula</th>
+                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Teléfono</th>
+                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Monto (Bs)</th>
+                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Monto (USD)</th>
+                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Representante</th>
+                      <th className="sticky top-[18px] z-10 bg-emerald-600 px-4 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Estudiante</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 bg-white">
                     {transactions.map(t => (
                       <tr key={t.id} className="hover:bg-emerald-50/40 transition-colors">
                         <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
@@ -818,30 +823,34 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ canDeletePayments }) =>
             </div>
           ) : (
             /* ============ VISTA TODAS ============ */
-            <div ref={mainScrollRef} className="overflow-x-auto" onScroll={() => syncScroll('main')}>
+            <div
+              ref={mainScrollRef}
+              style={{ overflowX: 'auto', overflowY: 'clip' }}
+              onScroll={() => syncScroll('main')}
+            >
               <div ref={tableWidthRef}>
                 <table className="w-full min-w-max">
                   <thead>
-                    <tr className="bg-blue-600">
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Fecha</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Representante</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Estudiante</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Descripción</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Tipo</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Monto (Bs)</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Pendiente (Bs)</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">A Favor (Bs)</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Tasa</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">USD</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Referencia</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Hecho por</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Estado</th>
+                    <tr>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Fecha</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Representante</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Estudiante</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Descripción</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Tipo</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Monto (Bs)</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Pendiente (Bs)</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">A Favor (Bs)</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Tasa</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">USD</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Referencia</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Hecho por</th>
+                      <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-left text-xs font-bold text-white uppercase">Estado</th>
                       {canDelete && (
-                        <th className="px-6 py-4 text-center text-xs font-bold text-white uppercase">Acciones</th>
+                        <th className="sticky top-[18px] z-10 bg-blue-600 px-6 py-4 text-center text-xs font-bold text-white uppercase">Acciones</th>
                       )}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 bg-white">
                     {transactions.map(t => {
                       const isFee = t.type === 'fee';
                       const isDeposit = t.type === 'deposit';
