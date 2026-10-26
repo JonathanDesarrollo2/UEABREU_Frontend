@@ -51,7 +51,7 @@ type StudentPayMode = 'full' | 'partial';
 interface StudentPayConfig {
   selected: boolean;
   mode: StudentPayMode;
-  partialUSD: string;
+  partialBs: string; // ⬅️ CAMBIADO: Ahora guardamos Bs en lugar de USD
 }
 
 const DEFAULT_BANK_ACCOUNT = '01910107012100104749';
@@ -192,7 +192,7 @@ export default function PaymentValidation({
   useEffect(() => {
     const initial: Record<string, StudentPayConfig> = {};
     students.forEach(s => {
-      initial[s.id] = { selected: false, mode: 'full', partialUSD: '' };
+      initial[s.id] = { selected: false, mode: 'full', partialBs: '' }; // ⬅️ Inicializamos partialBs
     });
     setPayConfig(initial);
   }, [students]);
@@ -207,13 +207,33 @@ export default function PaymentValidation({
     return bal < 0 ? Math.round(Math.abs(bal) * 100) / 100 : 0;
   };
 
+  const getDebtBs = (studentId: string): number => {
+    const debtUSD = getDebtUSD(studentId);
+    return Math.round(debtUSD * (bcvRate?.PriceRateBCV || 0) * 100) / 100;
+  };
+
   const getAssignedUSD = (studentId: string): number => {
     const cfg = payConfig[studentId];
     if (!cfg || !cfg.selected) return 0;
     const debt = getDebtUSD(studentId);
     
     if (cfg.mode === 'full') return debt;
-    return Math.max(0, parseFloat(cfg.partialUSD) || 0);
+    
+    // ⬇️ Calculamos el USD a partir de los Bs ingresados
+    const bs = Math.max(0, parseFloat(cfg.partialBs) || 0);
+    const usd = bs / (bcvRate?.PriceRateBCV || 1);
+    return Math.round(usd * 100) / 100;
+  };
+
+  const getAssignedBs = (studentId: string): number => {
+    const cfg = payConfig[studentId];
+    if (!cfg || !cfg.selected) return 0;
+    const debtBs = getDebtBs(studentId);
+    
+    if (cfg.mode === 'full') return debtBs;
+    
+    // ⬇️ Retornamos los Bs que el usuario ingresó
+    return Math.max(0, parseFloat(cfg.partialBs) || 0);
   };
 
   const totalAssignedUSD = Object.keys(payConfig).reduce(
@@ -225,21 +245,23 @@ export default function PaymentValidation({
     ? (parseFloat(pastPaymentAmountBs) || 0) / (bcvRate?.PriceRateBCV || 1) 
     : Infinity;
 
-  const totalBs = paymentType === 'today' && bcvRate
-    ? Math.round(totalAssignedUSD * bcvRate.PriceRateBCV * 100) / 100
-    : 0;
+  const totalBs = Object.keys(payConfig).reduce(
+    (sum, sid) => sum + getAssignedBs(sid),
+    0
+  );
 
   // Validaciones
   const hasIncompletePartial = Object.keys(payConfig).some(sid => {
     const cfg = payConfig[sid];
-    return cfg.selected && cfg.mode === 'partial' && (!cfg.partialUSD || parseFloat(cfg.partialUSD) <= 0);
+    return cfg.selected && cfg.mode === 'partial' && (!cfg.partialBs || parseFloat(cfg.partialBs) <= 0);
   });
 
   const hasExcessPartial = Object.keys(payConfig).some(sid => {
     const cfg = payConfig[sid];
     if (!cfg.selected || cfg.mode !== 'partial') return false;
-    const partial = parseFloat(cfg.partialUSD) || 0;
-    return paymentType === 'today' && partial > getDebtUSD(sid) + 0.01;
+    const bs = parseFloat(cfg.partialBs) || 0;
+    const debtBs = getDebtBs(sid);
+    return paymentType === 'today' && bs > debtBs + 0.01;
   });
 
   let isStep1Valid = false;
@@ -430,7 +452,7 @@ export default function PaymentValidation({
     students.forEach(s => {
       setPayConfig(prev => ({
         ...prev,
-        [s.id]: { selected: false, mode: 'full', partialUSD: '' }
+        [s.id]: { selected: false, mode: 'full', partialBs: '' }
       }));
     });
   };
@@ -825,21 +847,22 @@ export default function PaymentValidation({
                   ) : (
                     <div className="space-y-4">
                       {studentsWithDebt.map(student => {
-                        const debt = getDebtUSD(student.id);
-                        const cfg = payConfig[student.id] || { selected: false, mode: 'full', partialUSD: '' };
+                        const debtUSD = getDebtUSD(student.id);
+                        const debtBs = getDebtBs(student.id);
+                        const cfg = payConfig[student.id] || { selected: false, mode: 'full', partialBs: '' };
                         const assignedUSD = getAssignedUSD(student.id);
                         
-                        // Lógica de Pago Anterior: Calcular cuánto queda en el fondo para ESTE estudiante
-                        const otherAssigned = totalAssignedUSD - assignedUSD;
-                        const remainingPoolForThisStudent = Math.max(0, totalAvailableUSD - otherAssigned);
+                        // Lógica de Pago Anterior
+                        const otherAssignedUSD = totalAssignedUSD - assignedUSD;
+                        const remainingPoolForThisStudentUSD = Math.max(0, totalAvailableUSD - otherAssignedUSD);
+                        const remainingPoolForThisStudentBs = remainingPoolForThisStudentUSD * (bcvRate?.PriceRateBCV || 0);
                         
-                        // En Pago Nuevo, el límite es la deuda. En Pago Anterior, el mínimo entre deuda y fondo restante.
-                        const maxAssignable = paymentType === 'past' 
-                          ? Math.min(debt, remainingPoolForThisStudent) 
-                          : debt;
+                        const maxAssignableBs = paymentType === 'past' 
+                          ? Math.min(debtBs, remainingPoolForThisStudentBs) 
+                          : debtBs;
                           
                         const canFull = paymentType === 'past' 
-                          ? remainingPoolForThisStudent >= debt - 0.01 
+                          ? remainingPoolForThisStudentUSD >= debtUSD - 0.01 
                           : true;
 
                         return (
@@ -866,7 +889,8 @@ export default function PaymentValidation({
                                   </div>
                                   <div className="text-right">
                                     <p className="text-xs text-gray-500 uppercase tracking-wide">Deuda Actual</p>
-                                    <p className="text-lg font-bold text-red-600">{formatUsd(debt)}</p>
+                                    <p className="text-lg font-bold text-red-600">{formatUsd(debtUSD)}</p>
+                                    <p className="text-xs text-gray-500">≈ {formatBs(debtBs)}</p>
                                   </div>
                                 </div>
                               </div>
@@ -881,11 +905,11 @@ export default function PaymentValidation({
                                       name={`mode-${student.id}`}
                                       checked={cfg.mode === 'full' && canFull}
                                       disabled={!canFull}
-                                      onChange={() => updateStudentConfig(student.id, { mode: 'full', partialUSD: '' })}
+                                      onChange={() => updateStudentConfig(student.id, { mode: 'full', partialBs: '' })}
                                       className="accent-indigo-600 w-4 h-4"
                                     />
                                     <span className="text-sm font-medium text-gray-700">
-                                      Pago Total ({formatUsd(debt)})
+                                      Pago Total ({formatBs(debtBs)})
                                     </span>
                                   </label>
 
@@ -905,37 +929,37 @@ export default function PaymentValidation({
                                   <div className="bg-white p-4 rounded-lg border border-indigo-100 mb-4">
                                     <div className="flex justify-between items-center mb-2">
                                       <label className="block text-xs font-semibold text-gray-600">
-                                        Monto a asignar (USD)
+                                        Monto a asignar (Bs)
                                       </label>
                                       {paymentType === 'past' && (
                                         <button
                                           type="button"
-                                          onClick={() => updateStudentConfig(student.id, { partialUSD: maxAssignable.toFixed(2) })}
+                                          onClick={() => updateStudentConfig(student.id, { partialBs: maxAssignableBs.toFixed(2) })}
                                           className="text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded"
                                         >
-                                          Usar todo el resto ({formatUsd(maxAssignable)})
+                                          Usar todo el resto ({formatBs(maxAssignableBs)})
                                         </button>
                                       )}
                                     </div>
                                     <div className="flex items-center gap-3">
-                                      <div className="relative w-40">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+                                      <div className="relative w-48">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">Bs</span>
                                         <input
                                           type="number"
                                           step="0.01"
                                           min="0.01"
-                                          max={paymentType === 'past' ? remainingPoolForThisStudent : debt}
-                                          value={cfg.partialUSD}
-                                          onChange={e => updateStudentConfig(student.id, { partialUSD: e.target.value })}
+                                          max={paymentType === 'past' ? remainingPoolForThisStudentBs : debtBs}
+                                          value={cfg.partialBs}
+                                          onChange={e => updateStudentConfig(student.id, { partialBs: e.target.value })}
                                           placeholder="0.00"
-                                          className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold"
+                                          className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold"
                                         />
                                       </div>
                                       <span className="text-sm text-gray-500 font-medium bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
-                                        ≈ {formatBs((parseFloat(cfg.partialUSD) || 0) * (bcvRate?.PriceRateBCV || 0))}
+                                        ≈ {formatUsd(getAssignedUSD(student.id))}
                                       </span>
                                     </div>
-                                    {paymentType === 'past' && parseFloat(cfg.partialUSD) > remainingPoolForThisStudent + 0.01 && (
+                                    {paymentType === 'past' && parseFloat(cfg.partialBs) > remainingPoolForThisStudentBs + 0.01 && (
                                       <p className="text-xs text-red-600 font-medium mt-2 flex items-center gap-1">
                                         <FaExclamationCircle /> El monto excede lo que queda del fondo.
                                       </p>
@@ -948,7 +972,7 @@ export default function PaymentValidation({
                                     <span className="text-sm text-indigo-100">Asignado:</span>
                                     <div className="text-right">
                                       <span className="font-bold text-lg">{formatUsd(assignedUSD)}</span>
-                                      <span className="text-indigo-200 text-xs block">≈ {formatBs(assignedUSD * (bcvRate?.PriceRateBCV || 0))}</span>
+                                      <span className="text-indigo-200 text-xs block">≈ {formatBs(getAssignedBs(student.id))}</span>
                                     </div>
                                   </div>
                                 )}
