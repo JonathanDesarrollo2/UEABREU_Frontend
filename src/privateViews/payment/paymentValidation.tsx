@@ -51,7 +51,7 @@ type StudentPayMode = 'full' | 'partial';
 interface StudentPayConfig {
   selected: boolean;
   mode: StudentPayMode;
-  partialBs: string; // ⬅️ CAMBIADO: Ahora guardamos Bs en lugar de USD
+  partialBs: string;
 }
 
 const DEFAULT_BANK_ACCOUNT = '01910107012100104749';
@@ -192,7 +192,7 @@ export default function PaymentValidation({
   useEffect(() => {
     const initial: Record<string, StudentPayConfig> = {};
     students.forEach(s => {
-      initial[s.id] = { selected: false, mode: 'full', partialBs: '' }; // ⬅️ Inicializamos partialBs
+      initial[s.id] = { selected: false, mode: 'full', partialBs: '' };
     });
     setPayConfig(initial);
   }, [students]);
@@ -219,7 +219,6 @@ export default function PaymentValidation({
     
     if (cfg.mode === 'full') return debt;
     
-    // ⬇️ Calculamos el USD a partir de los Bs ingresados
     const bs = Math.max(0, parseFloat(cfg.partialBs) || 0);
     const usd = bs / (bcvRate?.PriceRateBCV || 1);
     return Math.round(usd * 100) / 100;
@@ -232,7 +231,6 @@ export default function PaymentValidation({
     
     if (cfg.mode === 'full') return debtBs;
     
-    // ⬇️ Retornamos los Bs que el usuario ingresó
     return Math.max(0, parseFloat(cfg.partialBs) || 0);
   };
 
@@ -268,6 +266,7 @@ export default function PaymentValidation({
   if (paymentType === 'today') {
     isStep1Valid = totalAssignedUSD > 0 && !hasIncompletePartial && !hasExcessPartial;
   } else {
+    // En pago anterior, permitimos un margen de 0.05 USD por redondeo
     const diff = Math.abs(totalAvailableUSD - totalAssignedUSD);
     isStep1Valid = totalAssignedUSD > 0 && diff < 0.05 && !hasIncompletePartial;
   }
@@ -276,6 +275,44 @@ export default function PaymentValidation({
     bankForm.Reference.trim() !== ''
     && bankForm.ClientID.trim() !== ''
     && bankForm.PhoneNumber.trim() !== '';
+
+  // ═══════════════════════════════════════════════════════════════
+  // EFECTO DE SEGURIDAD PARA PAGO ANTERIOR
+  // Evita que un estudiante quede en modo 'full' si el fondo no alcanza
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (paymentType !== 'past' || !totalAvailableUSD || !bcvRate) return;
+
+    setPayConfig(prev => {
+      let changed = false;
+      const newConfig = { ...prev };
+
+      const currentTotalAssigned = Object.keys(newConfig).reduce((sum, sid) => {
+        const cfg = newConfig[sid];
+        if (!cfg.selected) return sum;
+        if (cfg.mode === 'full') return sum + getDebtUSD(sid);
+        const bs = parseFloat(cfg.partialBs) || 0;
+        return sum + (bs / bcvRate.PriceRateBCV);
+      }, 0);
+
+      Object.keys(newConfig).forEach(sid => {
+        const cfg = newConfig[sid];
+        if (!cfg.selected || cfg.mode !== 'full') return;
+
+        const debtUSD = getDebtUSD(sid);
+        const otherAssigned = currentTotalAssigned - debtUSD;
+        const remainingPool = totalAvailableUSD - otherAssigned;
+        
+        if (remainingPool < debtUSD - 0.05) {
+          const maxBs = Math.max(0, remainingPool) * bcvRate.PriceRateBCV;
+          newConfig[sid] = { ...cfg, mode: 'partial', partialBs: maxBs > 0 ? maxBs.toFixed(2) : '' };
+          changed = true;
+        }
+      });
+
+      return changed ? newConfig : prev;
+    });
+  }, [totalAvailableUSD, paymentType, bcvRate, students]);
 
   // ═══════════════════════════════════════════════════════════════
   // Historial
@@ -321,7 +358,6 @@ export default function PaymentValidation({
     const finalDate = paymentType === 'past' ? pastPaymentDate : bankForm.RequestDate;
 
     try {
-      // 1) Pre-check de referencia duplicada
       try {
         const refCheck = await checkReferenceKey(bankForm.Reference);
         if (refCheck?.result && refCheck?.content?.exists) {
@@ -336,7 +372,6 @@ export default function PaymentValidation({
         console.warn('⚠️ Pre-check de referencia falló, continuando:', refErr);
       }
 
-      // 2) Validación bancaria con el monto EXACTO
       const fullValidationData: BankValidationRequest = {
         AccountNumber: DEFAULT_BANK_ACCOUNT,
         BankCode: bankForm.BankCode,
@@ -362,7 +397,6 @@ export default function PaymentValidation({
         ),
       });
 
-      // 3) Si validó, registrar el depósito con distribución
       if (
         response.content.overallResult === 'success' &&
         response.content.message.includes('Pago verificado exitosamente')
@@ -392,13 +426,11 @@ export default function PaymentValidation({
           setDepositResult(depositRes);
           fetchHistory();
 
-          // Refrescar estudiantes
           const balRes = await getRepresentativeBalance(representativeId);
           if (balRes.result && balRes.content.representative.students) {
             setStudents(balRes.content.representative.students);
           }
 
-          // Resetear todo para un nuevo pago
           setStep(1);
           setPaymentType('today');
           setPastPaymentAmountBs('');
@@ -526,7 +558,6 @@ export default function PaymentValidation({
           { text: 'RECIBO DE PAGO', style: 'title' },
           { text: `N° ${receiptNumber}`, style: 'receiptNumber' },
           { text: '\n' },
-
           { text: 'DATOS DEL REPRESENTANTE', style: 'sectionTitle' },
           {
             columns: [
@@ -545,10 +576,8 @@ export default function PaymentValidation({
             ],
           },
           { text: '\n' },
-
           studentSection,
           { text: '\n' },
-
           { text: 'DETALLE DEL PAGO', style: 'sectionTitle' },
           {
             table: {
@@ -567,7 +596,6 @@ export default function PaymentValidation({
             layout: 'lightHorizontalLines',
           },
           { text: '\n\n\n\n' },
-
           {
             columns: [
               {
@@ -604,9 +632,7 @@ export default function PaymentValidation({
         defaultStyle: { fontSize: 8.5, lineHeight: 1.2 },
       };
 
-      pdfMake
-        .createPdf(docDefinition)
-        .download(`Recibo_${tx.reference || receiptNumber}.pdf`);
+      pdfMake.createPdf(docDefinition).download(`Recibo_${tx.reference || receiptNumber}.pdf`);
     } catch (err: any) {
       console.error('Error al generar recibo:', err);
       alert('No se pudo generar el recibo. Intente nuevamente.');
@@ -862,8 +888,11 @@ export default function PaymentValidation({
                           : debtBs;
                           
                         const canFull = paymentType === 'past' 
-                          ? remainingPoolForThisStudentUSD >= debtUSD - 0.01 
+                          ? remainingPoolForThisStudentUSD >= debtUSD - 0.05 
                           : true;
+
+                        // Si el modo era 'full' pero ya no puede serlo, forzamos a 'partial' en la vista
+                        const currentMode = canFull ? cfg.mode : 'partial';
 
                         return (
                           <div
@@ -903,7 +932,7 @@ export default function PaymentValidation({
                                     <input
                                       type="radio"
                                       name={`mode-${student.id}`}
-                                      checked={cfg.mode === 'full' && canFull}
+                                      checked={currentMode === 'full'}
                                       disabled={!canFull}
                                       onChange={() => updateStudentConfig(student.id, { mode: 'full', partialBs: '' })}
                                       className="accent-indigo-600 w-4 h-4"
@@ -917,7 +946,7 @@ export default function PaymentValidation({
                                     <input
                                       type="radio"
                                       name={`mode-${student.id}`}
-                                      checked={cfg.mode === 'partial' || !canFull}
+                                      checked={currentMode === 'partial'}
                                       onChange={() => updateStudentConfig(student.id, { mode: 'partial' })}
                                       className="accent-indigo-600 w-4 h-4"
                                     />
@@ -925,7 +954,7 @@ export default function PaymentValidation({
                                   </label>
                                 </div>
 
-                                {(cfg.mode === 'partial' || !canFull) && (
+                                {(currentMode === 'partial') && (
                                   <div className="bg-white p-4 rounded-lg border border-indigo-100 mb-4">
                                     <div className="flex justify-between items-center mb-2">
                                       <label className="block text-xs font-semibold text-gray-600">
@@ -934,7 +963,14 @@ export default function PaymentValidation({
                                       {paymentType === 'past' && (
                                         <button
                                           type="button"
-                                          onClick={() => updateStudentConfig(student.id, { partialBs: maxAssignableBs.toFixed(2) })}
+                                          onClick={() => {
+                                            const bsToAssign = Math.min(maxAssignableBs, debtBs);
+                                            const isFull = bsToAssign >= debtBs - 0.01;
+                                            updateStudentConfig(student.id, { 
+                                              mode: isFull ? 'full' : 'partial',
+                                              partialBs: isFull ? '' : bsToAssign.toFixed(2)
+                                            });
+                                          }}
                                           className="text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded"
                                         >
                                           Usar todo el resto ({formatBs(maxAssignableBs)})
@@ -1249,9 +1285,7 @@ export default function PaymentValidation({
               )}
             </form>
 
-            {/* ══════════════════════════════════════════════ */}
-            {/* Historial (sin cambios funcionales)           */}
-            {/* ══════════════════════════════════════════════ */}
+            {/* Historial */}
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
@@ -1413,9 +1447,7 @@ export default function PaymentValidation({
             </div>
           </div>
 
-          {/* ══════════════════════════════════════════════ */}
-          {/* Panel lateral: resultados                     */}
-          {/* ══════════════════════════════════════════════ */}
+          {/* Panel lateral: resultados */}
           <div className="lg:col-span-1">
             <div className="bg-gradient-to-b from-gray-50 to-white rounded-2xl p-5 border border-gray-200 shadow-lg h-full">
               <div className="flex items-center space-x-3 mb-5 pb-4 border-b border-gray-200">
