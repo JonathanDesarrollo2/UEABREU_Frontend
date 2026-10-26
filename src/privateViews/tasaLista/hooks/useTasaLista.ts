@@ -1,4 +1,3 @@
-// src/privateViews/tasaLista/hooks/useTasaLista.ts
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import {
@@ -7,6 +6,7 @@ import {
   updateRateAPI,
   type ExchangeRateRecord,
 } from "../../../apis/exchangeRate";
+import api from "../../../library/axios"; // ⬅️ IMPORTANTE: Asegúrate de que esta ruta sea correcta
 
 export const MONTH_NAMES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -19,6 +19,7 @@ export const useTasaLista = () => {
   const [month, setMonth] = useState<number>(today.getMonth() + 1); // 1-12
   const [rates, setRates] = useState<ExchangeRateRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false); // ⬅️ NUEVO estado
   const [error, setError] = useState<string | null>(null);
 
   const loadRates = useCallback(async () => {
@@ -83,7 +84,6 @@ export const useTasaLista = () => {
     try {
       const res = await createRateAPI(effectiveDate, rate);
       if (res.result && res.content) {
-        // Añadimos el nuevo registro al estado local sin recargar todo el mes
         setRates((prev) => {
           const next = [...prev, res.content];
           next.sort((a, b) => (a.effectiveDate < b.effectiveDate ? -1 : 1));
@@ -100,6 +100,31 @@ export const useTasaLista = () => {
     }
   };
 
+  // ⬇️ NUEVO MÉTODO PARA SINCRONIZAR CON EL BANCO ⬇️
+  const syncToday = async (): Promise<boolean> => {
+    setSyncing(true);
+    try {
+      const res = await api.post('/private/rates/sync-today');
+      if (res.data.result) {
+        toast.success(`Tasa de hoy sincronizada: ${res.data.content.rate} Bs/USD`);
+        await loadRates(); // Recargar la tabla para que aparezca en pantalla
+        return true;
+      } else {
+        toast.error(res.data.error?.[0] || "Error al sincronizar la tasa");
+        return false;
+      }
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.error?.[0] || 
+        err.message || 
+        "Error al conectar con el banco"
+      );
+      return false;
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return {
     year, month,
     setYear, setMonth,
@@ -110,5 +135,7 @@ export const useTasaLista = () => {
     updateRate,
     createRate,
     reload: loadRates,
+    syncToday, // ⬅️ Exportamos el método
+    syncing,   // ⬅️ Exportamos el estado de carga
   };
 };

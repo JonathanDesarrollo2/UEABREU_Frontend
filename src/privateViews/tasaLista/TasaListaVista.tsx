@@ -1,7 +1,6 @@
-// src/privateViews/tasaLista/TasaListaVista.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaExchangeAlt, FaInfoCircle } from "react-icons/fa";
+import { FaArrowLeft, FaExchangeAlt, FaInfoCircle, FaSync } from "react-icons/fa"; // ⬅️ Agregado FaSync
 import AnimatedPage from "../../components/AnimatedPage";
 import { useTasaLista, MONTH_NAMES } from "./hooks/useTasaLista";
 import { MonthNavigator } from "./components/MonthNavigator";
@@ -25,6 +24,8 @@ export default function TasaLista({ readOnly = false }: TasaListaProps = {}) {
     updateRate,
     createRate,
     reload,
+    syncToday, // ⬅️ Traemos el método
+    syncing,   // ⬅️ Traemos el estado
   } = useTasaLista();
 
   const [editingRecord, setEditingRecord] = useState<ExchangeRateRecord | null>(null);
@@ -98,15 +99,28 @@ export default function TasaLista({ readOnly = false }: TasaListaProps = {}) {
             />
           )}
 
+          {/* ⬇️ BOTONES DE ACCIÓN ACTUALIZADOS ⬇️ */}
           {!loading && !error && (
-            <div className="flex justify-center mt-6">
+            <div className="flex flex-wrap justify-center mt-6 gap-4">
               <button
                 type="button"
                 onClick={reload}
-                className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm font-medium"
               >
-                Recargar
+                Recargar Tabla
               </button>
+
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={syncToday}
+                  disabled={syncing}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md font-medium disabled:opacity-50 inline-flex items-center gap-2"
+                >
+                  <FaSync className={syncing ? "animate-spin" : ""} />
+                  {syncing ? "Consultando Banco..." : "Sincronizar Tasa de Hoy"}
+                </button>
+              )}
             </div>
           )}
         </div>
