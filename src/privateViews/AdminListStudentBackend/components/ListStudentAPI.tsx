@@ -17,12 +17,13 @@ import GenericModal from '../../../components/GenricModal';
 
 interface ListStudentsAPIProps {
   data: TypeStudent[];
+  readOnly?: boolean; // ⬅️ NUEVO
 }
 
 // Opciones de sección disponibles
 const SECTION_OPTIONS = ['A', 'B', 'C', 'D', 'E'];
 
-export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
+export default function ListStudentsAPI({ data, readOnly = false }: ListStudentsAPIProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -140,7 +141,7 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
               <th className="py-3 px-4 text-left border-b">Exoneración</th>
               <th className="py-3 px-4 text-left border-b">Fecha Admisión</th>
               <th className="py-3 px-4 text-left border-b">Representante</th>
-              <th className="py-3 px-4 text-left border-b">Acciones</th>
+              {!readOnly && <th className="py-3 px-4 text-left border-b">Acciones</th>}
             </tr>
           </thead>
           <tbody>
@@ -150,27 +151,31 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
               return (
                 <tr
                   key={student.id}
-                  className="border-b hover:bg-gray-50 cursor-pointer"
-                  onClick={() => setSelectedStudent(student)}
+                  className={`border-b hover:bg-gray-50 ${!readOnly ? 'cursor-pointer' : ''}`}
+                  onClick={() => { if (!readOnly) setSelectedStudent(student); }}
                 >
                   <td className="py-3 px-4">
                     <div className="font-medium text-blue-600">{student.fullName}</div>
                   </td>
                   <td className="py-3 px-4">{student.identityCard}</td>
                   <td className="py-3 px-4">{student.currentGrade || 'En asignar'}</td>
-                  {/* 🔥 Columna Sección editable */}
+                  {/* 🔥 Columna Sección editable/lectura */}
                   <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                    <select
-                      value={currentSection}
-                      onChange={(e) => handleSectionChange(student.id!, e.target.value)}
-                      className="border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      disabled={sectionMutation.isPending}
-                    >
-                      <option value="Pendiente">Pendiente</option>
-                      {SECTION_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
+                    {readOnly ? (
+                      <span className="font-semibold text-gray-700">{currentSection}</span>
+                    ) : (
+                      <select
+                        value={currentSection}
+                        onChange={(e) => handleSectionChange(student.id!, e.target.value)}
+                        className="border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        disabled={sectionMutation.isPending}
+                      >
+                        <option value="Pendiente">Pendiente</option>
+                        {SECTION_OPTIONS.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(student.status)}`}>
@@ -184,16 +189,18 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
                       <span className="font-semibold text-gray-700">
                         {student.exonerationPercent ?? 0}%
                       </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setExonerationTarget(student);
-                        }}
-                        className="p-1 text-green-600 hover:text-green-800 rounded-full hover:bg-green-100"
-                        title="Editar exoneración"
-                      >
-                        <FaMoneyBillWave className="text-lg" />
-                      </button>
+                      {!readOnly && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExonerationTarget(student);
+                          }}
+                          className="p-1 text-green-600 hover:text-green-800 rounded-full hover:bg-green-100"
+                          title="Editar exoneración"
+                        >
+                          <FaMoneyBillWave className="text-lg" />
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-500">
@@ -209,30 +216,32 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
                       <span className="text-gray-400">No asignado</span>
                     )}
                   </td>
-                  <td className="py-3 px-4">
-                    <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => handleUpdate(student)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                        title="Editar"
-                      >
-                        <FaEdit />
-                      </button>
-                      <button
-                        onClick={() =>
-                          setDeleteCandidate({
-                            studentId: student.id!,
-                            representativeId: student.representativeId!,
-                            studentName: student.fullName!,
-                          })
-                        }
-                        className="p-2 text-red-600 hover:bg-red-50 rounded"
-                        title="Eliminar"
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </td>
+                  {!readOnly && (
+                    <td className="py-3 px-4">
+                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleUpdate(student)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                          title="Editar"
+                        >
+                          <FaEdit />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setDeleteCandidate({
+                              studentId: student.id!,
+                              representativeId: student.representativeId!,
+                              studentName: student.fullName!,
+                            })
+                          }
+                          className="p-2 text-red-600 hover:bg-red-50 rounded"
+                          title="Eliminar"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -240,7 +249,7 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
         </table>
       </div>
 
-      {selectedStudent && (
+      {!readOnly && selectedStudent && (
         <GenericModal
           title={`Detalles del Estudiante: ${selectedStudent.fullName}`}
           fields={[
@@ -315,23 +324,27 @@ export default function ListStudentsAPI({ data }: ListStudentsAPIProps) {
         />
       )}
 
-      <ConfirmDeleteModal
-        show={!!deleteCandidate}
-        onClose={() => setDeleteCandidate(null)}
-        onConfirm={handleDelete}
-        title="Confirmar Eliminación"
-        message={`¿Estás seguro que deseas eliminar al estudiante "${deleteCandidate?.studentName}"? Esta acción no se puede deshacer.`}
-        isLoading={isDeleting}
-      />
+      {!readOnly && (
+        <>
+          <ConfirmDeleteModal
+            show={!!deleteCandidate}
+            onClose={() => setDeleteCandidate(null)}
+            onConfirm={handleDelete}
+            title="Confirmar Eliminación"
+            message={`¿Estás seguro que deseas eliminar al estudiante "${deleteCandidate?.studentName}"? Esta acción no se puede deshacer.`}
+            isLoading={isDeleting}
+          />
 
-      <ExonerationModal
-        show={!!exonerationTarget}
-        studentName={exonerationTarget?.fullName || ''}
-        currentPercent={exonerationTarget?.exonerationPercent || 0}
-        onClose={() => setExonerationTarget(null)}
-        onSave={handleSaveExoneration}
-        isSaving={exonerationMutation.isPending}
-      />
+          <ExonerationModal
+            show={!!exonerationTarget}
+            studentName={exonerationTarget?.fullName || ''}
+            currentPercent={exonerationTarget?.exonerationPercent || 0}
+            onClose={() => setExonerationTarget(null)}
+            onSave={handleSaveExoneration}
+            isSaving={exonerationMutation.isPending}
+          />
+        </>
+      )}
     </>
   );
 }

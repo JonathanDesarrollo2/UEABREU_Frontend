@@ -5,6 +5,13 @@ import { FaCalendarAlt, FaUserGraduate, FaSpinner } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 const DAYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
+const DAY_ABBR: Record<string, string> = {
+  lunes: 'Lun',
+  martes: 'Mar',
+  miercoles: 'Mié',
+  jueves: 'Jue',
+  viernes: 'Vie'
+};
 
 interface BlockData {
   blockId: number;
@@ -66,8 +73,8 @@ export default function ChildrenScheduleView() {
 
   if (studentsData.length === 0) {
     return (
-      <AnimatedPage className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+      <AnimatedPage className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md text-center max-w-sm w-full">
           <p className="text-gray-600">No tienes hijos inscritos en el sistema.</p>
         </div>
       </AnimatedPage>
@@ -77,11 +84,6 @@ export default function ChildrenScheduleView() {
   const currentStudent = studentsData[selectedStudentIndex];
   const { schedulesByDay, blockTimesByDay, grade, section, studentName } = currentStudent;
 
-  // ─────────────────────────────────────────────────────────────────────
-  // Fallbacks: si el backend no trae los bloques de algún día, usamos
-  // los bloques del lunes como plantilla. Así los horarios de los 5 días
-  // siempre muestran horas reales.
-  // ─────────────────────────────────────────────────────────────────────
   const fallbackBlocks = blockTimesByDay['lunes'] || [];
   const getDayBlocks = (day: string) => {
     const blocks = blockTimesByDay[day];
@@ -89,7 +91,6 @@ export default function ChildrenScheduleView() {
     return fallbackBlocks;
   };
 
-  // Obtener el rango de tiempo para un bloque y día específico
   const getBlockTimeString = (day: string, blockNumber: number): string => {
     const blocks = getDayBlocks(day);
     const block = blocks.find(b => b.blockNumber === blockNumber);
@@ -97,7 +98,6 @@ export default function ChildrenScheduleView() {
     return `${block.startTime} - ${block.endTime}`;
   };
 
-  // Obtener el rango para materias de dos bloques
   const getTwoBlockTimeRange = (day: string, startBlockId: number): string => {
     const blocks = getDayBlocks(day);
     const startBlock = blocks.find(b => b.blockNumber === startBlockId);
@@ -108,7 +108,6 @@ export default function ChildrenScheduleView() {
     return getBlockTimeString(day, startBlockId);
   };
 
-  // Números de bloque únicos (union de bloques configurados + bloques con contenido)
   const allBlockNumbers = Array.from(
     new Set([
       ...fallbackBlocks.map(b => b.blockNumber),
@@ -121,7 +120,6 @@ export default function ChildrenScheduleView() {
     ])
   ).sort((a, b) => a - b);
 
-  // Verificar si una celda debe ser oculta por span de una materia anterior
   const isBlockSpanned = (day: string, blockNumber: number): boolean => {
     const blocks = schedulesByDay[day];
     if (!blocks) return false;
@@ -134,14 +132,11 @@ export default function ChildrenScheduleView() {
     return false;
   };
 
-  // ✅ Obtener el contenido de la celda. Si no hay, y es receso (bloque 5),
-  // devolvemos un placeholder de RECESO con su horario.
   const getCellContent = (day: string, blockNumber: number): BlockData | null => {
     const blocks = schedulesByDay[day] || [];
     const existing = blocks.find(b => b.blockId === blockNumber);
     if (existing) return existing;
 
-    // Fallback: bloque 5 siempre es receso
     if (blockNumber === 5) {
       return {
         blockId: 5,
@@ -165,24 +160,24 @@ export default function ChildrenScheduleView() {
 
   return (
     <AnimatedPage className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
-            <FaCalendarAlt className="mr-3 text-blue-600" />
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl">
+        <div className="text-center mb-4 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-1 sm:mb-2 flex items-center justify-center">
+            <FaCalendarAlt className="mr-2 sm:mr-3 text-blue-600" />
             Horario de Clases
           </h1>
-          <p className="text-gray-600">Consulta los horarios de tus hijos según su grado y sección</p>
+          <p className="text-sm sm:text-base text-gray-600">Consulta los horarios de tus hijos</p>
         </div>
 
         {studentsData.length > 1 && (
-          <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-4 sm:mb-6">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
               Seleccionar hijo:
             </label>
             <select
               value={selectedStudentIndex}
               onChange={(e) => setSelectedStudentIndex(Number(e.target.value))}
-              className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full md:w-64 px-3 py-2 text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               {studentsData.map((student, idx) => (
                 <option key={student.studentId} value={idx}>
@@ -193,24 +188,29 @@ export default function ChildrenScheduleView() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center mb-4">
-            <FaUserGraduate className="text-blue-600 text-xl mr-2" />
-            <h2 className="text-xl font-semibold text-gray-800">{studentName}</h2>
-            <span className="ml-4 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center mb-4 gap-2">
+            <div className="flex items-center">
+              <FaUserGraduate className="text-blue-600 text-lg sm:text-xl mr-2" />
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 truncate pr-2">{studentName}</h2>
+            </div>
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm w-fit">
               {grade} - Sección {section}
             </span>
           </div>
 
-          {/* Tabla de horario */}
+          {/* Tabla de horario con scroll horizontal */}
           <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 table-fixed">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bloques</th>
+                  <th className="w-16 sm:w-auto px-1 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-100 z-10 border-r border-gray-200">
+                    Bloq
+                  </th>
                   {DAYS.map(day => (
-                    <th key={day} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      {day.charAt(0).toUpperCase() + day.slice(1)}
+                    <th key={day} className="w-24 sm:w-auto px-1 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase">
+                      <span className="hidden sm:inline">{day.charAt(0).toUpperCase() + day.slice(1)}</span>
+                      <span className="sm:hidden">{DAY_ABBR[day]}</span>
                     </th>
                   ))}
                 </tr>
@@ -218,11 +218,11 @@ export default function ChildrenScheduleView() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {allBlockNumbers.map(blockNumber => (
                   <tr key={blockNumber} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm border-r border-gray-200 bg-gray-50">
-                      <div className="font-medium text-gray-900">Bloque {blockNumber}</div>
-                      <div className="text-gray-500 text-xs">{getBlockTimeString('lunes', blockNumber)}</div>
-                      <div className="text-gray-400 text-xs">
-                        {blockNumber === 5 ? 'Receso' : `${blockNumber}° Horario`}
+                    <td className="px-1 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-sm border-r border-gray-200 bg-gray-50 sticky left-0 z-10">
+                      <div className="font-medium text-gray-900">B-{blockNumber}</div>
+                      <div className="text-gray-500 text-[9px] sm:text-xs truncate">{getBlockTimeString('lunes', blockNumber)}</div>
+                      <div className="text-gray-400 text-[8px] sm:text-[10px]">
+                        {blockNumber === 5 ? 'Receso' : `${blockNumber}°`}
                       </div>
                     </td>
                     {DAYS.map(day => {
@@ -233,32 +233,32 @@ export default function ChildrenScheduleView() {
                       return (
                         <td
                           key={`${day}-${blockNumber}`}
-                          className={`px-4 py-3 text-sm border border-gray-200 ${cellClass}`}
+                          className={`px-1 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm border border-gray-200 ${cellClass}`}
                           rowSpan={cellData?.spans === 2 ? 2 : 1}
                         >
                           {cellData?.isBreak ? (
-                            <div className="text-center text-yellow-700 font-medium py-2">
+                            <div className="text-center text-yellow-700 font-medium py-1 sm:py-2">
                               RECESO
-                              <div className="text-xs text-yellow-600 mt-1">{getBlockTimeString(day, blockNumber)}</div>
+                              <div className="text-[9px] sm:text-xs text-yellow-600 mt-0.5">{getBlockTimeString(day, blockNumber)}</div>
                             </div>
                           ) : cellData?.subject && cellData.subject !== 'RECESO' ? (
-                            <div className="space-y-1">
-                              <div className="font-medium text-gray-900">{cellData.subject}</div>
-                              {cellData.subjectCode && <div className="text-xs text-gray-500">({cellData.subjectCode})</div>}
-                              {cellData.teacher && <div className="text-xs text-blue-600 font-medium">{cellData.teacher}</div>}
-                              {cellData.classroom && <div className="text-xs text-gray-500">Aula: {cellData.classroom}</div>}
-                              <div className="text-xs text-gray-400 mt-2">
+                            <div className="space-y-0.5">
+                              <div className="font-medium text-gray-900 leading-tight text-[11px] sm:text-sm">{cellData.subject}</div>
+                              {cellData.subjectCode && <div className="text-[9px] sm:text-xs text-gray-500">({cellData.subjectCode})</div>}
+                              {cellData.teacher && <div className="text-[10px] sm:text-xs text-blue-600 font-medium truncate">{cellData.teacher}</div>}
+                              {cellData.classroom && <div className="text-[9px] sm:text-xs text-gray-500 truncate">Aula: {cellData.classroom}</div>}
+                              <div className="text-[8px] sm:text-xs text-gray-400 mt-1">
                                 {cellData.spans === 2
                                   ? getTwoBlockTimeRange(day, blockNumber)
                                   : getBlockTimeString(day, blockNumber)}
                               </div>
                             </div>
                           ) : cellData?.isOccupied ? (
-                            <div className="text-center text-red-600 font-medium py-2">OCUPADO</div>
+                            <div className="text-center text-red-600 font-medium py-1 sm:py-2 text-[10px] sm:text-sm">OCUPADO</div>
                           ) : (
-                            <div className="text-center text-gray-400 py-2">
-                              Disponible
-                              <div className="text-xs text-gray-300 mt-1">{getBlockTimeString(day, blockNumber)}</div>
+                            <div className="text-center text-gray-400 py-1 sm:py-2 text-[10px] sm:text-sm">
+                              Libre
+                              <div className="text-[8px] sm:text-xs text-gray-300 mt-0.5">{getBlockTimeString(day, blockNumber)}</div>
                             </div>
                           )}
                         </td>
@@ -271,11 +271,11 @@ export default function ChildrenScheduleView() {
           </div>
 
           {/* Resumen informativo */}
-          <div className="mt-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <h3 className="font-semibold text-gray-800 mb-2">Información</h3>
-            <p className="text-sm text-gray-600">
-              Los horarios mostrados corresponden al grado <strong>{grade}</strong> y sección <strong>{section}</strong> del estudiante.
-              Si el estudiante cambia de grado o sección, los horarios se actualizarán automáticamente.
+          <div className="mt-4 sm:mt-6 bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+            <h3 className="font-semibold text-gray-800 mb-1 text-sm sm:text-base">Información</h3>
+            <p className="text-xs sm:text-sm text-gray-600">
+              Los horarios mostrados corresponden al grado <strong>{grade}</strong> y sección <strong>{section}</strong>. 
+              Si el estudiante cambia de grado o sección, se actualizarán automáticamente.
             </p>
           </div>
         </div>

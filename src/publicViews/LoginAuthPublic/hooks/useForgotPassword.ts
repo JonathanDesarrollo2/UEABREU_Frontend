@@ -34,11 +34,12 @@ export const useForgotPassword = () => {
       toast.error(errMsg);
       return false;
     } catch (err: any) {
-        // Nunca mostramos el error técnico al usuario
-        toast.error("No pudimos enviar el código en este momento. Intenta nuevamente en unos minutos.");
-        console.error('[forgot-password] Error:', err);
-        return false;
-        } finally {
+      // Si hay un error de red, mostramos un mensaje más claro
+      const errorMsg = err.response?.data?.error?.[0] || "No pudimos conectar con el servidor. Revisa tu conexión a internet.";
+      toast.error(errorMsg);
+      console.error('[forgot-password] Error:', err);
+      return false;
+    } finally {
       setLoading(false);
     }
   };
@@ -58,11 +59,11 @@ export const useForgotPassword = () => {
       toast.error(errMsg);
       return false;
     } catch (err: any) {
-        // Nunca mostramos el error técnico al usuario
-        toast.error("No pudimos enviar el código en este momento. Intenta nuevamente en unos minutos.");
-        console.error('[forgot-password] Error:', err);
-        return false;
-        } finally {
+      const errorMsg = err.response?.data?.error?.[0] || "Error de conexión";
+      toast.error(errorMsg);
+      console.error('[forgot-password] Error:', err);
+      return false;
+    } finally {
       setLoading(false);
     }
   };
@@ -82,17 +83,16 @@ export const useForgotPassword = () => {
       const errMsg = res.error?.[0] || "Error al actualizar la contraseña";
       toast.error(errMsg);
       return false;
-        } catch (err: any) {
-        // Nunca mostramos el error técnico al usuario
-        toast.error("No pudimos enviar el código en este momento. Intenta nuevamente en unos minutos.");
-        console.error('[forgot-password] Error:', err);
-        return false;
-        } finally {
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error?.[0] || "Error de conexión";
+      toast.error(errorMsg);
+      console.error('[forgot-password] Error:', err);
+      return false;
+    } finally {
       setLoading(false);
     }
   };
 
-  // Reenviar código (vuelve al paso 1 con el email precargado)
   const resendCode = () => {
     setStep(1);
     setCode("");

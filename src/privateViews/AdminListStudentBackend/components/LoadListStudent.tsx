@@ -18,6 +18,7 @@ interface BusStudentProps {
     grade?: string;
     section?: string;
   };
+  readOnly?: boolean; // ⬅️ NUEVO
 }
 
 const BUSQUEDA_LABELS: Record<string, string> = {
@@ -52,7 +53,7 @@ const SECTION_LABELS: Record<string, string> = {
   'E': 'Sección E',
 };
 
-export default function LoadListStudentsAPI({ Buscar }: BusStudentProps) {
+export default function LoadListStudentsAPI({ Buscar, readOnly = false }: BusStudentProps) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [printData, setPrintData] = useState<TypeStudent[] | null>(null);
@@ -304,7 +305,7 @@ export default function LoadListStudentsAPI({ Buscar }: BusStudentProps) {
         </button>
       </div>
 
-      <ListStudentsAPI data={data.content} />
+      <ListStudentsAPI data={data.content} readOnly={readOnly} />
       <Pagination
         page={page}
         limit={limit}

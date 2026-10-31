@@ -82,6 +82,7 @@ function ListRoutes() {
             <Route path="insert" element={<InsertUser forceNivel={1} />} />
             <Route path="list" element={<AdminListUsersBackend />} />
           </Route>
+          <Route path="students/list" element={<AdminListStudentsBackend readOnly />} />
         </Route>
 
         {/* Rutas Secretario */}
