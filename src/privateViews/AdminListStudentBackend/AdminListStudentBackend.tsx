@@ -51,7 +51,11 @@ const SECTION_OPTIONS = [
   { value: 'E', label: 'Sección E' },
 ];
 
-export default function AdminListStudentsBackend() {
+interface Props {
+  readOnly?: boolean; // ⬅️ NUEVO
+}
+
+export default function AdminListStudentsBackend({ readOnly = false }: Props) {
   const inputStyle = "bg-transparent text-blue-500 font-semibold py-2 px-3 border-2 border-solid border-blue-500 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors text-sm";
   const btnStyleGreen = "bg-transparent text-green-500 font-semibold py-2 px-4 border-2 border-solid border-green-500 rounded-md hover:bg-green-50 active:bg-green-100 transition-colors inline-flex items-center justify-center whitespace-nowrap";
   const btnStyleRed = "bg-transparent text-red-500 font-semibold py-2 px-4 border-2 border-solid border-red-500 rounded-md hover:bg-red-50 active:bg-red-100 transition-colors inline-flex items-center justify-center whitespace-nowrap";
@@ -81,7 +85,7 @@ export default function AdminListStudentsBackend() {
       <div className="flex flex-col min-h-screen p-4 lg:p-8">
         <h2 className="text-2xl text-center font-bold text-gray-800 mb-6">
           <FaList className="mr-4 inline-block" />
-          Lista de Estudiantes
+          Lista de Estudiantes {readOnly && <span className="text-blue-500 text-sm ml-2">(Solo Lectura)</span>}
         </h2>
 
         <div className="w-full mb-6 bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
@@ -153,28 +157,30 @@ export default function AdminListStudentsBackend() {
               ))}
             </select>
             <div className="md:col-span-5 flex flex-wrap gap-2 md:justify-end">
-              <button
-                type="button"
-                onClick={() => { navigate('/admin/users/insert'); }}
-                className={btnStyleGreen}
-              >
-                <FaUserPlus className="mr-2" />
-                Nuevo
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => { navigate('/admin/users/insert'); }}
+                  className={btnStyleGreen}
+                >
+                  <FaUserPlus className="mr-2" />
+                  Nuevo
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => { navigate(-1); }}
                 className={btnStyleRed}
               >
                 <FaDeleteLeft className="mr-2" />
-                Cancelar
+                {readOnly ? 'Volver' : 'Cancelar'}
               </button>
             </div>
           </div>
         </div>
 
         <div className="flex-1">
-          <LoadListStudentsAPI Buscar={buscar} />
+          <LoadListStudentsAPI Buscar={buscar} readOnly={readOnly} />
         </div>
       </div>
     </AnimatedPage>

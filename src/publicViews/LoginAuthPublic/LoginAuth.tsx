@@ -8,7 +8,7 @@ import { FaEye, FaEyeSlash, FaUser, FaLock, FaGraduationCap } from 'react-icons/
 
 const StatusLight = ({ isActive }: { isActive: boolean }) => (
   <motion.div
-    className={`h-3 w-3 rounded-full ${isActive ? 'bg-blue-600' : 'bg-gray-400'} shadow-sm`}
+    className={`h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full ${isActive ? 'bg-blue-600' : 'bg-gray-400'} shadow-sm`}
     initial={{ scale: 0.8 }}
     animate={{ 
       scale: isActive ? [1, 1.2, 1] : 1,
@@ -41,7 +41,7 @@ export default function LoginAuthPublic() {
   const handleCancel = useCallback(() => navigate('/'), [navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 py-8 relative overflow-hidden">
       
       {/* Elementos decorativos de fondo */}
       <div className="absolute inset-0">
@@ -78,39 +78,39 @@ export default function LoginAuthPublic() {
         transition={{ duration: 0.6 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200 relative overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 border border-slate-200 relative overflow-hidden">
           
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-800 to-blue-900"></div>
           
           <motion.div 
-            className="text-center mb-8"
+            className="text-center mb-6 sm:mb-8"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
             <motion.div 
-              className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-800 to-blue-900 rounded-xl flex items-center justify-center shadow-lg"
+              className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-blue-800 to-blue-900 rounded-xl flex items-center justify-center shadow-lg"
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              <FaGraduationCap className="text-2xl text-white" />
+              <FaGraduationCap className="text-xl sm:text-2xl text-white" />
             </motion.div>
-            <h1 className="text-2xl font-bold text-slate-800 mb-2">U.E. José Antonio Abreu</h1>
-            <p className="text-slate-600">Plataforma Educativa</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 mb-1 sm:mb-2">U.E. José Antonio Abreu</h1>
+            <p className="text-sm sm:text-base text-slate-600">Plataforma Educativa</p>
             
-            <div className="flex justify-center gap-2 mt-4">
+            <div className="flex justify-center gap-2 mt-3 sm:mt-4">
               <StatusLight isActive={!!emailValue} />
               <StatusLight isActive={!!passwordValue} />
             </div>
           </motion.div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <label className="text-slate-700 font-medium mb-2 flex items-center">
+              <label className="text-sm sm:text-base text-slate-700 font-medium mb-1 sm:mb-2 flex items-center">
                 <FaUser className="mr-2 text-blue-700" />
                 Correo electrónico
                 <span className="text-red-500 ml-1">*</span>
@@ -118,6 +118,8 @@ export default function LoginAuthPublic() {
               <div className="relative">
                 <input
                   type="email"
+                  inputMode="email"
+                  autoComplete="email"
                   id="usermail"
                   {...register('usermail', { 
                     required: "El email es requerido",
@@ -126,7 +128,7 @@ export default function LoginAuthPublic() {
                       message: "Email inválido"
                     }
                   })}
-                  className={`w-full px-4 py-3 pl-10 border ${
+                  className={`w-full px-4 py-3 pl-10 border text-base ${
                     errors.usermail ? "border-red-500" : "border-slate-300"
                   } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all duration-300 bg-slate-50`}
                   placeholder="tu@email.com"
@@ -136,7 +138,7 @@ export default function LoginAuthPublic() {
                 </div>
               </div>
               {errors.usermail && (
-                <span className="text-red-500 text-sm mt-1">{errors.usermail.message}</span>
+                <span className="text-red-500 text-xs sm:text-sm mt-1">{errors.usermail.message}</span>
               )}
             </motion.div>
 
@@ -145,7 +147,7 @@ export default function LoginAuthPublic() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <label className="text-slate-700 font-medium mb-2 flex items-center">
+              <label className="text-sm sm:text-base text-slate-700 font-medium mb-1 sm:mb-2 flex items-center">
                 <FaLock className="mr-2 text-blue-700" />
                 Contraseña
                 <span className="text-red-500 ml-1">*</span>
@@ -153,6 +155,7 @@ export default function LoginAuthPublic() {
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   id="userpass"
                   {...register('userpass', { 
                     required: "La contraseña es requerida",
@@ -161,7 +164,7 @@ export default function LoginAuthPublic() {
                       message: "Mínimo 6 caracteres"
                     }
                   })}
-                  className={`w-full px-4 py-3 pl-10 border ${
+                  className={`w-full px-4 py-3 pl-10 border text-base ${
                     errors.userpass ? "border-red-500" : "border-slate-300"
                   } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all duration-300 pr-12 bg-slate-50`}
                   placeholder="••••••••"
@@ -169,14 +172,14 @@ export default function LoginAuthPublic() {
                 <FaLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors p-1"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                 </button>
               </div>
               {errors.userpass && (
-                <span className="text-red-500 text-sm mt-1">{errors.userpass.message}</span>
+                <span className="text-red-500 text-xs sm:text-sm mt-1">{errors.userpass.message}</span>
               )}
             </motion.div>
 
@@ -184,69 +187,32 @@ export default function LoginAuthPublic() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="space-y-4"
+              className="space-y-3 sm:space-y-4 pt-2"
             >
-              <motion.button
+              <button
                 type="submit"
                 disabled={isPending}
-                whileHover={{ scale: isPending ? 1 : 1.02 }}
-                whileTap={{ scale: isPending ? 1 : 0.98 }}
-                className="w-full bg-gradient-to-r from-blue-800 to-blue-900 text-white py-3.5 rounded-xl font-semibold hover:from-blue-900 hover:to-blue-950 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-blue-800 to-blue-900 text-white py-3.5 rounded-xl font-semibold hover:from-blue-900 hover:to-blue-950 transition-all duration-300 shadow-lg disabled:opacity-50 text-base"
               >
                 {isPending ? 'Iniciando sesión...' : 'Ingresar'}
-              </motion.button>
+              </button>
 
               <button
                 type="button"
                 onClick={handleCancel}
-                className="w-full border border-slate-300 text-slate-700 py-3.5 rounded-xl font-medium hover:bg-slate-50 transition-all duration-300"
+                className="w-full border border-slate-300 text-slate-700 py-3.5 rounded-xl font-medium hover:bg-slate-50 transition-all duration-300 text-base"
               >
                 Cancelar
               </button>
               <Link
                 to="/forgot-password"
-                className="block text-center text-blue-800 font-medium hover:text-blue-900 transition-colors text-sm pt-1"
+                className="block text-center text-blue-800 font-medium hover:text-blue-900 transition-colors text-sm pt-2"
               >
                 ¿Olvidaste tu contraseña?
               </Link>
             </motion.div>
           </form>
-
-          <motion.div 
-            className="text-center mt-8 pt-6 border-t border-slate-200"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-          >
-            <p className="text-slate-600 mb-3">¿Interesado en unirte a nuestra institución?</p>
-            <motion.div whileHover={{ scale: 1.05 }}>
-              <Link 
-                to="/join-us" 
-                className="inline-flex items-center text-blue-800 font-semibold hover:text-blue-900 transition-colors group"
-              >
-                Únete a Nosotros
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </motion.div>
-          </motion.div>
         </div>
-
-        <motion.p 
-          className="text-center text-slate-500 mt-6 text-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.9 }}
-        >
-          Formando líderes del mañana
-        </motion.p>
       </motion.div>
     </div>
   );

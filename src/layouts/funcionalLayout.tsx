@@ -8,6 +8,7 @@ import {
   FaSignOutAlt,
   FaBars,
   FaTimes,
+  FaUserGraduate,
 } from 'react-icons/fa';
 
 interface SessionContext {
@@ -35,6 +36,7 @@ export default function FuncionalLayout() {
     { name: 'Dashboard', icon: FaHome, path: '/funcional' },
     { name: 'Nuevo Representante', icon: FaUserPlus, path: '/funcional/users/insert' },
     { name: 'Representantes', icon: FaUser, path: '/funcional/users/list' },
+    { name: 'Estudiantes', icon: FaUserGraduate, path: '/funcional/students/list' },
   ];
 
   return (

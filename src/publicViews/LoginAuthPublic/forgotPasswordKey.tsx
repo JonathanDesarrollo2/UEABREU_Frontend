@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
 
   // ─── UI ──────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 py-8 relative overflow-hidden">
       {/* Decoración de fondo */}
       <div className="absolute inset-0 pointer-events-none">
         <motion.div
@@ -93,37 +93,37 @@ export default function ForgotPasswordPage() {
         transition={{ duration: 0.6 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200 relative overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 border border-slate-200 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-800 to-blue-900"></div>
 
           {/* Encabezado */}
           <motion.div
-            className="text-center mb-8"
+            className="text-center mb-6"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
             <motion.div
-              className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-800 to-blue-900 rounded-xl flex items-center justify-center shadow-lg"
+              className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 bg-gradient-to-br from-blue-800 to-blue-900 rounded-xl flex items-center justify-center shadow-lg"
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              <FaGraduationCap className="text-2xl text-white" />
+              <FaGraduationCap className="text-xl sm:text-2xl text-white" />
             </motion.div>
-            <h1 className="text-2xl font-bold text-slate-800 mb-2">Recuperar Contraseña</h1>
-            <p className="text-slate-600 text-sm">
-              {step === 1 && "Ingresa tu correo para recibir un código de recuperación"}
-              {step === 2 && "Ingresa el código de 6 dígitos que enviamos a tu correo"}
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 mb-1">Recuperar Contraseña</h1>
+            <p className="text-xs sm:text-sm text-slate-600">
+              {step === 1 && "Ingresa tu correo para recibir un código"}
+              {step === 2 && "Ingresa el código de 6 dígitos enviado a tu correo"}
               {step === 3 && "Crea tu nueva contraseña"}
             </p>
           </motion.div>
 
           {/* Indicador de progreso */}
-          <div className="flex justify-center items-center gap-2 mb-6">
+          <div className="flex justify-center items-center gap-1 sm:gap-2 mb-6">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="flex items-center gap-2">
+              <div key={n} className="flex items-center gap-1 sm:gap-2">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                     step >= n
                       ? "bg-blue-800 text-white shadow-md"
                       : "bg-slate-200 text-slate-500"
@@ -133,7 +133,7 @@ export default function ForgotPasswordPage() {
                 </div>
                 {n < 3 && (
                   <div
-                    className={`w-6 h-0.5 transition-colors duration-300 ${
+                    className={`w-4 sm:w-6 h-0.5 transition-colors duration-300 ${
                       step > n ? "bg-blue-800" : "bg-slate-200"
                     }`}
                   />
@@ -152,22 +152,24 @@ export default function ForgotPasswordPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
                 onSubmit={handleStep1}
-                className="space-y-5"
+                className="space-y-4"
               >
                 <div>
-                  <label className="text-slate-700 font-medium mb-2 flex items-center">
+                  <label className="text-sm sm:text-base text-slate-700 font-medium mb-1 flex items-center">
                     <FaEnvelope className="mr-2 text-blue-700" />
                     Correo electrónico
                     <span className="text-red-500 ml-1">*</span>
                   </label>
                   <input
                     type="email"
+                    inputMode="email"
+                    autoComplete="email"
                     value={emailInput}
                     onChange={(e) => {
                       setEmailInput(e.target.value);
                       setLocalError(null);
                     }}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all duration-300 bg-slate-50"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all duration-300 bg-slate-50"
                     placeholder="tu@email.com"
                     autoFocus
                   />
@@ -178,14 +180,14 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading || !emailValid}
-                  className="w-full bg-gradient-to-r from-blue-800 to-blue-900 text-white py-3.5 rounded-xl font-semibold hover:from-blue-900 hover:to-blue-950 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-gradient-to-r from-blue-800 to-blue-900 text-white py-3.5 rounded-xl font-semibold hover:from-blue-900 hover:to-blue-950 transition-all duration-300 shadow-lg disabled:opacity-50 text-base"
                 >
                   {loading ? "Enviando..." : "Enviar código"}
                 </button>
 
                 <Link
                   to="/login"
-                  className="block text-center text-slate-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                  className="block text-center text-slate-600 hover:text-blue-800 text-sm font-medium transition-colors pt-2"
                 >
                   Volver al inicio de sesión
                 </Link>
@@ -200,14 +202,14 @@ export default function ForgotPasswordPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
                 onSubmit={handleStep2}
-                className="space-y-5"
+                className="space-y-4"
               >
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800 text-center">
-                  Código enviado a <strong>{email}</strong>
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs sm:text-sm text-blue-800 text-center">
+                  Código enviado a <strong className="break-all">{email}</strong>
                 </div>
 
                 <div>
-                  <label className="text-slate-700 font-medium mb-2 flex items-center">
+                  <label className="text-sm sm:text-base text-slate-700 font-medium mb-1 flex items-center">
                     <FaKey className="mr-2 text-blue-700" />
                     Código de 6 dígitos
                     <span className="text-red-500 ml-1">*</span>
@@ -215,13 +217,14 @@ export default function ForgotPasswordPage() {
                   <input
                     type="text"
                     inputMode="numeric"
+                    autoComplete="one-time-code"
                     maxLength={6}
                     value={codeInput}
                     onChange={(e) => {
                       setCodeInput(e.target.value.replace(/\D/g, ""));
                       setLocalError(null);
                     }}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl text-center text-2xl font-mono tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all duration-300 bg-slate-50"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl text-center text-xl sm:text-2xl font-mono tracking-[0.5em] text-base focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all duration-300 bg-slate-50"
                     placeholder="000000"
                     autoFocus
                   />
@@ -232,12 +235,12 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading || !codeValid}
-                  className="w-full bg-gradient-to-r from-blue-800 to-blue-900 text-white py-3.5 rounded-xl font-semibold hover:from-blue-900 hover:to-blue-950 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-gradient-to-r from-blue-800 to-blue-900 text-white py-3.5 rounded-xl font-semibold hover:from-blue-900 hover:to-blue-950 transition-all duration-300 shadow-lg disabled:opacity-50 text-base"
                 >
                   {loading ? "Verificando..." : "Verificar código"}
                 </button>
 
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs sm:text-sm pt-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -272,10 +275,10 @@ export default function ForgotPasswordPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
                 onSubmit={handleStep3}
-                className="space-y-5"
+                className="space-y-4"
               >
                 <div>
-                  <label className="text-slate-700 font-medium mb-2 flex items-center">
+                  <label className="text-sm sm:text-base text-slate-700 font-medium mb-1 flex items-center">
                     <FaLock className="mr-2 text-blue-700" />
                     Nueva contraseña
                     <span className="text-red-500 ml-1">*</span>
@@ -288,14 +291,14 @@ export default function ForgotPasswordPage() {
                         setNewPassword(e.target.value);
                         setLocalError(null);
                       }}
-                      className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all duration-300 bg-slate-50"
+                      className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all duration-300 bg-slate-50"
                       placeholder="••••••••"
                       autoFocus
                     />
                     <button
                       type="button"
                       onClick={() => setShowPass((p) => !p)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors p-1"
                     >
                       {showPass ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                     </button>
@@ -303,7 +306,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <div>
-                  <label className="text-slate-700 font-medium mb-2 flex items-center">
+                  <label className="text-sm sm:text-base text-slate-700 font-medium mb-1 flex items-center">
                     <FaLock className="mr-2 text-blue-700" />
                     Confirmar contraseña
                     <span className="text-red-500 ml-1">*</span>
@@ -316,13 +319,13 @@ export default function ForgotPasswordPage() {
                         setConfirmPassword(e.target.value);
                         setLocalError(null);
                       }}
-                      className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all duration-300 bg-slate-50"
+                      className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all duration-300 bg-slate-50"
                       placeholder="••••••••"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirm((p) => !p)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors p-1"
                     >
                       {showConfirm ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                     </button>
@@ -333,7 +336,7 @@ export default function ForgotPasswordPage() {
 
                 {newPassword && confirmPassword && (
                   <div
-                    className={`text-sm rounded-lg p-2 text-center ${
+                    className={`text-xs sm:text-sm rounded-lg p-2 text-center ${
                       confirmValid
                         ? "bg-green-50 text-green-700 border border-green-200"
                         : "bg-amber-50 text-amber-700 border border-amber-200"
@@ -346,14 +349,14 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading || !passwordValid || !confirmValid}
-                  className="w-full bg-gradient-to-r from-blue-800 to-blue-900 text-white py-3.5 rounded-xl font-semibold hover:from-blue-900 hover:to-blue-950 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-gradient-to-r from-blue-800 to-blue-900 text-white py-3.5 rounded-xl font-semibold hover:from-blue-900 hover:to-blue-950 transition-all duration-300 shadow-lg disabled:opacity-50 text-base"
                 >
                   {loading ? "Actualizando..." : "Actualizar contraseña"}
                 </button>
 
                 <Link
                   to="/login"
-                  className="block text-center text-slate-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                  className="block text-center text-slate-600 hover:text-blue-800 text-sm font-medium transition-colors pt-2"
                 >
                   Cancelar
                 </Link>
@@ -361,15 +364,6 @@ export default function ForgotPasswordPage() {
             )}
           </AnimatePresence>
         </div>
-
-        <motion.p
-          className="text-center text-slate-500 mt-6 text-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.9 }}
-        >
-          Formando líderes del mañana
-        </motion.p>
       </motion.div>
     </div>
   );
