@@ -64,8 +64,8 @@ const LayoutPublic = () => {
       <nav
         className={`fixed top-0 w-full z-50 transition-all duration-500 ${
           scrolled
-            ? 'bg-white/95 shadow-lg py-3 backdrop-blur-md border-b border-slate-200'
-            : 'bg-white/80 py-6 backdrop-blur-sm'
+            ? 'bg-white/95 shadow-lg py-2 md:py-3 backdrop-blur-md border-b border-slate-200'
+            : 'bg-white/80 py-3 md:py-6 backdrop-blur-sm'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -73,10 +73,10 @@ const LayoutPublic = () => {
             {/* Logo */}
             <Link
               to="/"
-              className="flex items-center space-x-4 group"
+              className="flex items-center space-x-2 md:space-x-4 group"
               onClick={() => handleLinkClick('/')}
             >
-              <div className="w-24 h-24 flex items-center justify-center transition-all duration-300 group-hover:scale-105 overflow-hidden">
+              <div className="w-16 h-16 md:w-24 md:h-24 flex items-center justify-center transition-all duration-300 group-hover:scale-105 overflow-hidden">
                 <img 
                   src="/logo.png" 
                   alt="U.E. José Antonio Abreu" 
@@ -88,10 +88,10 @@ const LayoutPublic = () => {
                 />
               </div>
               <div className="hidden sm:block">
-                <h1 className={`font-bold text-xl leading-tight transition-colors ${scrolled ? 'text-slate-800' : 'text-slate-800'}`}>
+                <h1 className={`font-bold text-lg md:text-xl leading-tight transition-colors ${scrolled ? 'text-slate-800' : 'text-slate-800'}`}>
                   U.E. José Antonio Abreu
                 </h1>
-                <p className={`text-sm transition-colors ${scrolled ? 'text-slate-600' : 'text-slate-600'}`}>
+                <p className={`text-xs md:text-sm transition-colors ${scrolled ? 'text-slate-600' : 'text-slate-600'}`}>
                   Formando líderes del mañana
                 </p>
               </div>
@@ -152,7 +152,7 @@ const LayoutPublic = () => {
             <div className="md:hidden">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className={`p-3 rounded-xl focus:outline-none transition-all border ${
+                className={`p-2.5 rounded-xl focus:outline-none transition-all border ${
                   scrolled 
                     ? 'text-slate-700 border-slate-300 bg-white hover:bg-slate-50' 
                     : 'text-slate-700 border-slate-300 bg-white hover:bg-slate-50'
@@ -166,7 +166,7 @@ const LayoutPublic = () => {
           {/* Mobile Navigation */}
           <div
             className={`md:hidden transition-all duration-300 ease-in-out overflow-hidden ${
-              isMenuOpen ? 'max-h-96 opacity-100 py-4' : 'max-h-0 opacity-0'
+              isMenuOpen ? 'max-h-[500px] opacity-100 py-4' : 'max-h-0 opacity-0'
             }`}
           >
             <div className="flex flex-col space-y-3 pt-4">
@@ -214,18 +214,18 @@ const LayoutPublic = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-grow pt-32">
+      <main className="flex-grow pt-24 md:pt-32">
         <Outlet />
       </main>
 
       {/* Footer elegante */}
       <footer className="bg-gradient-to-br from-slate-900 to-slate-800 text-white">
-        <div className="max-w-7xl mx-auto py-20 px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+        <div className="max-w-7xl mx-auto py-16 md:py-20 px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-12">
             {/* Columna izquierda: Contacto */}
             <div className="space-y-6">
               <div className="flex items-center space-x-3 mb-6">
-                <div className="w-20 h-20 flex items-center justify-center overflow-hidden">
+                <div className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center overflow-hidden">
                   <img 
                     src="/logo.png" 
                     alt="U.E. José Antonio Abreu" 
@@ -233,9 +233,8 @@ const LayoutPublic = () => {
                   />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">U.E. José Antonio Abreu</h3>
-                  <p className="text-slate-300 text-sm">Formando líderes del mañana Produccion</p>
-
+                  <h3 className="text-lg md:text-xl font-bold">U.E. José Antonio Abreu</h3>
+                  <p className="text-slate-300 text-sm">Formando líderes del mañana</p>
                 </div>
               </div>
               <div className="space-y-4">
@@ -245,7 +244,7 @@ const LayoutPublic = () => {
                   </div>
                   <div className="ml-4">
                     <p className="font-medium text-slate-200">Correo electrónico</p>
-                    <p className="text-slate-300">uejantonioabre@gmail.com</p>
+                    <p className="text-slate-300 text-sm md:text-base">uejantonioabre@gmail.com</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -254,8 +253,8 @@ const LayoutPublic = () => {
                   </div>
                   <div className="ml-4">
                     <p className="font-medium text-slate-200">Teléfono</p>
-                    <p className="text-slate-300">: 0412-341.87.73</p>
-                    <p className="text-slate-300">: 0412-208.84.51</p>
+                    <p className="text-slate-300 text-sm md:text-base">0412-341.87.73</p>
+                    <p className="text-slate-300 text-sm md:text-base">0412-208.84.51</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -264,7 +263,7 @@ const LayoutPublic = () => {
                   </div>
                   <div className="ml-4">
                     <p className="font-medium text-slate-200">Dirección</p>
-                    <p className="text-slate-300">Av. Universidad, Naguanagua</p>
+                    <p className="text-slate-300 text-sm md:text-base">Av. Universidad, Naguanagua</p>
                   </div>
                 </div>
               </div>
@@ -272,15 +271,15 @@ const LayoutPublic = () => {
 
             {/* Columna central: Enlaces rápidos */}
             <div className="md:text-center">
-              <h3 className="text-xl font-bold mb-6 relative pb-3 after:absolute after:left-1/2 after:bottom-0 after:-translate-x-1/2 after:w-16 after:h-0.5 after:bg-blue-700">
+              <h3 className="text-lg md:text-xl font-bold mb-6 relative pb-3 after:absolute md:after:left-1/2 md:after:-translate-x-1/2 after:left-0 after:bottom-0 after:w-16 after:h-0.5 after:bg-blue-700">
                 Enlaces Rápidos
               </h3>
-              <ul className="space-y-4">
+              <ul className="space-y-3 md:space-y-4">
                 <li>
                   <Link 
                     to="/SobreNosotros" 
                     onClick={() => handleLinkClick('/SobreNosotros')}
-                    className="text-slate-300 hover:text-white transition-colors inline-block py-2 hover:translate-x-2 duration-300"
+                    className="text-slate-300 hover:text-white transition-colors inline-block py-1 md:py-2 hover:translate-x-2 duration-300"
                   >
                     Sobre Nosotros
                   </Link>
@@ -289,7 +288,7 @@ const LayoutPublic = () => {
                   <Link 
                     to="/PrivacyPolicy" 
                     onClick={() => handleLinkClick('/PrivacyPolicy')}
-                    className="text-slate-300 hover:text-white transition-colors inline-block py-2 hover:translate-x-2 duration-300"
+                    className="text-slate-300 hover:text-white transition-colors inline-block py-1 md:py-2 hover:translate-x-2 duration-300"
                   >
                     Políticas de Privacidad
                   </Link>
@@ -298,7 +297,7 @@ const LayoutPublic = () => {
                   <Link 
                     to="/TermsAndConditions" 
                     onClick={() => handleLinkClick('/TermsAndConditions')}
-                    className="text-slate-300 hover:text-white transition-colors inline-block py-2 hover:translate-x-2 duration-300"
+                    className="text-slate-300 hover:text-white transition-colors inline-block py-1 md:py-2 hover:translate-x-2 duration-300"
                   >
                     Términos y Condiciones
                   </Link>
@@ -307,7 +306,7 @@ const LayoutPublic = () => {
                   <Link 
                     to="/preguntas-frecuentes" 
                     onClick={() => handleLinkClick('/preguntas-frecuentes')}
-                    className="text-slate-300 hover:text-white transition-colors inline-block py-2 hover:translate-x-2 duration-300"
+                    className="text-slate-300 hover:text-white transition-colors inline-block py-1 md:py-2 hover:translate-x-2 duration-300"
                   >
                     Preguntas Frecuentes
                   </Link>
@@ -317,10 +316,10 @@ const LayoutPublic = () => {
 
             {/* Columna derecha: Redes Sociales */}
             <div className="md:text-right">
-              <h3 className="text-xl font-bold mb-6 relative pb-3 after:absolute after:right-0 after:bottom-0 after:w-16 after:h-0.5 after:bg-blue-700">
+              <h3 className="text-lg md:text-xl font-bold mb-6 relative pb-3 after:absolute md:after:right-0 after:left-0 md:after:left-auto after:bottom-0 after:w-16 after:h-0.5 after:bg-blue-700">
                 Síguenos
               </h3>
-              <p className="text-slate-300 mb-8 leading-relaxed">
+              <p className="text-slate-300 mb-6 md:mb-8 leading-relaxed text-sm md:text-base">
                 Mantente conectado con nosotros a través de nuestras redes sociales y descubre todo lo que tenemos para ofrecerte.
               </p>
               <div className="flex md:justify-end space-x-4">
@@ -330,7 +329,7 @@ const LayoutPublic = () => {
                     href={social.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`p-4 rounded-xl text-white transition-all duration-300 transform hover:-translate-y-1 shadow-lg ${social.color}`}
+                    className={`p-3 md:p-4 rounded-xl text-white transition-all duration-300 transform hover:-translate-y-1 shadow-lg ${social.color}`}
                     aria-label={social.label}
                   >
                     {social.icon}
@@ -340,10 +339,10 @@ const LayoutPublic = () => {
             </div>
           </div>
 
-          <div className="mt-16 pt-8 border-t border-slate-700/50">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <div className="w-20 h-20 flex items-center justify-center overflow-hidden">
+          <div className="mt-12 md:mt-16 pt-6 md:pt-8 border-t border-slate-700/50">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0">
+              <div className="flex items-center space-x-3 md:space-x-4">
+                <div className="w-12 h-12 md:w-20 md:h-20 flex items-center justify-center overflow-hidden">
                   <img 
                     src="/logo.png" 
                     alt="U.E. José Antonio Abreu" 
@@ -358,17 +357,17 @@ const LayoutPublic = () => {
                     }}
                   />
                 </div>
-                <div>
-                  <p className="text-slate-300">
+                <div className="text-center md:text-left">
+                  <p className="text-slate-300 text-sm md:text-base">
                     © {new Date().getFullYear()} U.E. José Antonio Abreu
                   </p>
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-slate-400 text-xs md:text-sm">
                     Todos los derechos reservados
                   </p>
                 </div>
               </div>
-              <div className="mt-4 md:mt-0">
-                <p className="text-slate-400 text-sm">
+              <div className="mt-2 md:mt-0">
+                <p className="text-slate-400 text-xs md:text-sm">
                   Diseñado con ❤️ para la educación del futuro
                 </p>
               </div>
