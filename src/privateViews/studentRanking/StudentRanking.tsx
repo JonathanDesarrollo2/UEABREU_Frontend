@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom'; // 🔽 NUEVO
 import {
   FaSearch, FaFilter, FaTimes, FaChevronLeft, FaChevronRight,
   FaExchangeAlt, FaUser, FaUserTie, FaBalanceScale,
@@ -37,7 +38,7 @@ interface RankingResponse {
   };
 }
 
-type RankingType = 'debtors' | 'creditors' | 'all';
+type RankingType = 'debtors' | 'creditors' | 'up_to_date' | 'all';
 type RankDirection = 'most' | 'least';
 
 const GRADE_OPTIONS = ['1ro', '2do', '3ro', '4to', '5to', '6to'];
@@ -49,12 +50,19 @@ const formatUsd = (amount: number) =>
   new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(amount);
 
 export default function StudentsRanking() {
+  // 🔽 NUEVO: Leer filtros de la URL
+  const [searchParams] = useSearchParams();
+  const urlType = searchParams.get('type') as RankingType | null;
+  const initialType: RankingType = urlType && ['debtors', 'creditors', 'up_to_date', 'all'].includes(urlType)
+    ? urlType
+    : 'debtors';
+
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const [data, setData] = useState<RankingResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
   const [filters, setFilters] = useState({
-    type: 'debtors' as RankingType,
+    type: initialType,
     rankDirection: 'most' as RankDirection,
     search: '',
     representativeId: '',
@@ -64,12 +72,40 @@ export default function StudentsRanking() {
     limit: 20,
   });
 
-  // Buscador de representante
   const [repSearchTerm, setRepSearchTerm] = useState('');
   const [repResults, setRepResults] = useState<any[]>([]);
   const [showRepDropdown, setShowRepDropdown] = useState(false);
   const [selectedRepName, setSelectedRepName] = useState('');
   const repInputRef = useRef<HTMLInputElement>(null);
+
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableWidthRef = useRef<HTMLDivElement>(null);
+
+  const syncScroll = (source: 'main' | 'top') => {
+    if (source === 'main' && mainScrollRef.current && topScrollRef.current) {
+      topScrollRef.current.scrollLeft = mainScrollRef.current.scrollLeft;
+    } else if (source === 'top' && topScrollRef.current && mainScrollRef.current) {
+      mainScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+  };
+
+  useEffect(() => {
+    if (tableWidthRef.current && topScrollRef.current) {
+      const contentWidth = tableWidthRef.current.scrollWidth;
+      const innerDiv = topScrollRef.current.querySelector('div');
+      if (innerDiv) {
+        innerDiv.style.width = `${contentWidth}px`;
+      }
+    }
+  }, [data?.students]);
+
+  // 🔽 NUEVO: Escucha cambios en el parámetro ?type= de la URL
+  useEffect(() => {
+    if (urlType && ['debtors', 'creditors', 'up_to_date', 'all'].includes(urlType)) {
+      setFilters(prev => prev.type === urlType ? prev : { ...prev, type: urlType, page: 1 });
+    }
+  }, [urlType]);
 
   useEffect(() => {
     const fetchRate = async () => {
@@ -83,17 +119,10 @@ export default function StudentsRanking() {
     fetchRate();
   }, []);
 
-  // Convertir dirección (most/least) al sortOrder que entiende el backend
   const computeSortOrder = (type: RankingType, dir: RankDirection): 'asc' | 'desc' => {
-    if (type === 'debtors') {
-      // Mayor deuda primero = balance más negativo primero = ASC
-      return dir === 'most' ? 'asc' : 'desc';
-    }
-    if (type === 'creditors') {
-      // Mayor saldo primero = balance más positivo primero = DESC
-      return dir === 'most' ? 'desc' : 'asc';
-    }
-    // all: mayor saldo primero = DESC
+    if (type === 'debtors') return dir === 'most' ? 'asc' : 'desc';
+    if (type === 'creditors') return dir === 'most' ? 'desc' : 'asc';
+    if (type === 'up_to_date') return dir === 'most' ? 'asc' : 'desc';
     return dir === 'most' ? 'desc' : 'asc';
   };
 
@@ -129,7 +158,6 @@ export default function StudentsRanking() {
     fetchRanking();
   }, [fetchRanking]);
 
-  // Búsqueda de representantes
   const searchReps = useCallback(async (term: string) => {
     if (term.length < 2) { setRepResults([]); return; }
     try {
@@ -191,12 +219,13 @@ export default function StudentsRanking() {
     ? { most: 'Mayor saldo primero', least: 'Menor saldo primero' }
     : filters.type === 'debtors'
     ? { most: 'Mayor deuda primero', least: 'Menor deuda primero' }
+    : filters.type === 'up_to_date'
+    ? { most: 'Deuda más cercana a $1 primero', least: 'Deuda cero primero' }
     : { most: 'Mayor saldo primero', least: 'Menor saldo primero' };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center space-x-4">
             <div className="bg-gradient-to-r from-indigo-600 to-purple-700 p-4 rounded-2xl shadow-lg">
@@ -216,7 +245,6 @@ export default function StudentsRanking() {
           )}
         </div>
 
-        {/* Resumen */}
         {summary && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
@@ -248,7 +276,6 @@ export default function StudentsRanking() {
           </div>
         )}
 
-        {/* Filtros */}
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 mb-6">
           <div className="flex items-center space-x-2 mb-4">
             <FaFilter className="text-indigo-600" />
@@ -256,7 +283,6 @@ export default function StudentsRanking() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Tipo */}
             <div>
               <label className="block text-sm font-semibold text-gray-600 mb-1">Ver</label>
               <select
@@ -264,13 +290,13 @@ export default function StudentsRanking() {
                 onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value as RankingType, page: 1 }))}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl"
               >
-                <option value="debtors">Quienes me deben</option>
+                <option value="debtors">Quienes me deben (más de $1)</option>
+                <option value="up_to_date">Al día (entre -$1 y $0)</option>
                 <option value="creditors">Quienes tienen saldo a favor</option>
                 <option value="all">Todos los estudiantes</option>
               </select>
             </div>
 
-            {/* Dirección de orden */}
             <div>
               <label className="block text-sm font-semibold text-gray-600 mb-1">Ordenar por</label>
               <select
@@ -283,7 +309,6 @@ export default function StudentsRanking() {
               </select>
             </div>
 
-            {/* Buscador general */}
             <div>
               <label className="block text-sm font-semibold text-gray-600 mb-1">Buscar</label>
               <input
@@ -295,7 +320,6 @@ export default function StudentsRanking() {
               />
             </div>
 
-            {/* Grado */}
             <div>
               <label className="block text-sm font-semibold text-gray-600 mb-1">Año del estudiante</label>
               <select
@@ -308,7 +332,6 @@ export default function StudentsRanking() {
               </select>
             </div>
 
-            {/* Sección */}
             <div>
               <label className="block text-sm font-semibold text-gray-600 mb-1">Sección</label>
               <select
@@ -321,7 +344,6 @@ export default function StudentsRanking() {
               </select>
             </div>
 
-            {/* Representante */}
             <div className="lg:col-span-3 relative">
               <label className="block text-sm font-semibold text-gray-600 mb-1">Representante (verá todos sus hijos)</label>
 
@@ -382,107 +404,124 @@ export default function StudentsRanking() {
           </div>
         </div>
 
-        {/* Tabla */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 flex flex-col mb-8" style={{ maxHeight: '75vh' }}>
+          
+          {!loading && students.length > 0 && (
+            <div
+              ref={topScrollRef}
+              className="bg-gray-100 border-b border-gray-300 shrink-0"
+              style={{ overflowX: 'auto', overflowY: 'hidden', height: '18px' }}
+              onScroll={() => syncScroll('top')}
+            >
+              <div style={{ height: '1px' }}></div>
+            </div>
+          )}
+
           {loading ? (
-            <div className="flex justify-center items-center h-64">
+            <div className="flex justify-center items-center h-64 flex-1">
               <div className="animate-spin rounded-full h-10 w-10 border-4 border-indigo-500 border-t-transparent"></div>
             </div>
           ) : students.length === 0 ? (
-            <div className="text-center py-20">
+            <div className="text-center py-20 flex-1">
               <FaUserGraduate className="mx-auto text-4xl text-gray-300 mb-4" />
               <p className="text-gray-500 text-lg">No se encontraron estudiantes</p>
               <p className="text-gray-400">Pruebe ajustando los filtros</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-max">
-                <thead>
-                  <tr className="bg-indigo-600">
-                    <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase">#</th>
-                    <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase">Estudiante</th>
-                    <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase">Cédula</th>
-                    <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase">Año</th>
-                    <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase">Sección</th>
-                    <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase">Representante</th>
-                    <th className="px-5 py-4 text-right text-xs font-bold text-white uppercase">Saldo (Bs)</th>
-                    <th className="px-5 py-4 text-right text-xs font-bold text-white uppercase">Saldo (USD)</th>
-                    <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase">Estado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {students.map((s, idx) => {
-                    const balance = s.balanceUSD;
-                    const isDebt = balance < 0;
-                    const isCredit = balance > 0;
-                    const balanceBs = balance * (bcvRate?.PriceRateBCV || 0);
-                    const stateLabel = isDebt ? 'Deudor' : isCredit ? 'Al día' : 'Sin saldo';
-                    const stateColor = isDebt
-                      ? 'bg-red-100 text-red-800'
-                      : isCredit
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800';
+            <div
+              ref={mainScrollRef}
+              className="overflow-auto flex-1"
+              onScroll={() => syncScroll('main')}
+            >
+              <div ref={tableWidthRef}>
+                <table className="w-full min-w-max border-collapse">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-indigo-600">
+                      <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">#</th>
+                      <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Estudiante</th>
+                      <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Cédula</th>
+                      <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Año</th>
+                      <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Sección</th>
+                      <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Representante</th>
+                      <th className="px-5 py-4 text-right text-xs font-bold text-white uppercase whitespace-nowrap">Saldo (Bs)</th>
+                      <th className="px-5 py-4 text-right text-xs font-bold text-white uppercase whitespace-nowrap">Saldo (USD)</th>
+                      <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase whitespace-nowrap">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {students.map((s, idx) => {
+                      const balance = s.balanceUSD;
+                      const isDebt = balance < -1;
+                      const isCredit = balance > 0;
+                      const isUpToDate = balance >= -1 && balance <= 0;
+                      const balanceBs = balance * (bcvRate?.PriceRateBCV || 0);
+                      const stateLabel = isDebt ? 'Deudor' : isCredit ? 'Saldo a favor' : 'Al día';
+                      const stateColor = isDebt
+                        ? 'bg-red-100 text-red-800'
+                        : isCredit
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-blue-100 text-blue-800';
 
-                    const rank = (pagination?.currentPage ? (pagination.currentPage - 1) * pagination.pageSize : 0) + idx + 1;
+                      const rank = (pagination?.currentPage ? (pagination.currentPage - 1) * pagination.pageSize : 0) + idx + 1;
 
-                    return (
-                      <tr key={s.id} className="hover:bg-indigo-50/30 transition-colors">
-                        <td className="px-5 py-4">
-                          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${
-                            idx < 3 && filters.rankDirection === 'most'
-                              ? (isDebt ? 'bg-red-500 text-white' : 'bg-amber-500 text-white')
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
-                            {rank}
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="font-semibold text-gray-900">{s.fullName}</div>
-                          <div className="text-xs text-gray-500">{s.status}</div>
-                        </td>
-                        <td className="px-5 py-4 text-sm text-gray-600 font-mono">{s.identityCard || '—'}</td>
-                        <td className="px-5 py-4 text-sm text-gray-700">{s.currentGrade}</td>
-                        <td className="px-5 py-4 text-sm text-gray-700">{s.section}</td>
-                        <td className="px-5 py-4 text-sm text-gray-700">
-                          <div className="flex items-center gap-1">
-                            <FaUser className="text-[10px] text-gray-400" />
-                            <span>{s.representativeName || '—'}</span>
-                          </div>
-                          {s.representativeIdentityCard && (
-                            <div className="text-xs text-gray-500">{s.representativeIdentityCard}</div>
-                          )}
-                        </td>
-                        <td className={`px-5 py-4 text-sm font-bold text-right ${
-                          isDebt ? 'text-red-600' : isCredit ? 'text-green-600' : 'text-gray-600'
-                        }`}>
-                          <div className="inline-flex items-center gap-1">
-                            {isDebt ? <FaArrowDown className="text-[10px]" /> : isCredit ? <FaArrowUp className="text-[10px]" /> : null}
-                            {formatBs(balanceBs)}
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-right">
-                          <span className={`text-base font-extrabold ${
+                      return (
+                        <tr key={s.id} className="hover:bg-indigo-50/30 transition-colors">
+                          <td className="px-5 py-4">
+                            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${
+                              idx < 3 && filters.rankDirection === 'most'
+                                ? (isDebt ? 'bg-red-500 text-white' : isUpToDate ? 'bg-blue-500 text-white' : 'bg-amber-500 text-white')
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              {rank}
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="font-semibold text-gray-900">{s.fullName}</div>
+                            <div className="text-xs text-gray-500">{s.status}</div>
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-600 font-mono">{s.identityCard || '—'}</td>
+                          <td className="px-5 py-4 text-sm text-gray-700">{s.currentGrade}</td>
+                          <td className="px-5 py-4 text-sm text-gray-700">{s.section}</td>
+                          <td className="px-5 py-4 text-sm text-gray-700">
+                            <div className="flex items-center gap-1">
+                              <FaUser className="text-[10px] text-gray-400" />
+                              <span>{s.representativeName || '—'}</span>
+                            </div>
+                            {s.representativeIdentityCard && (
+                              <div className="text-xs text-gray-500">{s.representativeIdentityCard}</div>
+                            )}
+                          </td>
+                          <td className={`px-5 py-4 text-sm font-bold text-right ${
                             isDebt ? 'text-red-600' : isCredit ? 'text-green-600' : 'text-gray-600'
                           }`}>
-                            {formatUsd(balance)}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${stateColor}`}>
-                            {stateLabel}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                            <div className="inline-flex items-center gap-1">
+                              {isDebt ? <FaArrowDown className="text-[10px]" /> : isCredit ? <FaArrowUp className="text-[10px]" /> : null}
+                              {formatBs(balanceBs)}
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            <span className={`text-base font-extrabold ${
+                              isDebt ? 'text-red-600' : isCredit ? 'text-green-600' : 'text-gray-600'
+                            }`}>
+                              {formatUsd(balance)}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${stateColor}`}>
+                              {stateLabel}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
-          {/* Paginación */}
           {pagination && pagination.totalPages > 1 && (
-            <div className="flex justify-between items-center px-6 py-4 bg-gray-50">
+            <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-100 shrink-0">
               <span className="text-sm text-gray-600">
                 Página {pagination.currentPage} de {pagination.totalPages} (Total: {pagination.totalRecords})
               </span>
@@ -506,10 +545,9 @@ export default function StudentsRanking() {
           )}
         </div>
 
-        {/* Info inferior */}
         <div className="mt-6 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
           <FaBalanceScale />
-          <span>El ranking se calcula en base al saldo actual de cada estudiante (Bs calculado con la tasa BCV actual).</span>
+          <span>El ranking se calcula en base al saldo actual de cada estudiante. "Al día" incluye saldos entre -$1.00 y $0.00.</span>
         </div>
       </div>
     </div>
