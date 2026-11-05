@@ -98,7 +98,7 @@ const DoughnutChart: React.FC<{ debtors: number; upToDate: number; creditors: nu
 
 export default function AdminDashboard() {
   const sessionContext = useOutletContext<SessionContext>();
-  const navigate = useNavigate(); // 🔽 NUEVO
+  const navigate = useNavigate();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,12 +109,11 @@ export default function AdminDashboard() {
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const [loadingRate, setLoadingRate] = useState(true);
 
-  const [studentFilter, setStudentFilter] = useState<'all' | 'debtors' | 'up_to_date' | 'creditors'>('all');
   const [transactionRole, setTransactionRole] = useState<'' | 'admin' | 'representative' | 'system'>('');
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
   const [loadingFilteredTx, setLoadingFilteredTx] = useState(false);
 
-  // 🔽 NUEVO: Función para navegar al ranking con filtro
+  // 🔽 Función para navegar al ranking con filtro
   const goToRanking = (type: 'all' | 'debtors' | 'up_to_date' | 'creditors') => {
     navigate(`/admin/ranking?type=${type}`);
   };
@@ -218,7 +217,7 @@ export default function AdminDashboard() {
   const totalCreditBs = usdToBs(stats.financial.totalCredit);
   const monthlyCollectedBs = usdToBs(stats.financial.monthlyCollected);
 
-  // 🔽 NUEVO: Cálculo de conteos con las nuevas reglas
+  // Cálculo de conteos con las nuevas reglas
   const allStudents = [
     ...stats.chartData.debtors,
     ...stats.chartData.creditors,
@@ -283,13 +282,8 @@ export default function AdminDashboard() {
     { status: 'Inactivo', count: stats.students.byStatus.inactivo, color: 'bg-gray-100 text-gray-800' }
   ];
 
-  // 🔽 MODIFICADO: filtro inline con nuevas reglas
-  const filteredStudents: ChartStudent[] = (() => {
-    if (studentFilter === 'debtors') return allStudents.filter(s => (s.balanceUSD || 0) < -1);
-    if (studentFilter === 'up_to_date') return allStudents.filter(s => (s.balanceUSD || 0) >= -1 && (s.balanceUSD || 0) <= 0);
-    if (studentFilter === 'creditors') return allStudents.filter(s => (s.balanceUSD || 0) > 0);
-    return allStudents;
-  })();
+  // 🔽 CORREGIDO: Se eliminó studentFilter y se usa directamente allStudents
+  const filteredStudents: ChartStudent[] = allStudents;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-6">
@@ -484,7 +478,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="space-y-4">
-                {/* 🔽 MODIFICADO: Clickables y navegan al ranking */}
+                {/* Clickables y navegan al ranking */}
                 <button
                   onClick={() => goToRanking('up_to_date')}
                   className="w-full text-left bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 hover:shadow-md hover:ring-2 hover:ring-green-400 transition-all cursor-pointer group"
@@ -673,7 +667,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                {/* 🔽 MODIFICADO: Navegación con conteos correctos */}
+                {/* Navegación con conteos correctos */}
                 {[
                   { key: 'all' as const, label: `Todos (${studentCounts.all})`, color: 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:ring-gray-400' },
                   { key: 'debtors' as const, label: `Deudores (${studentCounts.debtors})`, color: 'bg-red-100 text-red-700 hover:bg-red-200 hover:ring-red-400' },
