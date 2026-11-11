@@ -1,13 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom'; // 🔽 NUEVO
+import { useSearchParams } from 'react-router-dom';
 import {
   FaSearch, FaFilter, FaTimes, FaChevronLeft, FaChevronRight,
   FaExchangeAlt, FaUser, FaUserTie, FaBalanceScale,
-  FaTrophy, FaArrowUp, FaArrowDown, FaUserGraduate
+  FaTrophy, FaArrowUp, FaArrowDown, FaUserGraduate,
+  FaFilePdf, FaFileExcel, // ⬅️ NUEVO
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { getStoredRateAPI, type BCVRateResponse } from '../../apis/bank';
 import api from '../../library/axios';
+import pdfMake from 'pdfmake/build/pdfmake'; // ⬅️ NUEVO
+import pdfFonts from 'pdfmake/build/vfs_fonts'; // ⬅️ NUEVO
+import ExcelJS from 'exceljs'; // ⬅️ NUEVO
+
+(pdfMake as any).vfs = pdfFonts.vfs;
 
 interface StudentRankingItem {
   id: string;
@@ -50,7 +56,6 @@ const formatUsd = (amount: number) =>
   new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(amount);
 
 export default function StudentsRanking() {
-  // 🔽 NUEVO: Leer filtros de la URL
   const [searchParams] = useSearchParams();
   const urlType = searchParams.get('type') as RankingType | null;
   const initialType: RankingType = urlType && ['debtors', 'creditors', 'up_to_date', 'all'].includes(urlType)
@@ -60,6 +65,7 @@ export default function StudentsRanking() {
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const [data, setData] = useState<RankingResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false); // ⬅️ NUEVO
 
   const [filters, setFilters] = useState({
     type: initialType,
@@ -100,7 +106,6 @@ export default function StudentsRanking() {
     }
   }, [data?.students]);
 
-  // 🔽 NUEVO: Escucha cambios en el parámetro ?type= de la URL
   useEffect(() => {
     if (urlType && ['debtors', 'creditors', 'up_to_date', 'all'].includes(urlType)) {
       setFilters(prev => prev.type === urlType ? prev : { ...prev, type: urlType, page: 1 });
@@ -209,6 +214,260 @@ export default function StudentsRanking() {
     setFilters(prev => ({ ...prev, representativeId: '', page: 1 }));
     setSelectedRepName('');
     setRepSearchTerm('');
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🔽 NUEVO: Helpers para exportación
+  // ═══════════════════════════════════════════════════════════════
+  const getTypeLabel = (): string => {
+    const labels: Record<RankingType, string> = {
+      debtors: 'Deudores (más de $1)',
+      creditors: 'Con saldo a favor',
+      up_to_date: 'Al día (entre -$1 y $0)',
+      all: 'Todos los estudiantes',
+    };
+    return labels[filters.type];
+  };
+
+  const getDirectionLabel = (): string => {
+    if (filters.type === 'creditors') return filters.rankDirection === 'most' ? 'Mayor saldo primero' : 'Menor saldo primero';
+    if (filters.type === 'debtors') return filters.rankDirection === 'most' ? 'Mayor deuda primero' : 'Menor deuda primero';
+    if (filters.type === 'up_to_date') return filters.rankDirection === 'most' ? 'Deuda más cercana a $1 primero' : 'Deuda cero primero';
+    return filters.rankDirection === 'most' ? 'Mayor saldo primero' : 'Menor saldo primero';
+  };
+
+  const getFilterDescriptions = (): string[] => {
+    const descriptions: string[] = [];
+    descriptions.push(`Tipo: ${getTypeLabel()}`);
+    descriptions.push(`Orden: ${getDirectionLabel()}`);
+    if (filters.search) descriptions.push(`Búsqueda: "${filters.search}"`);
+    if (selectedRepName) descriptions.push(`Representante: ${selectedRepName}`);
+    if (filters.grade) descriptions.push(`Año: ${filters.grade}`);
+    if (filters.section) descriptions.push(`Sección: ${filters.section}`);
+    return descriptions;
+  };
+
+  const fetchAllStudentsForExport = async (): Promise<StudentRankingItem[]> => {
+    const limitPerPage = 100;
+    let page = 1;
+    let allStudents: StudentRankingItem[] = [];
+    let totalPages = 1;
+
+    do {
+      const sortOrder = computeSortOrder(filters.type, filters.rankDirection);
+      const { data: res } = await api.get('/private/balance/students-ranking', {
+        params: {
+          type: filters.type,
+          search: filters.search || undefined,
+          representativeId: filters.representativeId || undefined,
+          grade: filters.grade || undefined,
+          section: filters.section || undefined,
+          page,
+          limit: limitPerPage,
+          sortOrder,
+        },
+      });
+
+      if (!res.result) {
+        throw new Error(res.error?.[0] || 'Error al obtener datos para exportar');
+      }
+
+      allStudents = allStudents.concat(res.content.students || []);
+      totalPages = res.content.pagination.totalPages;
+      page++;
+    } while (page <= totalPages);
+
+    return allStudents;
+  };
+
+  const handleExportPDF = async () => {
+    if (!bcvRate) {
+      toast.error('La tasa BCV aún no está disponible. Intenta de nuevo en unos segundos.');
+      return;
+    }
+    setExporting(true);
+    try {
+      const allStudents = await fetchAllStudentsForExport();
+      if (allStudents.length === 0) {
+        toast.error('No hay estudiantes para exportar con los filtros actuales.');
+        return;
+      }
+
+      const tableBody = allStudents.map((s, idx) => {
+        const balance = s.balanceUSD || 0;
+        const isDebt = balance < -1;
+        const isCredit = balance > 0;
+        const stateLabel = isDebt ? 'Deudor' : isCredit ? 'Saldo a favor' : 'Al día';
+        const balanceBs = balance * bcvRate.PriceRateBCV;
+
+        return [
+          (idx + 1).toString(),
+          s.fullName || '—',
+          s.identityCard || '—',
+          s.currentGrade || '—',
+          s.section || '—',
+          s.representativeName || '—',
+          formatBs(balanceBs),
+          formatUsd(balance),
+          stateLabel,
+        ];
+      });
+
+      const filterDescriptions = getFilterDescriptions();
+
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageOrientation: 'landscape',
+        pageMargins: [20, 20, 20, 20],
+        content: [
+          { text: 'RANKING DE ESTUDIANTES', style: 'title' },
+          { text: 'U.E. José Antonio Abreu', style: 'subtitle' },
+          { text: `Generado: ${new Date().toLocaleDateString('es-VE')} a las ${new Date().toLocaleTimeString('es-VE')}`, style: 'subtitle' },
+          { text: '\n' },
+          {
+            text: [
+              { text: 'Filtros aplicados: ', bold: true, fontSize: 8 },
+              { text: filterDescriptions.join('  |  '), fontSize: 8 },
+            ],
+            margin: [0, 4, 0, 2],
+          },
+          {
+            text: `Total de estudiantes: ${allStudents.length}`,
+            fontSize: 8,
+            bold: true,
+            margin: [0, 2, 0, 6],
+          },
+          {
+            table: {
+              headerRows: 1,
+              widths: [25, '*', 60, 35, 35, 100, 65, 55, 50],
+              body: [
+                ['#', 'Estudiante', 'Cédula', 'Año', 'Sec.', 'Representante', 'Saldo (Bs)', 'Saldo (USD)', 'Estado'],
+                ...tableBody,
+              ],
+            },
+            layout: {
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#aaaaaa',
+              vLineColor: () => '#aaaaaa',
+              paddingLeft: () => 3,
+              paddingRight: () => 3,
+              paddingTop: () => 2,
+              paddingBottom: () => 2,
+            },
+          },
+        ],
+        styles: {
+          title: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 0, 0, 2] },
+          subtitle: { fontSize: 9, alignment: 'center', color: '#555', margin: [0, 0, 0, 1] },
+        },
+        defaultStyle: { fontSize: 8, lineHeight: 1.15 },
+      };
+
+      pdfMake.createPdf(docDefinition).download(`Ranking_Estudiantes_${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success(`PDF generado con ${allStudents.length} estudiantes.`);
+    } catch (error: any) {
+      console.error('Error al exportar PDF:', error);
+      toast.error(error.message || 'Error al exportar PDF.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!bcvRate) {
+      toast.error('La tasa BCV aún no está disponible. Intenta de nuevo en unos segundos.');
+      return;
+    }
+    setExporting(true);
+    try {
+      const allStudents = await fetchAllStudentsForExport();
+      if (allStudents.length === 0) {
+        toast.error('No hay estudiantes para exportar con los filtros actuales.');
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'U.E. José Antonio Abreu';
+      workbook.created = new Date();
+
+      // Hoja 1: Filtros aplicados
+      const infoSheet = workbook.addWorksheet('Filtros');
+      infoSheet.columns = [
+        { header: 'Campo', key: 'field', width: 22 },
+        { header: 'Valor', key: 'value', width: 60 },
+      ];
+      infoSheet.getRow(1).eachCell(cell => {
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
+      });
+      infoSheet.addRow({ field: 'Tipo', value: getTypeLabel() });
+      infoSheet.addRow({ field: 'Orden', value: getDirectionLabel() });
+      infoSheet.addRow({ field: 'Búsqueda', value: filters.search || 'Sin filtro' });
+      infoSheet.addRow({ field: 'Representante', value: selectedRepName || 'Sin filtro' });
+      infoSheet.addRow({ field: 'Año', value: filters.grade || 'Sin filtro' });
+      infoSheet.addRow({ field: 'Sección', value: filters.section || 'Sin filtro' });
+      infoSheet.addRow({ field: 'Total estudiantes', value: allStudents.length });
+      infoSheet.addRow({ field: 'Generado', value: `${new Date().toLocaleDateString('es-VE')} ${new Date().toLocaleTimeString('es-VE')}` });
+
+      // Hoja 2: Datos
+      const sheet = workbook.addWorksheet('Ranking');
+      sheet.columns = [
+        { header: '#', key: 'num', width: 6 },
+        { header: 'Estudiante', key: 'name', width: 32 },
+        { header: 'Cédula', key: 'id', width: 15 },
+        { header: 'Año', key: 'grade', width: 10 },
+        { header: 'Sección', key: 'section', width: 10 },
+        { header: 'Representante', key: 'rep', width: 30 },
+        { header: 'Saldo (Bs)', key: 'bs', width: 18 },
+        { header: 'Saldo (USD)', key: 'usd', width: 15 },
+        { header: 'Estado', key: 'status', width: 15 },
+      ];
+
+      sheet.getRow(1).eachCell(cell => {
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
+      });
+
+      allStudents.forEach((s, idx) => {
+        const balance = s.balanceUSD || 0;
+        const isDebt = balance < -1;
+        const isCredit = balance > 0;
+        const stateLabel = isDebt ? 'Deudor' : isCredit ? 'Saldo a favor' : 'Al día';
+        const balanceBs = balance * bcvRate.PriceRateBCV;
+
+        sheet.addRow({
+          num: idx + 1,
+          name: s.fullName || '—',
+          id: s.identityCard || '—',
+          grade: s.currentGrade || '—',
+          section: s.section || '—',
+          rep: s.representativeName || '—',
+          bs: formatBs(balanceBs),
+          usd: formatUsd(balance),
+          status: stateLabel,
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Ranking_Estudiantes_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Excel generado con ${allStudents.length} estudiantes.`);
+    } catch (error: any) {
+      console.error('Error al exportar Excel:', error);
+      toast.error(error.message || 'Error al exportar Excel.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const summary = data?.summary;
@@ -400,6 +659,24 @@ export default function StudentsRanking() {
               className="px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 inline-flex items-center"
             >
               <FaTimes className="mr-2" /> Limpiar
+            </button>
+
+            {/* 🔽 NUEVO: Botones de exportación */}
+            <button
+              onClick={handleExportPDF}
+              disabled={exporting || loading}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition inline-flex items-center"
+              title="Exportar la lista completa con los filtros actuales a PDF"
+            >
+              <FaFilePdf className="mr-2" /> {exporting ? 'Exportando...' : 'Exportar PDF'}
+            </button>
+            <button
+              onClick={handleExportExcel}
+              disabled={exporting || loading}
+              className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-xl shadow-md hover:from-green-700 hover:to-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition inline-flex items-center"
+              title="Exportar la lista completa con los filtros actuales a Excel"
+            >
+              <FaFileExcel className="mr-2" /> {exporting ? 'Exportando...' : 'Exportar Excel'}
             </button>
           </div>
         </div>
