@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { useCallback, useState, useEffect } from 'react';
 import { toast } from "react-toastify";
 import { FaUserPlus, FaMoneyBillWave, FaGraduationCap, FaExchangeAlt } from 'react-icons/fa';
@@ -11,6 +11,7 @@ import AnimatedPage from "../../components/AnimatedPage";
 import { ActionButtons } from "../../components/ActionButtons";
 import { useInsertUserForm } from "./hook/useUserForm";
 import { useAddUser } from "./hook/useAddUser";
+import { useDetectedNivel } from "../../hooks/useDetectedNivel";
 import { getStoredRateAPI, type BCVRateResponse } from "../../apis/bank";
 
 // Opciones para el estado del estudiante
@@ -443,6 +444,11 @@ interface InsertUserProps {
 
 export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
   const navigate = useNavigate();
+  const sessionContext = useOutletContext<{ nivel?: number } | undefined>();
+  const detectedNivel = useDetectedNivel();
+  const sessionNivel = sessionContext?.nivel ?? detectedNivel;
+  // Financiero (3) y Administrativo 2 (5) solo pueden crear Representantes
+  const effectiveForceNivel = forceNivel ?? (sessionNivel === 3 || sessionNivel === 5 ? 1 : undefined);
   const [formKey, setFormKey] = useState(0);
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useInsertUserForm();
@@ -459,13 +465,13 @@ export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
   const requiresContactData = isAdministrator || isFuncional || isSecretario || isAdmin2 || isCoordinador;
   const students = watch('studentsData') || [];
 
-  const hideNivelSelector = forceNivel !== undefined;
+  const hideNivelSelector = effectiveForceNivel !== undefined;
 
   useEffect(() => {
-    if (forceNivel !== undefined) {
-      setValue('nivel', forceNivel);
+    if (effectiveForceNivel !== undefined) {
+      setValue('nivel', effectiveForceNivel);
     }
-  }, [forceNivel, setValue]);
+  }, [effectiveForceNivel, setValue]);
 
   // Al seleccionar un rol distinto a representante se descartan los datos de
   // representante y estudiantes
