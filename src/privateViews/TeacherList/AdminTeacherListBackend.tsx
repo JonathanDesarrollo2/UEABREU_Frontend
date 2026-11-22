@@ -25,7 +25,7 @@ const opcionesBusqueda = [
   { key: BusquedaType.Especializacion, label: "Especialización" },
 ];
 
-export default function TeacherListPage() {
+export default function TeacherListPage({ readOnly = false }: { readOnly?: boolean }) {
   const inputStyle = "bg-transparent text-blue-500 font-semibold py-2 px-4 border-2 border-solid border-blue-500 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors";
   const btnStyleGreen = "bg-transparent text-green-500 font-semibold py-2 px-4 border-2 border-solid border-green-500 rounded-md hover:bg-green-50 active:bg-green-100 transition-colors w-full lg:w-32";
   const btnStyleRed = "bg-transparent text-red-500 font-semibold py-2 px-4 border-2 border-solid border-red-500 rounded-md hover:bg-red-50 active:bg-red-100 transition-colors w-full lg:w-32";
@@ -50,8 +50,7 @@ export default function TeacherListPage() {
       <div className="flex flex-col min-h-screen p-4 lg:p-8">
         <h2 className="text-2xl text-center font-bold text-gray-800 mb-6">
           <FaList className="mr-4 inline-block" />
-          Lista de Profesores
-        </h2>
+          Lista de Profesores {readOnly && <span className="text-blue-500 text-sm ml-2">(Solo Lectura)</span>}        </h2>
 
         {/* Controles de Búsqueda */}
         <div className="flex flex-col lg:flex-row gap-4 w-full mb-6">
@@ -89,14 +88,16 @@ export default function TeacherListPage() {
           </div>
           
           <div className="flex gap-2 w-full lg:w-auto">
-            <button
-              type="button"
-              onClick={() => { navigate('/admin/Schedule'); }}
-              className={btnStyleGreen}
-            >
-              <FaUserPlus className="mr-2 inline-block" />
-              Nuevo
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => { navigate('/admin/Schedule'); }}
+                className={btnStyleGreen}
+              >
+                <FaUserPlus className="mr-2 inline-block" />
+                Nuevo
+              </button>
+            )}
             
             <button
               type="button"
@@ -104,14 +105,14 @@ export default function TeacherListPage() {
               className={btnStyleRed}
             >
               <FaDeleteLeft className="mr-2 inline-block" />
-              Cancelar
+              {readOnly ? 'Volver' : 'Cancelar'}
             </button>
           </div>
         </div>
 
         {/* Lista de profesores */}
         <div className="flex-1">
-          <LoadListTeacherAPI Buscar={buscar} />
+          <LoadListTeacherAPI Buscar={buscar} readOnly={readOnly} />
         </div>
       </div>
     </AnimatedPage>

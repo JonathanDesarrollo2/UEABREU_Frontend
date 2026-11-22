@@ -15,9 +15,10 @@ import GenericModal from '../../../components/GenricModal';
 
 interface ListTeachersAPIProps {
   data: TypeTeacher[];
+  readOnly?: boolean;
 }
 
-export default function ListTeachersAPI({ data }: ListTeachersAPIProps) {
+export default function ListTeachersAPI({ data, readOnly = false }: ListTeachersAPIProps) {
   const navigate = useNavigate();
   const [selectedTeacher, setSelectedTeacher] = useState<TypeTeacher | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<{ id: string, teacherName: string } | null>(null);
@@ -58,15 +59,15 @@ export default function ListTeachersAPI({ data }: ListTeachersAPIProps) {
               <th className="py-3 px-4 text-left border-b">Especialización</th>
               <th className="py-3 px-4 text-left border-b">Estado</th>
               <th className="py-3 px-4 text-left border-b">Registro</th>
-              <th className="py-3 px-4 text-left border-b">Acciones</th>
+              {!readOnly && <th className="py-3 px-4 text-left border-b">Acciones</th>}
             </tr>
           </thead>
           <tbody>
             {data.map((teacher) => (
               <tr 
                 key={teacher.id} 
-                className="border-b hover:bg-gray-50 cursor-pointer"
-                onClick={() => setSelectedTeacher(teacher)}
+                className={`border-b hover:bg-gray-50 ${!readOnly ? 'cursor-pointer' : ''}`}
+                onClick={() => { if (!readOnly) setSelectedTeacher(teacher); }}
               >
                 <td className="py-3 px-4">
                   <div className="font-medium text-blue-600">{teacher.fullName}</div>
@@ -93,6 +94,7 @@ export default function ListTeachersAPI({ data }: ListTeachersAPIProps) {
                 <td className="py-3 px-4 text-sm text-gray-500">
                   {formatDate(teacher.createdAt)}
                 </td>
+                {!readOnly && (
                 <td className="py-3 px-4">
                   <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -114,6 +116,7 @@ export default function ListTeachersAPI({ data }: ListTeachersAPIProps) {
                     </button>
                   </div>
                 </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -121,7 +124,7 @@ export default function ListTeachersAPI({ data }: ListTeachersAPIProps) {
       </div>
 
       {/* Modal de Detalles del Profesor */}
-      {selectedTeacher && (
+      {!readOnly && selectedTeacher && (
         <GenericModal
           title={`Detalles del Profesor: ${selectedTeacher.fullName}`}
           fields={[

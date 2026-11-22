@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import SpinnerGeneral from '../../../layouts/components/spinnerGeneral';
 import ListEmpty from '../../../components/ListEmpty';
@@ -7,8 +6,9 @@ import Pagination from '../../../components/Pagination';
 import { getPaginatedStudentsAPI } from '../../../apis/student';
 import ListStudentsAPI from './ListStudentAPI';
 import type { TypeStudent } from '../../../types/student';
-import { FaPrint, FaSpinner } from 'react-icons/fa';
+import { FaFilePdf, FaFileExcel, FaSpinner } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import { exportToPdf, exportToExcel, type ExportColumn } from '../../../library/exportHelpers';
 
 interface BusStudentProps {
   Buscar: {
@@ -56,8 +56,8 @@ const SECTION_LABELS: Record<string, string> = {
 export default function LoadListStudentsAPI({ Buscar, readOnly = false }: BusStudentProps) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [printData, setPrintData] = useState<TypeStudent[] | null>(null);
-  const [printing, setPrinting] = useState(false);
+  const [includeRepresentative, setIncludeRepresentative] = useState(false);
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
 
   // Valores normalizados (nunca undefined) para el queryKey
   const safeIdBus = Buscar.idBus || '';
@@ -143,33 +143,54 @@ export default function LoadListStudentsAPI({ Buscar, readOnly = false }: BusStu
     return filters;
   };
 
-  const handlePrint = useCallback(async () => {
-    setPrinting(true);
-    try {
-      const response = await getPaginatedStudentsAPI(
-        1,
-        9999,
-        safeDeBus,
-        safeStatus || undefined,
-        safeGrade || undefined,
-        safeSection || undefined
-      );
-      if (response.result && response.content) {
-        setPrintData(response.content);
-        setTimeout(() => window.print(), 300);
-      } else {
-        toast.error('No se pudieron cargar los datos para imprimir');
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Error al preparar la impresión');
-    } finally {
-      setPrinting(false);
-    }
-  }, [safeDeBus, safeStatus, safeGrade, safeSection]);
+  const fetchAllRows = async (): Promise<TypeStudent[]> => {
+    const resp = await getPaginatedStudentsAPI(1, 9999, safeDeBus, safeStatus || undefined, safeGrade || undefined, safeSection || undefined);
+    if (!resp.result || !resp.content) throw new Error('No se pudieron cargar los datos para exportar');
+    return resp.content as TypeStudent[];
+  };
 
-  const formatDate = (date?: Date) => {
-    if (!date) return '—';
-    return new Date(date).toLocaleDateString('es-VE');
+  const buildColumns = (): ExportColumn[] => {
+    const cols: ExportColumn[] = [
+      { header: 'Nombre', key: 'fullName', width: '*' },
+      { header: 'Cédula', key: 'identityCard', width: 'auto' },
+      { header: 'Fecha Nac.', key: 'birthDate', width: 'auto', formatter: (v) => v ? new Date(v).toLocaleDateString('es-VE') : '—' },
+      { header: 'Grado', key: 'currentGrade', width: 'auto' },
+      { header: 'Sección', key: 'section', width: 'auto' },
+      { header: 'Estado', key: 'status', width: 'auto', formatter: (v) => v ? v.charAt(0).toUpperCase() + v.slice(1) : 'Pendiente' },
+      { header: 'Admisión', key: 'admissionDate', width: 'auto', formatter: (v) => v ? new Date(v).toLocaleDateString('es-VE') : '—' },
+      { header: 'Exoneración', key: 'exonerationPercent', width: 'auto', formatter: (v) => `${v ?? 0}%` },
+      { header: 'Balance (USD)', key: 'balance', width: 'auto', formatter: (v) => `$${Number(v || 0).toFixed(2)}` },
+    ];
+    if (includeRepresentative) {
+      cols.push(
+        { header: 'Representante', key: '__repName', width: '*', formatter: (_v, row) => row.representative?.fullName || 'No asignado' },
+        { header: 'Cédula Rep.', key: '__repCard', width: 'auto', formatter: (_v, row) => row.representative?.identityCard || '—' },
+        { header: 'Teléfono Rep.', key: '__repPhone', width: 'auto', formatter: (_v, row) => row.representative?.phone || '—' }
+      );
+    }
+    return cols;
+  };
+
+  const handleExport = async (kind: 'pdf' | 'excel') => {
+    setExporting(kind);
+    try {
+      const rows = await fetchAllRows();
+      const columns = buildColumns();
+      const opts = {
+        title: 'Lista de Estudiantes',
+        filters: getFilterDescriptions(),
+        columns,
+        rows,
+        filename: 'estudiantes',
+      };
+      if (kind === 'pdf') await exportToPdf(opts);
+      else await exportToExcel(opts);
+      toast.success(`Exportación ${kind.toUpperCase()} generada correctamente`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al exportar');
+    } finally {
+      setExporting(null);
+    }
   };
 
   if (isLoading) return <SpinnerGeneral />;
@@ -212,96 +233,38 @@ export default function LoadListStudentsAPI({ Buscar, readOnly = false }: BusStu
     );
   }
 
-  const filterDescriptions = getFilterDescriptions();
-
-  const printContent = printData && (
-    <div className="print-content">
-      <style>{`
-        .print-content { display: none; }
-        @media print {
-          html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
-          body > *:not(.print-content) { display: none !important; }
-          .print-content { display: block !important; }
-          .print-content table { border-collapse: collapse; width: 100%; font-size: 10px; }
-          .print-content th, .print-content td { border: 1px solid #333 !important; padding: 4px 6px !important; text-align: left; vertical-align: top; }
-          .print-content thead { background: #f0f0f0 !important; display: table-header-group; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .print-content tr { page-break-inside: avoid; }
-          .print-content th { font-weight: bold; }
-        }
-        @page { size: A4 portrait; margin: 12mm; }
-      `}</style>
-
-      <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-        <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Lista de Estudiantes</h1>
-        <p style={{ fontSize: '11px', margin: '2px 0', color: '#555' }}>
-          Generado el {new Date().toLocaleDateString('es-VE')} a las {new Date().toLocaleTimeString('es-VE')}
-        </p>
-        {filterDescriptions.length > 0 ? (
-          <div style={{ fontSize: '11px', marginTop: '6px' }}>
-            <strong>Filtros aplicados:</strong>
-            <ul style={{ listStyle: 'none', padding: 0, margin: '2px 0 0 0' }}>
-              {filterDescriptions.map((f, i) => <li key={i}>{f}</li>)}
-            </ul>
-          </div>
-        ) : (
-          <p style={{ fontSize: '11px', marginTop: '6px' }}><strong>Sin filtros aplicados</strong></p>
-        )}
-        <p style={{ fontSize: '11px', marginTop: '4px' }}>
-          Total: <strong>{printData.length}</strong> estudiante(s)
-        </p>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th style={{ width: '30px' }}>#</th>
-            <th>Nombre</th>
-            <th>Cédula</th>
-            <th>Grado</th>
-            <th>Sección</th>
-            <th>Estado</th>
-            <th>Admisión</th>
-            <th>Representante</th>
-          </tr>
-        </thead>
-        <tbody>
-          {printData.map((student, idx) => (
-            <tr key={student.id}>
-              <td>{idx + 1}</td>
-              <td>{student.fullName || '—'}</td>
-              <td>{student.identityCard || '—'}</td>
-              <td>{student.currentGrade || 'En asignar'}</td>
-              <td>{student.section || 'Pendiente'}</td>
-              <td>{(student.status || 'pendiente').charAt(0).toUpperCase() + (student.status || 'pendiente').slice(1)}</td>
-              <td>{formatDate(student.admissionDate)}</td>
-              <td>{student.representative ? `${student.representative.fullName} (${student.representative.identityCard})` : 'No asignado'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
   return (
     <>
-      <div className="flex justify-end items-center gap-3 mb-3">
+      <div className="flex flex-wrap justify-end items-center gap-3 mb-3">
         {isFetching && !isLoading && (
           <span className="inline-flex items-center gap-2 text-sm text-blue-600">
-            <FaSpinner className="animate-spin" />
-            Actualizando...
+            <FaSpinner className="animate-spin" /> Actualizando...
           </span>
         )}
+        <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={includeRepresentative}
+            onChange={(e) => setIncludeRepresentative(e.target.checked)}
+            className="h-4 w-4"
+          />
+          Incluir representante
+        </label>
         <button
           type="button"
-          onClick={handlePrint}
-          disabled={printing}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          onClick={() => handleExport('pdf')}
+          disabled={!!exporting}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {printing ? (
-            <><FaSpinner className="animate-spin" />Preparando...</>
-          ) : (
-            <><FaPrint />Imprimir lista</>
-          )}
+          {exporting === 'pdf' ? (<><FaSpinner className="animate-spin" />Generando...</>) : (<><FaFilePdf />PDF</>)}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleExport('excel')}
+          disabled={!!exporting}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {exporting === 'excel' ? (<><FaSpinner className="animate-spin" />Generando...</>) : (<><FaFileExcel />Excel</>)}
         </button>
       </div>
 
@@ -313,8 +276,6 @@ export default function LoadListStudentsAPI({ Buscar, readOnly = false }: BusStu
         onPageChange={setPage}
         onLimitChange={handleLimitChange}
       />
-
-      {printContent && createPortal(printContent, document.body)}
     </>
   );
 }

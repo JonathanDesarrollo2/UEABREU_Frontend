@@ -45,6 +45,8 @@ import TasaLista from './privateViews/tasaLista/TasaListaVista'
 import EditSubjectPage from './privateViews/EditSubject/EditSubjectPage'
 import Admin2Layout from './layouts/admin2layout'
 import Admin2Dashboard from './layouts/admin2Dashboard'
+import CoordinadorLayout from './layouts/CoordinadorLayout'
+import CoordinadorDashboard from './layouts/CoordinadorDashboard'
 import ForgotPasswordKey from './publicViews/LoginAuthPublic/forgotPasswordKey'
 
 function ListRoutes() {
@@ -98,6 +100,17 @@ function ListRoutes() {
           <Route path="ranking" element={<StudentsRanking />} />
           <Route path="transactions" element={<PaymentHistory />} />
           <Route path="Balance" element={<ManualBalance />} />
+        </Route>
+
+        {/* ⭐ NUEVO: Rutas Coordinador de Evaluación (nivel 6) */}
+        <Route path="/coordinador" element={<CoordinadorLayout />}>
+          <Route index element={<CoordinadorDashboard />} />
+          <Route path="students/list" element={<AdminListStudentsBackend readOnly />} />
+          <Route path="users/list" element={<AdminListUsersBackend readOnly />} />
+          <Route path="ListSubjects" element={<AdminListSubjectsBackend readOnly />} />
+          <Route path="teachers/list" element={<TeacherListPage readOnly />} />
+          <Route path="Schedule" element={<ScheduleView readOnly />} />
+          <Route path="registrations" element={<AdminRegistrationsList readOnly />} />
         </Route>
 
         {/* Rutas Admin */}

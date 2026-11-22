@@ -39,8 +39,17 @@ export interface TypeUser_full {
 export interface TypeUserBuscar {
   idBus: string;
   DeBus: string;
-  nivelFilter?: 'all' | '1' | '2' | 'admin-emails';
+  nivelFilter?: 'all' | '1' | '2' | '3' | '4' | '5' | '6' | 'admin-emails';
 }
+
+export const NIVEL_LABELS: Record<number, string> = {
+  1: 'Representante',
+  2: 'Socio',
+  3: 'Financiero',
+  4: 'Administrativo',
+  5: 'Administrativo 2',
+  6: 'Coordinador de Evaluación',
+};
 
 export interface TypeUser_delete {
   id: string;

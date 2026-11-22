@@ -63,9 +63,9 @@ export const loginInsertSchema = z.object({
   message: "Los datos del representante son requeridos para nivel 1",
   path: ["representativeData"],
 }).refine((data) => {
-  // Niveles 2 (Admin), 3 (Funcional), 4 (Secretario) y 5 (Administrativo 2)
-  // requieren teléfono y cédula
-  if (data.nivel === 2 || data.nivel === 3 || data.nivel === 4 || data.nivel === 5) {
+  // Niveles 2 (Admin), 3 (Funcional), 4 (Secretario), 5 (Administrativo 2)
+  // y 6 (Coordinador) requieren teléfono y cédula
+  if (data.nivel === 2 || data.nivel === 3 || data.nivel === 4 || data.nivel === 5 || data.nivel === 6) {
     return !!data.phone && !!data.identityCard;
   }
   return true;

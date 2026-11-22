@@ -157,7 +157,7 @@ const buildSinglePlanillaContent = (appData: any) => {
   ];
 };
 
-const AdminRegistrationsList: React.FC = () => {
+const AdminRegistrationsList: React.FC<{ readOnly?: boolean }> = ({ readOnly = false }) => {
   const navigate = useNavigate();
 
   const [applications, setApplications] = useState<Application[]>([]);
@@ -692,14 +692,16 @@ const AdminRegistrationsList: React.FC = () => {
                           >
                             <FaDownload className="text-lg" />
                           </button>
-                          <button
-                            onClick={() => handleEdit(app)}
-                            className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
-                            title="Editar solicitud"
-                          >
-                            <FaEdit className="text-lg" />
-                          </button>
-                          {!app.userActive && (
+                          {!readOnly && (
+                            <button
+                              onClick={() => handleEdit(app)}
+                              className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
+                              title="Editar solicitud"
+                            >
+                              <FaEdit className="text-lg" />
+                            </button>
+                          )}
+                          {!readOnly && !app.userActive && (
                             <button
                               onClick={() => handleActivate(app.id)}
                               className="p-2.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
@@ -708,13 +710,15 @@ const AdminRegistrationsList: React.FC = () => {
                               <FaCheck className="text-lg" />
                             </button>
                           )}
-                          <button
-                            onClick={() => handleDelete(app.id)}
-                            className="p-2.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                            title="Eliminar registro"
-                          >
-                            <FaTrash className="text-lg" />
-                          </button>
+                          {!readOnly && (
+                            <button
+                              onClick={() => handleDelete(app.id)}
+                              className="p-2.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                              title="Eliminar registro"
+                            >
+                              <FaTrash className="text-lg" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
