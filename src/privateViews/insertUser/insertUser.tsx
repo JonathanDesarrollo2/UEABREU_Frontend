@@ -11,7 +11,7 @@ import AnimatedPage from "../../components/AnimatedPage";
 import { ActionButtons } from "../../components/ActionButtons";
 import { useInsertUserForm } from "./hook/useUserForm";
 import { useAddUser } from "./hook/useAddUser";
-import { useDetectedNivel } from "../../hooks/useDetectedNivel";
+import { userActiveAPI } from "../../apis/login";
 import { getStoredRateAPI, type BCVRateResponse } from "../../apis/bank";
 
 // Opciones para el estado del estudiante
@@ -445,10 +445,29 @@ interface InsertUserProps {
 export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
   const navigate = useNavigate();
   const sessionContext = useOutletContext<{ nivel?: number } | undefined>();
-  const detectedNivel = useDetectedNivel();
-  const sessionNivel = sessionContext?.nivel ?? detectedNivel;
-  // Financiero (3) y Administrativo 2 (5) solo pueden crear Representantes
-  const effectiveForceNivel = forceNivel ?? (sessionNivel === 3 || sessionNivel === 5 ? 1 : undefined);
+  const [apiNivel, setApiNivel] = useState<number | undefined>(undefined);
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  // El Outlet de UserLayout no propaga el contexto de sesión, por lo que se
+  // consulta la sesión activa para conocer el nivel del usuario logueado
+  useEffect(() => {
+    if (sessionContext?.nivel !== undefined) {
+      setSessionChecked(true);
+      return;
+    }
+    let active = true;
+    userActiveAPI()
+      .then((resp) => {
+        if (active && resp.result) setApiNivel(resp.content.nivel);
+      })
+      .catch(() => { /* si falla, el backend sigue validando los permisos */ })
+      .finally(() => { if (active) setSessionChecked(true); });
+    return () => { active = false; };
+  }, [sessionContext?.nivel]);
+
+  const sessionNivel = sessionContext?.nivel ?? apiNivel;
+  // Financiero (3), Secretario (4) y Administrativo 2 (5) solo pueden crear Representantes
+  const effectiveForceNivel = forceNivel ?? (sessionNivel === 3 || sessionNivel === 4 || sessionNivel === 5 ? 1 : undefined);
   const [formKey, setFormKey] = useState(0);
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useInsertUserForm();
@@ -465,7 +484,8 @@ export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
   const requiresContactData = isAdministrator || isFuncional || isSecretario || isAdmin2 || isCoordinador;
   const students = watch('studentsData') || [];
 
-  const hideNivelSelector = effectiveForceNivel !== undefined;
+  // El selector se oculta mientras se verifica la sesión para evitar que se vea un instante
+  const hideNivelSelector = effectiveForceNivel !== undefined || (forceNivel === undefined && !sessionChecked);
 
   useEffect(() => {
     if (effectiveForceNivel !== undefined) {
