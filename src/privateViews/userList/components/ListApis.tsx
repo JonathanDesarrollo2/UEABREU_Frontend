@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import type { TypeUser_full } from '../../../types/user';
+import { NIVEL_LABELS } from '../../../types/user';
 import { useDeleteUser } from '../hooks/useDeleteUser';
 import GenericModal from '../../../components/GenricModal';
 import ConfirmDeleteModal from '../../../components/ConfirmDeleteModal';
@@ -21,9 +22,10 @@ import { getStoredRateAPI, type BCVRateResponse } from '../../../apis/bank';
 
 interface ListAPIProps {
   data: TypeUser_full[];
+  readOnly?: boolean;
 }
 
-export default function ListAPIs({ data }: ListAPIProps) {
+export default function ListAPIs({ data, readOnly = false }: ListAPIProps) {
   const navigate = useNavigate();
   const [selectedUser, setSelectedUser] = useState<TypeUser_full | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
@@ -90,9 +92,9 @@ export default function ListAPIs({ data }: ListAPIProps) {
 
   const getNivelText = (nivel?: number) => {
     switch(nivel) {
-      case 1: return { text: 'Representante', icon: <FaUserTie className="inline mr-1" />, color: 'text-green-600' };
-      case 2: return { text: 'Administrativo', icon: <FaUser className="inline mr-1" />, color: 'text-blue-600' };
-      default: return { text: `Nivel ${nivel}`, icon: <FaUser className="inline mr-1" />, color: 'text-gray-600' };
+      case 1: return { text: NIVEL_LABELS[1], icon: <FaUserTie className="inline mr-1" />, color: 'text-green-600' };
+      case 2: return { text: NIVEL_LABELS[2], icon: <FaUser className="inline mr-1" />, color: 'text-blue-600' };
+      default: return { text: (nivel !== undefined && NIVEL_LABELS[nivel]) || `Nivel ${nivel}`, icon: <FaUser className="inline mr-1" />, color: 'text-gray-600' };
     }
   };
 
@@ -139,7 +141,7 @@ export default function ListAPIs({ data }: ListAPIProps) {
               <th className="py-3 px-4 text-left border-b">Estado</th>
               <th className="py-3 px-4 text-left border-b">Registro</th>
               <th className="py-3 px-4 text-left border-b">Saldo</th>
-              <th className="py-3 px-4 text-left border-b">Acciones</th>
+              {!readOnly && <th className="py-3 px-4 text-left border-b">Acciones</th>}
             </tr>
           </thead>
           <tbody>
@@ -152,8 +154,8 @@ export default function ListAPIs({ data }: ListAPIProps) {
               return (
                 <tr 
                   key={user.id} 
-                  className="border-b hover:bg-gray-50 cursor-pointer"
-                  onClick={() => setSelectedUser(user)}
+                  className={`border-b hover:bg-gray-50 ${!readOnly ? 'cursor-pointer' : ''}`}
+                  onClick={() => { if (!readOnly) setSelectedUser(user); }}
                 >
                   <td className="py-3 px-4">
                     <div className="font-medium text-blue-600">{user.usermail}</div>
@@ -188,6 +190,7 @@ export default function ListAPIs({ data }: ListAPIProps) {
                       <span className="text-gray-400">N/A</span>
                     )}
                   </td>
+                  {!readOnly && (
                   <td className="py-3 px-4">
                     <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -206,6 +209,7 @@ export default function ListAPIs({ data }: ListAPIProps) {
                       </button>
                     </div>
                   </td>
+                  )}
                 </tr>
               );
             })}
@@ -214,7 +218,7 @@ export default function ListAPIs({ data }: ListAPIProps) {
       </div>
 
       {/* Modal de Detalles del Usuario */}
-      {selectedUser && (
+      {!readOnly && selectedUser && (
         <GenericModal
           title={`Detalles del Usuario: ${selectedUser.userlogin}`}
           fields={[
@@ -365,7 +369,7 @@ export default function ListAPIs({ data }: ListAPIProps) {
         />
       )}
 
-      {selectedStudent && (
+      {!readOnly && selectedStudent && (
         <GenericModal
           title={`Detalles del Estudiante: ${selectedStudent.fullName}`}
           fields={[

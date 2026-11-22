@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { useCallback, useState, useEffect } from 'react';
 import { toast } from "react-toastify";
 import { FaUserPlus, FaMoneyBillWave, FaGraduationCap, FaExchangeAlt } from 'react-icons/fa';
@@ -11,6 +11,7 @@ import AnimatedPage from "../../components/AnimatedPage";
 import { ActionButtons } from "../../components/ActionButtons";
 import { useInsertUserForm } from "./hook/useUserForm";
 import { useAddUser } from "./hook/useAddUser";
+import { userActiveAPI } from "../../apis/login";
 import { getStoredRateAPI, type BCVRateResponse } from "../../apis/bank";
 
 // Opciones para el estado del estudiante
@@ -443,6 +444,30 @@ interface InsertUserProps {
 
 export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
   const navigate = useNavigate();
+  const sessionContext = useOutletContext<{ nivel?: number } | undefined>();
+  const [apiNivel, setApiNivel] = useState<number | undefined>(undefined);
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  // El Outlet de UserLayout no propaga el contexto de sesión, por lo que se
+  // consulta la sesión activa para conocer el nivel del usuario logueado
+  useEffect(() => {
+    if (sessionContext?.nivel !== undefined) {
+      setSessionChecked(true);
+      return;
+    }
+    let active = true;
+    userActiveAPI()
+      .then((resp) => {
+        if (active && resp.result) setApiNivel(resp.content.nivel);
+      })
+      .catch(() => { /* si falla, el backend sigue validando los permisos */ })
+      .finally(() => { if (active) setSessionChecked(true); });
+    return () => { active = false; };
+  }, [sessionContext?.nivel]);
+
+  const sessionNivel = sessionContext?.nivel ?? apiNivel;
+  // Financiero (3), Secretario (4) y Administrativo 2 (5) solo pueden crear Representantes
+  const effectiveForceNivel = forceNivel ?? (sessionNivel === 3 || sessionNivel === 4 || sessionNivel === 5 ? 1 : undefined);
   const [formKey, setFormKey] = useState(0);
   const [bcvRate, setBcvRate] = useState<BCVRateResponse | null>(null);
   const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useInsertUserForm();
@@ -454,22 +479,24 @@ export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
   const isFuncional = nivel === 3;
   const isSecretario = nivel === 4;
   const isAdmin2 = nivel === 5;
-  // Niveles que comparten los mismos campos (phone + identityCard): 2, 3 y 4
-  const requiresContactData = isAdministrator || isFuncional || isSecretario || isAdmin2;;
+  const isCoordinador = nivel === 6;
+  // Niveles que comparten los mismos campos (phone + identityCard): 2, 3, 4, 5 y 6
+  const requiresContactData = isAdministrator || isFuncional || isSecretario || isAdmin2 || isCoordinador;
   const students = watch('studentsData') || [];
 
-  const hideNivelSelector = forceNivel !== undefined;
+  // El selector se oculta mientras se verifica la sesión para evitar que se vea un instante
+  const hideNivelSelector = effectiveForceNivel !== undefined || (forceNivel === undefined && !sessionChecked);
 
   useEffect(() => {
-    if (forceNivel !== undefined) {
-      setValue('nivel', forceNivel);
+    if (effectiveForceNivel !== undefined) {
+      setValue('nivel', effectiveForceNivel);
     }
-  }, [forceNivel, setValue]);
+  }, [effectiveForceNivel, setValue]);
 
   // Al seleccionar un rol distinto a representante se descartan los datos de
   // representante y estudiantes
   useEffect(() => {
-    if (nivel === 2 || nivel === 3 || nivel === 4 || nivel === 5) {
+    if (nivel === 2 || nivel === 3 || nivel === 4 || nivel === 5 || nivel === 6) {
       setValue('representativeData', undefined);
       setValue('studentsData', []);
     }
@@ -533,7 +560,7 @@ export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
     new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(val);
 
   // Etiqueta dinámica para los campos de contacto
-  const contactLabel = isSecretario ? 'secretario' : isFuncional ? 'funcional' : 'administrador';
+  const contactLabel = isSecretario ? 'secretario' : isFuncional ? 'funcional' : isCoordinador ? 'coordinador' : 'administrador';
 
   return (
     <>
@@ -624,8 +651,8 @@ export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
                           { value: 2, text: "Administrador" },
                           { value: 3, text: "Funcional" },
                           { value: 4, text: "Secretario" },
-                          { value: 5, text: "Administrativo 2" }
-                        ]}
+                          { value: 5, text: "Administrativo 2" },
+                          { value: 6, text: "Coordinador de Evaluación" }                        ]}
                       />
                     </div>
                   </div>
@@ -787,6 +814,17 @@ export default function InsertUser({ forceNivel }: InsertUserProps = {}) {
                   Se registrará un usuario con permisos administrativos de nivel 2.
                   <br />
                   Podrá consultar tasas, ranking, historial de pagos y gestionar pagos y balance manual.
+                </p>
+              </div>
+            )}
+
+            {isCoordinador && (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-6 max-w-4xl mx-auto text-center">
+                <h4 className="text-lg font-semibold text-indigo-800 mb-3">Coordinador de Evaluación</h4>
+                <p className="text-gray-700">
+                  Se registrará un usuario con permisos de SOLO LECTURA sobre todas las listas del sistema.
+                  <br />
+                  Podrá visualizar estudiantes, usuarios, materias, docentes, horarios y solicitudes, pero no podrá crear, editar ni eliminar nada.
                 </p>
               </div>
             )}

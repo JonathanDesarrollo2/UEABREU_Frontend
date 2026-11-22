@@ -40,6 +40,7 @@ const SECTION_OPTIONS = [
 interface SchedulePreviewProps {
   grade?: string;
   section?: string;
+  readOnly?: boolean;
 }
 
 interface BlockData {
@@ -69,7 +70,7 @@ const formatTimeTo12h = (time?: string): string => {
   return `${hour12}:${minute} ${period}`;
 };
 
-export default function SchedulePreview({ grade: initialGrade = '1ro', section: initialSection = 'A' }: SchedulePreviewProps) {
+export default function SchedulePreview({ grade: initialGrade = '1ro', section: initialSection = 'A', readOnly = false }: SchedulePreviewProps) {
   const [grade, setGrade] = useState(initialGrade);
   const [section, setSection] = useState(initialSection);
   const [scheduleData, setScheduleData] = useState<any>({ schedulesByDay: {} });
@@ -247,6 +248,10 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
 
   const handleCellClick = (day: string, blockId: number) => {
     const cellData = getCellContent(day, blockId);
+    if (readOnly) {
+      setSelectedCell({ day, blockId });
+      return;
+    }
     if (cellData?.scheduleId) {
       setScheduleToDelete({
         id: cellData.scheduleId,
@@ -488,7 +493,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                     >
                       {cellData?.isBreak ? (
                         <div className="text-center text-yellow-700 font-medium py-2 relative group">
-                          {cellData.scheduleId && (
+                          {!readOnly && cellData.scheduleId && (
                             <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <FaTrash className="text-red-500 hover:text-red-700 cursor-pointer" onClick={(e) => {
                                 e.stopPropagation();
@@ -502,7 +507,7 @@ export default function SchedulePreview({ grade: initialGrade = '1ro', section: 
                         </div>
                       ) : cellData?.subject && cellData.subject !== 'RECESO' ? (
                         <div className="space-y-1 group relative">
-                          {cellData.scheduleId && (
+                          {!readOnly && cellData.scheduleId && (
                             <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <FaTrash className="text-red-500 hover:text-red-700 cursor-pointer" onClick={(e) => {
                                 e.stopPropagation();

@@ -13,9 +13,10 @@ import GenericModal from '../../../components/GenricModal';
 
 interface ListSubjectsAPIProps {
   data: TypeSubject[];
+  readOnly?: boolean;
 }
 
-export default function ListSubjectsAPI({ data }: ListSubjectsAPIProps) {
+export default function ListSubjectsAPI({ data, readOnly = false }: ListSubjectsAPIProps) {
   const navigate = useNavigate();
   const [selectedSubject, setSelectedSubject] = useState<TypeSubject | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<{ id: string, subjectName: string } | null>(null);
@@ -59,15 +60,15 @@ export default function ListSubjectsAPI({ data }: ListSubjectsAPIProps) {
               <th className="py-3 px-4 text-left border-b">Tipo</th>
               <th className="py-3 px-4 text-left border-b">Horas/Semana</th>
               <th className="py-3 px-4 text-left border-b">Docente</th>
-              <th className="py-3 px-4 text-left border-b">Acciones</th>
+              {!readOnly && <th className="py-3 px-4 text-left border-b">Acciones</th>}
             </tr>
           </thead>
           <tbody>
             {data.map((subject) => (
               <tr 
                 key={subject.id} 
-                className="border-b hover:bg-gray-50 cursor-pointer"
-                onClick={() => setSelectedSubject(subject)}
+                className={`border-b hover:bg-gray-50 ${!readOnly ? 'cursor-pointer' : ''}`}
+                onClick={() => { if (!readOnly) setSelectedSubject(subject); }}
               >
                 <td className="py-3 px-4">
                   <div className="font-medium text-blue-600">{subject.code}</div>
@@ -94,6 +95,7 @@ export default function ListSubjectsAPI({ data }: ListSubjectsAPIProps) {
                     <span className="text-gray-400">No asignado</span>
                   )}
                 </td>
+                {!readOnly && (
                 <td className="py-3 px-4">
                   <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -115,6 +117,7 @@ export default function ListSubjectsAPI({ data }: ListSubjectsAPIProps) {
                     </button>
                   </div>
                 </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -122,7 +125,7 @@ export default function ListSubjectsAPI({ data }: ListSubjectsAPIProps) {
       </div>
 
       {/* Modal de Detalles de la Materia */}
-      {selectedSubject && (
+      {!readOnly && selectedSubject && (
         <GenericModal
           title={`Detalles de la Materia: ${selectedSubject.name}`}
           fields={[

@@ -2,10 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getPaginatedTeachersAPI } from '../../../apis/teacher';
+import { FaFilePdf, FaFileExcel, FaSpinner } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import SpinnerGeneral from '../../../layouts/components/spinnerGeneral';
 import ListEmpty from '../../../components/ListEmpty';
 import Pagination from '../../../components/Pagination';
 import ListTeachersAPI from './ListTeacherAPI';
+import { exportToPdf, exportToExcel, type ExportColumn } from '../../../library/exportHelpers';
 
 interface BusTeacherProps {
   Buscar: {
@@ -13,11 +16,13 @@ interface BusTeacherProps {
     DeBus: string;
     statusFilter: 'all' | 'active' | 'inactive';
   };
+  readOnly?: boolean;
 }
 
-export default function LoadListTeacherAPI({ Buscar }: BusTeacherProps) {
+export default function LoadListTeacherAPI({ Buscar, readOnly = false }: BusTeacherProps) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
 
   // Ajustar los parámetros de búsqueda antes de enviarlos
   const adjustedBuscar = React.useMemo(() => {
@@ -48,6 +53,50 @@ export default function LoadListTeacherAPI({ Buscar }: BusTeacherProps) {
   const handleLimitChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setLimit(parseInt(event.target.value, 10));
     setPage(1);
+  };
+
+  const getFilterDescriptions = (): string[] => {
+    const filters: string[] = [];
+    if (Buscar.DeBus && Buscar.DeBus.trim() !== '') filters.push(`Búsqueda: "${Buscar.DeBus}"`);
+    if (Buscar.statusFilter !== 'all') filters.push(`Estado: ${Buscar.statusFilter === 'active' ? 'Activos' : 'Inactivos'}`);
+    return filters;
+  };
+
+  const buildColumns = (): ExportColumn[] => [
+    { header: 'Nombre', key: 'fullName', width: '*' },
+    { header: 'Cédula', key: 'identityCard', width: 'auto' },
+    { header: 'Email', key: 'email', width: '*' },
+    { header: 'Teléfono', key: 'phone', width: 'auto' },
+    { header: 'Especialización', key: 'specialization', width: 'auto', formatter: (v) => v || 'No especificada' },
+    { header: 'Estado', key: 'status', width: 'auto', formatter: (v) => (v ? 'Activo' : 'Inactivo') },
+    { header: 'Registro', key: 'createdAt', width: 'auto', formatter: (v) => v ? new Date(v).toLocaleDateString('es-VE') : '—' },
+  ];
+
+  const handleExport = async (kind: 'pdf' | 'excel') => {
+    setExporting(kind);
+    try {
+      const resp = await getPaginatedTeachersAPI(1, 9999, adjustedBuscar.search);
+      if (!resp.result || !resp.content) throw new Error('No se pudieron cargar los datos para exportar');
+      let rows = resp.content;
+      if (adjustedBuscar.status !== 'all') {
+        const statusBoolean = adjustedBuscar.status === 'active';
+        rows = rows.filter((t) => t.status === statusBoolean);
+      }
+      const opts = {
+        title: 'Lista de Docentes',
+        filters: getFilterDescriptions(),
+        columns: buildColumns(),
+        rows,
+        filename: 'docentes',
+      };
+      if (kind === 'pdf') await exportToPdf(opts);
+      else await exportToExcel(opts);
+      toast.success(`Exportación ${kind.toUpperCase()} generada correctamente`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al exportar');
+    } finally {
+      setExporting(null);
+    }
   };
 
   if (isLoading) {
@@ -105,7 +154,25 @@ export default function LoadListTeacherAPI({ Buscar }: BusTeacherProps) {
 
   return (
     <>
-      <ListTeachersAPI data={teachers} />
+      <div className="flex flex-wrap justify-end items-center gap-3 mb-3">
+        <button
+          type="button"
+          onClick={() => handleExport('pdf')}
+          disabled={!!exporting}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {exporting === 'pdf' ? (<><FaSpinner className="animate-spin" />Generando...</>) : (<><FaFilePdf />PDF</>)}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleExport('excel')}
+          disabled={!!exporting}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {exporting === 'excel' ? (<><FaSpinner className="animate-spin" />Generando...</>) : (<><FaFileExcel />Excel</>)}
+        </button>
+      </div>
+      <ListTeachersAPI data={teachers} readOnly={readOnly} />
       <Pagination
         page={page}
         limit={limit}
