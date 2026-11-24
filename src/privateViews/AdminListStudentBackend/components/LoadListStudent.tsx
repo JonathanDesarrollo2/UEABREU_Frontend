@@ -6,7 +6,7 @@ import Pagination from '../../../components/Pagination';
 import { getPaginatedStudentsAPI } from '../../../apis/student';
 import ListStudentsAPI from './ListStudentAPI';
 import type { TypeStudent } from '../../../types/student';
-import { FaFilePdf, FaFileExcel, FaSpinner } from 'react-icons/fa';
+import { FaFilePdf, FaFileExcel, FaSpinner, FaClipboardList } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { exportToPdf, exportToExcel, type ExportColumn } from '../../../library/exportHelpers';
 
@@ -18,7 +18,7 @@ interface BusStudentProps {
     grade?: string;
     section?: string;
   };
-  readOnly?: boolean; // ⬅️ NUEVO
+  readOnly?: boolean;
 }
 
 const BUSQUEDA_LABELS: Record<string, string> = {
@@ -56,7 +56,10 @@ const SECTION_LABELS: Record<string, string> = {
 export default function LoadListStudentsAPI({ Buscar, readOnly = false }: BusStudentProps) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  
+  // Estados de exportación
   const [includeRepresentative, setIncludeRepresentative] = useState(false);
+  const [isAttendanceMode, setIsAttendanceMode] = useState(false);
   const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
 
   // Valores normalizados (nunca undefined) para el queryKey
@@ -86,15 +89,6 @@ export default function LoadListStudentsAPI({ Buscar, readOnly = false }: BusStu
         safeGrade || undefined,
         safeSection || undefined
       );
-      console.log('✅ [LoadListStudentsAPI] Respuesta del backend:', {
-        params: { page, limit, search: safeDeBus, status: safeStatus, grade: safeGrade, section: safeSection },
-        total: resp?.pagination?.totalRecords,
-        primerosRegistros: resp?.content?.slice(0, 3).map((s: any) => ({
-          nombre: s.fullName,
-          grado: s.currentGrade,
-          seccion: s.section,
-        })),
-      });
       return resp;
     },
     refetchOnMount: 'always',
@@ -109,15 +103,12 @@ export default function LoadListStudentsAPI({ Buscar, readOnly = false }: BusStu
     setPage(1);
   }, [safeIdBus, safeDeBus, safeStatus, safeGrade, safeSection]);
 
-  // ✅ Fuerza refetch cada vez que cambia cualquier filtro
+  // Fuerza refetch cada vez que cambia cualquier filtro
   const filtersSignature = `${safeIdBus}|${safeDeBus}|${safeStatus}|${safeGrade}|${safeSection}`;
   const lastSignatureRef = useRef<string>('');
   useEffect(() => {
     if (lastSignatureRef.current === filtersSignature) return;
     lastSignatureRef.current = filtersSignature;
-    console.log('🔄 [LoadListStudentsAPI] Cambiaron los filtros. Forzando refetch:', {
-      safeIdBus, safeDeBus, safeStatus, safeGrade, safeSection,
-    });
     refetch();
   }, [filtersSignature, refetch, safeIdBus, safeDeBus, safeStatus, safeGrade, safeSection]);
 
@@ -149,6 +140,7 @@ export default function LoadListStudentsAPI({ Buscar, readOnly = false }: BusStu
     return resp.content as TypeStudent[];
   };
 
+  // Columnas normales (Tabla completa)
   const buildColumns = (): ExportColumn[] => {
     const cols: ExportColumn[] = [
       { header: 'Nombre', key: 'fullName', width: '*' },
@@ -171,20 +163,57 @@ export default function LoadListStudentsAPI({ Buscar, readOnly = false }: BusStu
     return cols;
   };
 
+  // Columnas exclusivas para el Modo Asistencia
+  const buildAttendanceColumns = (): ExportColumn[] => {
+    return [
+      { header: 'N°', key: '__index', width: 30 },
+      { header: 'Nombre del Estudiante', key: 'fullName', width: '*' },
+      { header: 'Cédula', key: 'identityCard', width: 'auto' },
+      // Los 3 campos vacíos. Usamos un formatter que devuelve un espacio en blanco 
+      // para que el exportHelper no ponga el guion (—) por defecto.
+      { header: '', key: '__blank1', width: '*', formatter: () => ' ' },
+      { header: '', key: '__blank2', width: '*', formatter: () => ' ' },
+      { header: '', key: '__blank3', width: '*', formatter: () => ' ' },
+    ];
+  };
+
   const handleExport = async (kind: 'pdf' | 'excel') => {
+    if (isAttendanceMode && kind === 'excel') {
+      toast.warning('El modo de asistencia solo está disponible para PDF');
+      return;
+    }
+
     setExporting(kind);
     try {
       const rows = await fetchAllRows();
-      const columns = buildColumns();
+      
+      let columns = buildColumns();
+      let finalRows = rows;
+      let filename = 'estudiantes';
+      let title = 'Lista de Estudiantes';
+
+      // Si el modo asistencia está activo, sobreescribimos la data
+      if (isAttendanceMode) {
+        columns = buildAttendanceColumns();
+        finalRows = rows.map((r, i) => ({
+          ...r,
+          __index: String(i + 1),
+        }));
+        filename = 'lista_asistencia';
+        title = 'Lista de Asistencia';
+      }
+
       const opts = {
-        title: 'Lista de Estudiantes',
+        title,
         filters: getFilterDescriptions(),
         columns,
-        rows,
-        filename: 'estudiantes',
+        rows: finalRows,
+        filename,
       };
+
       if (kind === 'pdf') await exportToPdf(opts);
       else await exportToExcel(opts);
+      
       toast.success(`Exportación ${kind.toUpperCase()} generada correctamente`);
     } catch (err: any) {
       toast.error(err?.message || 'Error al exportar');
@@ -235,40 +264,62 @@ export default function LoadListStudentsAPI({ Buscar, readOnly = false }: BusStu
 
   return (
     <>
-      <div className="flex flex-wrap justify-end items-center gap-3 mb-3">
+      <div className="flex flex-wrap justify-end items-center gap-3 mb-3 bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
         {isFetching && !isLoading && (
-          <span className="inline-flex items-center gap-2 text-sm text-blue-600">
+          <span className="inline-flex items-center gap-2 text-sm text-blue-600 mr-auto">
             <FaSpinner className="animate-spin" /> Actualizando...
           </span>
         )}
-        <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+
+        <label className="inline-flex items-center gap-2 text-sm text-blue-800 font-semibold cursor-pointer select-none bg-blue-50 px-3 py-1.5 rounded-md border border-blue-200 hover:bg-blue-100 transition-colors">
           <input
             type="checkbox"
-            checked={includeRepresentative}
-            onChange={(e) => setIncludeRepresentative(e.target.checked)}
-            className="h-4 w-4"
+            checked={isAttendanceMode}
+            onChange={(e) => setIsAttendanceMode(e.target.checked)}
+            className="h-4 w-4 accent-blue-600"
           />
-          Incluir representante
+          <FaClipboardList className="text-blue-600" />
+          Modo Asistencia (Solo PDF)
         </label>
+
+        {!isAttendanceMode && (
+          <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none mr-2">
+            <input
+              type="checkbox"
+              checked={includeRepresentative}
+              onChange={(e) => setIncludeRepresentative(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Incluir representante
+          </label>
+        )}
+
         <button
           type="button"
           onClick={() => handleExport('pdf')}
           disabled={!!exporting}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
         >
           {exporting === 'pdf' ? (<><FaSpinner className="animate-spin" />Generando...</>) : (<><FaFilePdf />PDF</>)}
         </button>
+        
         <button
           type="button"
           onClick={() => handleExport('excel')}
-          disabled={!!exporting}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          disabled={!!exporting || isAttendanceMode}
+          className={`inline-flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-md transition-colors shadow-sm ${
+            isAttendanceMode 
+              ? 'bg-gray-400 cursor-not-allowed opacity-50' 
+              : 'bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed'
+          }`}
+          title={isAttendanceMode ? "El modo asistencia solo genera PDF" : "Exportar a Excel"}
         >
           {exporting === 'excel' ? (<><FaSpinner className="animate-spin" />Generando...</>) : (<><FaFileExcel />Excel</>)}
         </button>
       </div>
 
       <ListStudentsAPI data={data.content} readOnly={readOnly} />
+      
       <Pagination
         page={page}
         limit={limit}
